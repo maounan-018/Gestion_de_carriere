@@ -1,0 +1,38 @@
+# Secrets & config locale
+.env.local
+*.local
+backend/.env.local
+
+# Bases de données
+*.db
+*.sqlite
+*.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+.vite/
+
+# Référentiels téléchargés (volumineux, publics — régénérables via scripts/)
+ia/referentiels/esco/
+ia/referentiels/onet/
+ia/referentiels/sfia/
+*.rdf
+*.ttl
+
+# Modèles / poids IA (gérés par Ollama, hors dépôt)
+*.gguf
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
