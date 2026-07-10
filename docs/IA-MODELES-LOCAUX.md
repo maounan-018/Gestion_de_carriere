@@ -1,119 +1,173 @@
-# Modèles IA locaux — un modèle par tâche
+# Modèles IA locaux — une panoplie, le meilleur par tâche
 
-> Principe : **plusieurs petits modèles spécialisés** valent mieux qu'un seul gros
-> générique. Chaque tâche reçoit le modèle le mieux adapté (qualité/latence/VRAM),
-> tous **open source** et **exécutés localement** via Ollama ou un service Python.
-> Recherche menée en juillet 2026 ; à revalider sur nos propres données.
-
----
-
-## Vue d'ensemble
-
-| # | Tâche | Modèle retenu | Taille | Support | Exécution |
-|---|---|---|---|---|---|
-| 1 | Embeddings (matching sémantique) | **BGE-M3** ✅ déjà installé | 1,2 Go | 100+ langues, hybride | Ollama ou CPU |
-| 1b | Embeddings (option qualité) | **Qwen3-Embedding-0.6B/4B** | 0,6–4 Go | excellent FR | CPU/GPU |
-| 2 | Reranking (précision top-k) | **bge-reranker-v2-m3** | ~0,6 Go | multilingue | service Python |
-| 3 | Extraction de compétences | **Qwen3-8B** → `lc-extracteur` | 5,2 Go | FR/EN | Ollama/GPU |
-| 4 | Normalisation sémantique | **Qwen3-8B** → `lc-normaliseur` | (partagé) | FR/EN | Ollama/GPU |
-| 5 | Recommandation / conseil | **Qwen3-8B** → `lc-conseiller` | (partagé) | FR/EN | Ollama/GPU |
-| 6 | Rédaction / résumé FR-EN | **Qwen3-8B** → `lc-redacteur` | (partagé) | FR/EN | Ollama/GPU |
-| 7 | Raisonnement lourd (batch) | **qwen3.6** ✅ déjà installé | 23 Go | FR/EN | CPU+RAM |
-| 8 | Agent multi-étapes | **Qwen3-8B** (function calling) | (partagé) | outils | Ollama/GPU |
-
-> Les modèles #3–#6 et #8 partagent **le même poids de base** (`qwen3:8b`) : on ne
-> multiplie pas la VRAM, on multiplie les **Modelfiles** (system prompt + params
-> spécialisés). C'est exactement ta pratique `smart-qwen8`.
+> Principe (validé avec toi) : **ne pas se limiter à Qwen**. On télécharge une
+> **panoplie** de modèles open source via Ollama (Qwen3, Mistral, Hermes, Llama,
+> Gemma, Granite, BGE…), on les **benchmarke sur nos propres données FR/EN**, et
+> un **fichier de routage** (`ia/routing.yaml`) affecte à chaque tâche **le modèle
+> gagnant**. Changer d'avis = **une ligne à éditer**, pas de refonte.
+> Recherche menée en juillet 2026 ; « le meilleur » se décide sur *nos* données.
 
 ---
 
-## 1. Embeddings — BGE-M3 (déjà présent)
+## Pourquoi une panoplie (et pas un seul modèle)
 
-Le cheval de bataille du RAG multilingue self-hosted en 2026 : dense **+** sparse
-**+** multi-vecteur, 100+ langues, excellent FR/EN. Sert au **matching** (profil↔offre,
-compétence↔compétence) et à l'ancrage des extractions dans le référentiel.
+Chaque famille a une force différente :
+
+| Famille | Force distinctive | Idéal pour |
+|---|---|---|
+| **Qwen3** (8B) | **champion du tool-calling** sur 8 Go VRAM, JSON fiable, 100+ langues | extraction, agents |
+| **Mistral / Ministral** (8B) | **meilleur en français** (équipe FR, corpus francophone dense) | conseil, rédaction FR |
+| **Hermes 3** (Nous, 8B) | taillé pour **sortie structurée + function calling** + très « steerable » | extraction stricte, agents |
+| **Llama 3.1/3.3** | polyvalent, écosystème d'outils le plus large | secours généraliste |
+| **Gemma 3** | **meilleur ratio perf/taille**, bon en FR | tâches légères, edge |
+| **Granite 3** (IBM) | orienté **entreprise/RAG**, licence permissive | RAG, données métier |
+| **BGE-M3** | embeddings **multilingues hybrides** (dense+sparse) | matching sémantique |
+
+➡️ On exploite ces forces **par tâche**, au lieu d'imposer un généraliste partout.
+
+---
+
+## Vue d'ensemble : pool de candidats par tâche
+
+Pour chaque tâche, un **pool** à benchmarker + un **champion pressenti** (à confirmer).
+
+| # | Tâche | Pool de candidats (Ollama) | Champion pressenti |
+|---|---|---|---|
+| 1 | Embeddings (matching) | `bge-m3` ✅ · `qwen3-embedding` · `granite-embedding` · `mxbai-embed-large` | **bge-m3** |
+| 2 | Reranking (top-k) | `bge-reranker-v2-m3` · `qwen3-reranker` · `jina-reranker-v2` | **bge-reranker-v2-m3** |
+| 3 | Extraction compétences (JSON) | `hermes3:8b` · `qwen3:8b` · `granite3-dense` · `mistral` | **hermes3** ou **qwen3** |
+| 4 | Normalisation sémantique | `qwen3:8b` · `mistral` · `gemma3` | **qwen3** |
+| 5 | Recommandation / conseil (FR) | `mistral` · `qwen3:8b` · `gemma3` · `llama3.1:8b` | **mistral** (FR) |
+| 6 | Rédaction / résumé FR-EN | `mistral` · `qwen3:8b` | **mistral** |
+| 7 | Raisonnement lourd (batch) | `qwen3.6` ✅ · `deepseek-r1:32b` · `llama3.3:70b` (CPU) | **qwen3.6** |
+| 8 | Agent multi-étapes (outils) | `qwen3:8b` · `hermes3:8b` · `granite3-dense` | **qwen3** |
+
+> **Astuce VRAM** : les LLM de tâche (#3–#6, #8) sont tous des **8B** ⇒ un seul chaud
+> à la fois sur le GPU (Ollama décharge/recharge). Les spécialisations se font par
+> **Modelfile** (system prompt + `temperature 0` + `/no_think`), ta pratique `smart-qwen8`.
+
+---
+
+## La panoplie à télécharger (`scripts/pull_models.sh`)
 
 ```bash
-ollama list          # bge-m3:latest déjà là
-# usage embeddings via Ollama:  POST :11434/api/embeddings  {"model":"bge-m3","prompt":"..."}
+# Embeddings & reranking (multilingues)
+ollama pull bge-m3                 # ✅ déjà là
+ollama pull qwen3-embedding        # option qualité FR
+ollama pull granite-embedding      # alternative entreprise
+ollama pull mxbai-embed-large      # alternative
+
+# LLM de tâche (8B — tiennent sur 8 Go VRAM)
+ollama pull qwen3:8b               # ✅ déjà là — tool-calling, JSON
+ollama pull mistral                # français ++
+ollama pull hermes3:8b             # sortie structurée / agents
+ollama pull llama3.1:8b            # secours polyvalent
+ollama pull gemma3                 # perf/taille
+ollama pull granite3-dense:8b      # RAG / entreprise
+
+# Raisonnement lourd (batch, CPU/RAM)
+ollama pull qwen3.6                # ✅ déjà là (23 Go)
+# ollama pull deepseek-r1:32b      # option raisonnement
 ```
 
-**Option qualité** : `Qwen3-Embedding` (sorti début 2026, en tête du MTEB v2
-open-weight, FR ≈ 69,8). À benchmarker contre BGE-M3 sur nos offres/compétences
-avant de trancher.
-
-## 2. Reranking — bge-reranker-v2-m3
-
-Cross-encoder qui **reclasse** les meilleurs candidats d'une recherche vectorielle
-(query, compétence) → gros gain de précision. Défaut 2026 (léger, multilingue,
-licence saine). Ollama ne rerank pas correctement → on l'expose via un petit
-service Python (**FlagEmbedding** ou **Text-Embeddings-Inference**).
+Le reranker se sert **hors Ollama** (Ollama ne rerank pas bien) via **FlagEmbedding**
+ou **Text-Embeddings-Inference** :
 
 ```python
-# backend: pip install FlagEmbedding
 from FlagEmbedding import FlagReranker
 reranker = FlagReranker("BAAI/bge-reranker-v2-m3", use_fp16=True)
-scores = reranker.compute_score([[query, cand] for cand in candidats])
 ```
 
-## 3–6. Modèles LLM spécialisés (Modelfiles sur Qwen3-8B)
+---
 
-Même base `qwen3:8b`, un **Modelfile par tâche** (`ia/modelfiles/`) : system prompt
-strict, sortie **JSON valide uniquement**, `temperature 0`, `/no_think` (rapidité).
+## Méthode : benchmark par tâche → on garde le gagnant
 
-- **`lc-extracteur`** — entrée : descriptif de poste / mission ; sortie : `{taches[], competences[{label_fr,label_en,esco_uri?,niveau_sfia?}], seniorite}`.
-- **`lc-normaliseur`** — canonicalise intitulés & compétences (synonymes, casse, langue), rapproche des libellés officiels.
-- **`lc-conseiller`** — entrée : profil + graphe (RAG) ; sortie : recommandations (mobilités, mentors, **formations**) justifiées.
-- **`lc-redacteur`** — reformulations bilingues, résumés d'entretien, descriptifs d'offre.
+C'est **ça** qui répond à « utiliser ceux qui seraient les mieux pour chaque tâche ».
+On ne devine pas : on **mesure** sur nos données.
 
-```bash
-# exemple de build (à écrire dans ia/modelfiles/lc-extracteur.Modelfile)
-ollama create lc-extracteur -f ia/modelfiles/lc-extracteur.Modelfile
+1. **Jeu d'évaluation** (`ia/pipelines/evals/`) : ~30–50 exemples FR/EN **réels** par tâche
+   (descriptifs de poste → compétences attendues ; profil+offre → bon match ; etc.).
+2. **Métriques** par tâche : validité JSON (%), **F1 / exactitude** vs référence,
+   **latence** (tok/s), respect du bilingue.
+3. **Runner** (`scripts/bench_models.py`) : lance chaque candidat du pool, agrège un tableau.
+4. **Décision** : le gagnant par tâche est inscrit dans `ia/routing.yaml`.
+5. **Réversible** : un nouveau modèle sort ? on le `pull`, on l'ajoute au pool, on relance le bench.
+
+---
+
+## Le routage (`ia/routing.yaml`)
+
+Le backend (`services/ai_router`) lit ce fichier ; changer un modèle = **une ligne**.
+
+```yaml
+# Chaque tâche → modèle gagnant + repli. Édite ici après un benchmark.
+embeddings:
+  model: bge-m3
+  alt: qwen3-embedding
+reranker:
+  model: bge-reranker-v2-m3
+  engine: flagembedding          # hors Ollama
+taches:
+  extraction_competences:
+    model: hermes3:8b            # ou qwen3:8b selon bench
+    fallback: qwen3:8b
+    temperature: 0
+    format: json
+  normalisation:
+    model: qwen3:8b
+    temperature: 0
+  conseil:
+    model: mistral               # français
+    temperature: 0.3
+  redaction:
+    model: mistral
+    temperature: 0.4
+  agent:
+    model: qwen3:8b              # meilleur tool-calling 8 Go
+    temperature: 0
+  raisonnement_batch:
+    model: qwen3.6               # CPU/RAM, hors-ligne
+    temperature: 0.2
 ```
 
-Gabarit (repris de ton `smart-qwen8`) :
+---
+
+## Modelfiles spécialisés (`ia/modelfiles/`)
+
+Un Modelfile par tâche structurée, quel que soit le modèle de base retenu :
 
 ```Dockerfile
-FROM qwen3:8b
+FROM hermes3:8b            # ou qwen3:8b — la base gagnante du bench
 SYSTEM """/no_think
 Tu es un extracteur de compétences bilingue (FR/EN).
-Retourne UNIQUEMENT un JSON valide { ... }.  # schéma strict par tâche
+Retourne UNIQUEMENT un JSON valide { taches[], competences[...], seniorite }.
 """
 PARAMETER temperature 0
 PARAMETER num_ctx 8192
 ```
 
-## 7. Raisonnement lourd — qwen3.6 (déjà présent, 23 Go)
-
-Pour les tâches **hors-ligne** à fort raisonnement (planification des talents,
-scénarios de succession, synthèses RH). Tourne sur **CPU + RAM** (pas assez de
-VRAM) → on l'appelle en **batch** (jobs asynchrones), pas dans le flux temps réel.
-
-## 8. Agent multi-étapes
-
-Qwen3-8B en **function calling** : un orchestrateur maison expose des « outils »
-(rechercher_competences, matcher_profil, lister_formations, interroger_graphe…)
-et laisse le modèle enchaîner les étapes pour une tâche composée
-(« proposer un plan de mobilité pour Aya »). Local, traçable, borné.
+```bash
+ollama create lc-extracteur -f ia/modelfiles/lc-extracteur.Modelfile
+```
 
 ---
 
 ## Adéquation VRAM (RTX 5060 Laptop, 8 Go)
 
-- 1 LLM 8B chaud sur GPU (~5,2 Go) **OU** embeddings+reranker sur CPU : **jamais tout sur GPU en même temps**.
-- Embeddings/reranker sur **CPU** (Ryzen 9 = rapide) → VRAM réservée au LLM.
-- `qwen3.6` (23 Go) → **CPU + 32 Go RAM**, batch uniquement.
-- Ollama décharge/recharge à la demande : coût maîtrisé.
+- **1 LLM 8B chaud** sur GPU (~5–6 Go) à la fois ; Ollama swap à la demande.
+- **Embeddings + reranker sur CPU** (Ryzen 9 = rapide) → VRAM réservée au LLM.
+- **Batch lourd** (`qwen3.6`, `deepseek-r1:32b`) → **CPU + 32 Go RAM**, hors-ligne.
+- On ne charge **jamais** LLM + embeddings + reranker simultanément sur le GPU.
 
 ---
 
 ## Sources (recherche juillet 2026)
 
+- [Best Local Models for Tool Calling 2026 — PromptQuorum](https://www.promptquorum.com/power-local-llm/best-local-models-tool-calling-2026)
+- [I Tested 13 Local LLMs on Tool Calling (2026) — JD Hodges](https://www.jdhodges.com/blog/local-llms-on-tool-calling-2026-pt1-local-lm/)
+- [Meilleur LLM local pour le français 2026 — QuelLLM.fr](https://quelllm.fr/meilleur-llm/francais)
+- [Comparatif LLM open source 2026 (FR) — Ayi Nedjimi](https://ayinedjimi-consultants.fr/articles/ia-comparatif-llm-open-source-2026)
+- [Meilleurs modèles Ollama 2026 par usage — Shubham Sharma](https://shubham-sharma.fr/articles/meilleurs-modeles-ollama-2026/)
 - [Best Open-Source Embedding Models 2026 — BentoML](https://www.bentoml.com/blog/a-guide-to-open-source-embedding-models)
-- [Embedding Models 2026 (FR) — Ailog](https://app.ailog.fr/en/blog/news/embedding-models-2026)
-- [Choose an embedding model for RAG 2026 — Milvus](https://milvus.io/blog/choose-embedding-model-rag-2026.md)
-- [Reranking & Cross-Encoders 2026 — Local AI Master](https://localaimaster.com/blog/reranking-cross-encoders-guide)
-- [Top 5 Reranking Models — MachineLearningMastery](https://machinelearningmastery.com/top-5-reranking-models-to-improve-rag-results/)
 - [BAAI/bge-reranker-v2-m3 — Hugging Face](https://huggingface.co/BAAI/bge-reranker-v2-m3)
 - [Skill-LLM: Repurposing LLMs for Skill Extraction — arXiv 2410.12052](https://arxiv.org/abs/2410.12052)
-- [Enhancing Job Matching with ESCO & EQF — arXiv 2512.03195](https://arxiv.org/pdf/2512.03195)
