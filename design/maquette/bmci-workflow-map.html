@@ -1,0 +1,208 @@
+<style>
+:root{
+  --ink:#0E1A14;--ink-2:#41504A;--ink-3:#6E7C75;--paper:#fff;--bg:#F4F8F5;--panel:#F8FBF9;--panel-2:#EDF4EF;
+  --border:#E1EAE4;--border-strong:#CBD9D0;--green:#00915A;--green-deep:#00784B;--green-soft:#E4F2EA;--green-line:#B9DEC9;--green-ghost:#F0F8F3;
+  --gold:#B8892E;--gold-soft:#F6EED9;--amber:#8A5C12;--amber-soft:#F7EFDB;
+  --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --shadow:0 1px 2px rgba(14,26,20,.05),0 10px 26px -14px rgba(14,26,20,.18);
+}
+*{box-sizing:border-box}body{margin:0}
+.doc{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;padding:34px 22px 70px;min-height:100vh}
+.wrap{max-width:1120px;margin:0 auto}
+h1,h2,h3,h4,p{margin:0}
+.head{margin-bottom:8px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--green-deep)}
+.head h1{font-size:clamp(24px,3.4vw,34px);font-weight:800;letter-spacing:-.02em;margin:8px 0 6px;text-wrap:balance}
+.head p{color:var(--ink-2);max-width:70ch;font-size:15px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0 26px;padding:14px 16px;background:var(--paper);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow)}
+.legend .li{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.dot{width:14px;height:14px;border-radius:5px;flex:none}
+.dot.ok{background:var(--green)} .dot.new{background:var(--paper);border:2px dashed var(--gold)} .dot.tr{background:var(--amber-soft);border:1px solid var(--amber)}
+
+.sec{background:var(--paper);border:1px solid var(--border);border-radius:20px;padding:22px 22px 24px;margin-bottom:18px;box-shadow:var(--shadow)}
+.sec-h{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+.sec-h .tag{font-size:11px;font-weight:800;letter-spacing:.04em;padding:4px 11px;border-radius:999px;text-transform:uppercase}
+.tag.acc{background:#EEF2FF;color:#3B4CB8}.tag.col{background:var(--green-soft);color:var(--green-deep)}
+.tag.man{background:#FFF3E6;color:#9A5B12}.tag.rh{background:#F0ECFB;color:#5B44B0}.tag.tx{background:var(--panel-2);color:var(--ink-3)}
+.sec-h h2{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.sec .lead{color:var(--ink-3);font-size:13px;margin-bottom:16px}
+
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+.node{position:relative;background:var(--green);color:#fff;border-radius:13px;padding:11px 13px;min-width:130px;max-width:200px;box-shadow:0 6px 14px -8px rgba(0,120,75,.5)}
+.node h4{font-size:13px;font-weight:750;line-height:1.2}
+.node small{display:block;font-size:10.5px;opacity:.85;margin-top:3px;font-weight:500}
+.node.miss{background:var(--paper);color:var(--ink);border:2px dashed var(--gold)}
+.node.miss small{color:var(--ink-3);opacity:1}
+.node .flag{position:absolute;top:-9px;right:8px;font-size:9px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;background:var(--gold);color:#fff;padding:2px 7px;border-radius:999px}
+.node.grp{background:var(--panel);color:var(--ink);border:1px solid var(--border);min-width:auto}
+.arrow{align-self:center;color:var(--green);font-weight:800;font-size:18px;flex:none}
+.arrow.miss{color:var(--gold)}
+.branch{display:flex;flex-direction:column;gap:8px}
+
+.notes{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{display:flex;gap:9px;padding:11px 12px;background:var(--panel);border:1px solid var(--border);border-radius:11px;font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.note b{color:var(--ink)}
+.note .k{width:22px;height:22px;border-radius:7px;background:var(--gold-soft);color:var(--gold);display:grid;place-items:center;flex:none;font-weight:800;font-size:12px}
+
+.tx-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.chip{display:flex;flex-direction:column;gap:3px;padding:12px 13px;background:var(--panel);border:1px solid var(--border);border-radius:12px}
+.chip b{font-size:13px;font-weight:750}.chip span{font-size:11.5px;color:var(--ink-3)}
+.chip .p{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--amber);background:var(--amber-soft);padding:2px 7px;border-radius:999px;width:max-content;margin-top:2px}
+
+.prio{background:linear-gradient(160deg,var(--green-ghost),var(--paper));border:1px solid var(--green-line)}
+.prio ol{margin:8px 0 0;padding-left:20px}.prio li{font-size:13.5px;margin-bottom:7px;color:var(--ink-2)}.prio li b{color:var(--ink)}
+.count{font-size:12px;font-weight:700;color:var(--ink-3);margin-left:auto}
+@media (max-width:760px){.notes,.tx-grid{grid-template-columns:1fr}.node{max-width:none;flex:1;min-width:120px}}
+</style>
+
+<div class="doc"><div class="wrap">
+  <div class="head">
+    <div class="eyebrow">BMCI Carrière · UX</div>
+    <h1>Cartographie des parcours utilisateurs</h1>
+    <p>Ce qu'on a construit (12 écrans) vs ce qu'il manque pour des parcours vraiment ergonomiques : les écrans intermédiaires, les états (confirmation, vide, erreur) et les transitions qui relient les tâches entre elles.</p>
+  </div>
+  <div class="legend">
+    <span class="li"><span class="dot ok"></span>Écran existant (12)</span>
+    <span class="li"><span class="dot new"></span>Écran à créer</span>
+    <span class="li"><span class="dot tr"></span>Transition / interaction à ajouter</span>
+    <span class="li" style="margin-left:auto;color:var(--ink-3)">→ = enchaînement · ⇢ = enchaînement manquant</span>
+  </div>
+
+  <!-- ACCÈS -->
+  <div class="sec">
+    <div class="sec-h"><span class="tag acc">Tunnel d'accès</span><h2>De l'arrivée au premier espace</h2><span class="count">1 écran manquant · 2 états</span></div>
+    <p class="lead">Le tunnel est presque complet, mais deux chemins critiques du cahier des charges manquent.</p>
+    <div class="flow">
+      <div class="node"><h4>Portail</h4><small>Entrée</small></div>
+      <span class="arrow">→</span>
+      <div class="branch">
+        <div class="node"><h4>Connexion</h4></div>
+        <div class="node"><h4>Inscription</h4><small>Validation live</small></div>
+      </div>
+      <span class="arrow">→</span>
+      <div class="node"><h4>Vérification OTP</h4></div>
+      <span class="arrow">→</span>
+      <div class="node"><h4>Onboarding</h4><small>Conversationnel</small></div>
+      <span class="arrow">→</span>
+      <div class="branch">
+        <div class="node"><h4>Bienvenue</h4><small>Vérif. OK</small></div>
+        <div class="node miss"><span class="flag">à créer</span><h4>Onboarding · incohérence</h4><small>mail ≠ entité → refaire</small></div>
+      </div>
+      <span class="arrow">→</span>
+      <div class="node grp"><h4>Espace (selon rôle)</h4></div>
+    </div>
+    <div class="notes">
+      <div class="note"><span class="k">+</span><div><b>Mot de passe oublié</b> — le lien existe sur Connexion mais ne mène à rien. Écran de réinitialisation à créer.</div></div>
+      <div class="note"><span class="k">⚡</span><div><b>Retour au portail après inscription</b> + renvoi du code OTP : transitions de confirmation à expliciter (toasts).</div></div>
+    </div>
+  </div>
+
+  <!-- COLLABORATEUR -->
+  <div class="sec">
+    <div class="sec-h"><span class="tag col">Collaborateur</span><h2>« Comment évoluer, et comment y arriver ? »</h2><span class="count">≈ 9 écrans manquants</span></div>
+    <p class="lead">On a le profil, les recommandations, l'entretien et les offres — mais aucune tâche ne va jusqu'au bout (détail → action → confirmation → suivi).</p>
+    <div class="flow">
+      <div class="node"><h4>Tableau de bord</h4></div>
+      <span class="arrow">→</span>
+      <div class="node"><h4>Mon profil</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Éditer profil</h4><small>photo, description, visibilité</small></div>
+    </div>
+    <div class="flow" style="margin-top:10px">
+      <div class="node"><h4>Recommandations</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Détail d'un parcours</h4><small>skill gaps, formations, jalons</small></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Lancer une formation</h4></div>
+    </div>
+    <div class="flow" style="margin-top:10px">
+      <div class="node"><h4>Offres internes</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Détail d'une offre</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Candidature</h4><small>consentement manager (mission)</small></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Confirmation + Mes candidatures</h4></div>
+    </div>
+    <div class="flow" style="margin-top:10px">
+      <div class="node"><h4>Entretiens (simulation)</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Synthèse / compte-rendu</h4></div>
+      <span class="arrow">→</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Formations</h4><small>catalogue + suivi (nav sans écran)</small></div>
+    </div>
+    <div class="notes">
+      <div class="note"><span class="k">⚡</span><div><b>Pousser un souhait au manager</b> — action + confirmation + suivi de l'état du souhait.</div></div>
+      <div class="note"><span class="k">+</span><div><b>Centre de notifications</b> & <b>Paramètres de confidentialité</b> (qui voit quoi) — cœur du besoin, aujourd'hui absents.</div></div>
+    </div>
+  </div>
+
+  <!-- MANAGER -->
+  <div class="sec">
+    <div class="sec-h"><span class="tag man">Manager</span><h2>« Comment aider mon équipe à progresser ? »</h2><span class="count">≈ 6 écrans manquants</span></div>
+    <p class="lead">Le dashboard équipe existe, mais toutes les actions du manager (évaluer, poster, appuyer) n'ont pas d'écran.</p>
+    <div class="flow">
+      <div class="node"><h4>Espace Manager</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Fiche d'un collaborateur</h4><small>compétences, évals, historique</small></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Soumettre une évaluation</h4><small>→ collab / RH</small></div>
+    </div>
+    <div class="flow" style="margin-top:10px">
+      <div class="node miss"><span class="flag">à créer</span><h4>Préparer l'entretien d'un collab</h4><small>simulation contextualisée</small></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Poster une offre / mission</h4><small>formulaire</small></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Souhaits reçus → appuyer</h4><small>transmettre RH</small></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Pousser un cours</h4></div>
+    </div>
+  </div>
+
+  <!-- RH -->
+  <div class="sec">
+    <div class="sec-h"><span class="tag rh">RH</span><h2>« Comment piloter les talents et la mobilité ? »</h2><span class="count">≈ 6 écrans manquants</span></div>
+    <p class="lead">La cartographie et les recommandations existent ; il manque le drill-down et toutes les actions RH.</p>
+    <div class="flow">
+      <div class="node"><h4>Espace RH (pro)</h4></div>
+      <span class="arrow miss">⇢</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Vue personnelle (réelle)</h4><small>renvoie au collab aujourd'hui</small></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Drill-down cartographie</h4></div>
+    </div>
+    <div class="flow" style="margin-top:10px">
+      <div class="node miss"><span class="flag">à créer</span><h4>Fiche collaborateur + reco</h4><small>« proposer promotion à Aya »</small></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Hauts potentiels / succession</h4></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Poster un poste</h4></div>
+      <span class="arrow">·</span>
+      <div class="node miss"><span class="flag">à créer</span><h4>Piloter campagne d'évaluation</h4></div>
+    </div>
+  </div>
+
+  <!-- TRANSVERSAL -->
+  <div class="sec">
+    <div class="sec-h"><span class="tag tx">Transversal</span><h2>Transitions & patterns manquants</h2></div>
+    <p class="lead">Ce qui rend un produit « ergonomique » : le liant entre les écrans. Aujourd'hui on ne fait que remplacer un écran par un autre.</p>
+    <div class="tx-grid">
+      <div class="chip"><b>Modales</b><span>Candidature, évaluation, création d'offre — sans quitter le contexte.</span><span class="p">à ajouter</span></div>
+      <div class="chip"><b>Toasts / confirmations</b><span>« Candidature envoyée », « Évaluation transmise ».</span><span class="p">à ajouter</span></div>
+      <div class="chip"><b>Tâches multi-étapes</b><span>Candidature = détail → consentement → confirmation.</span><span class="p">à ajouter</span></div>
+      <div class="chip"><b>Retour / fil d'ariane</b><span>Revenir d'un détail vers la liste.</span><span class="p">à ajouter</span></div>
+      <div class="chip"><b>États de chargement</b><span>Skeletons pendant les analyses IA.</span><span class="p">à ajouter</span></div>
+      <div class="chip"><b>États vides</b><span>Aucune offre, aucune évaluation en attente.</span><span class="p">à ajouter</span></div>
+    </div>
+  </div>
+
+  <!-- PRIORISATION -->
+  <div class="sec prio">
+    <div class="sec-h"><span class="tag col">Proposition</span><h2>Par où commencer ?</h2></div>
+    <p class="lead">Un parcours de bout en bout vaut mieux que 25 écrans à moitié faits. Je propose de dérouler <b>un workflow complet</b> d'abord, avec ses transitions.</p>
+    <ol>
+      <li><b>Candidature à une offre</b> (Collaborateur) — le plus démonstratif : liste → détail → consentement manager → confirmation → suivi. Il embarque modale, toast, multi-étapes.</li>
+      <li><b>Évaluation d'un collaborateur</b> (Manager) — fiche collab → formulaire → envoi collab/RH.</li>
+      <li><b>Recommandation → formation</b> (Collaborateur) — détail parcours → skill gaps → lancer une formation.</li>
+    </ol>
+  </div>
+</div></div>
