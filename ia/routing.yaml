@@ -1,0 +1,50 @@
+# Routage des modèles IA par tâche — BMCI Gestion des Carrières
+# Le backend (services/ai_router) lit ce fichier. Après un benchmark
+# (scripts/bench_models.py), remplace le "model" par le gagnant de la tâche.
+# Changer de modèle = UNE ligne ici, aucune refonte de code.
+
+embeddings:
+  model: bge-m3                 # multilingue hybride (dense+sparse) — déjà installé
+  alt: qwen3-embedding          # option qualité FR (à benchmarker)
+  device: cpu                   # libère la VRAM pour le LLM
+
+reranker:
+  model: bge-reranker-v2-m3     # servi via FlagEmbedding / TEI (hors Ollama)
+  engine: flagembedding
+  device: cpu
+
+taches:
+  extraction_competences:
+    model: hermes3:8b           # sortie structurée ++ (ou qwen3:8b) — à trancher au bench
+    fallback: qwen3:8b
+    temperature: 0
+    format: json
+    num_ctx: 8192
+
+  normalisation:
+    model: qwen3:8b
+    fallback: mistral
+    temperature: 0
+    format: json
+
+  conseil:                      # recommandations mobilité / mentor / formation
+    model: mistral              # meilleur en français
+    fallback: qwen3:8b
+    temperature: 0.3
+
+  redaction:                    # reformulations, résumés d'entretien (FR/EN)
+    model: mistral
+    fallback: qwen3:8b
+    temperature: 0.4
+
+  agent:                        # orchestration multi-étapes (function calling)
+    model: qwen3:8b             # meilleur tool-calling sur 8 Go VRAM
+    fallback: hermes3:8b
+    temperature: 0
+
+  raisonnement_batch:           # planification talents / succession (hors-ligne)
+    model: qwen3.6              # 23 Go — CPU + RAM, pas de temps réel
+    temperature: 0.2
+
+# Pool complet à télécharger : voir scripts/pull_models.sh
+# Méthode de sélection : voir docs/IA-MODELES-LOCAUX.md (§ benchmark par tâche)

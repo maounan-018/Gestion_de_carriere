@@ -1,4 +1,6 @@
-# 🌿 BMCI Carrière — « La Courbe »
+# 🌿 BMCI — Gestion des Carrières
+
+> *(nom de code de la maquette : « La Courbe »)*
 
 Plateforme RH de **gestion de carrière et de mobilité interne** propulsée par une
 **IA 100 % locale et open source**, pour la BMCI (Groupe BNP Paribas). Elle aide
@@ -7,9 +9,10 @@ talents aux opportunités, planifier les évolutions et la succession** — sans
 jamais faire sortir une seule donnée de l'infrastructure de la banque.
 
 > Version **0.1 (fondation)** — Frontend **Vue 3 / Vite / Tailwind**, backend
-> **Python FastAPI** en architecture **MVC + SQLAlchemy**, **multi-modèles IA
-> Ollama locaux** (un modèle spécialisé par tâche), référentiels de compétences
-> **ESCO + O*NET + SFIA** (FR/EN), **SSO SAML 2.0**. Le backend reste l'unique
+> **Python FastAPI** en architecture **MVC + SQLAlchemy**, **panoplie de modèles
+> IA locaux** (Ollama : Qwen3, Mistral, Hermes, BGE… — le meilleur par tâche),
+> référentiels de compétences **ESCO + O*NET + SFIA** (FR/EN, gratuits),
+> **SSO SAML 2.0**. Le backend reste l'unique
 > source de vérité. Aucune donnée ne quitte la machine.
 
 Ce projet **réplique les bonnes pratiques** du projet frère *ObjectifSMART-AI*
@@ -46,7 +49,7 @@ maquette UI/UX initiale (voir `design/`).
 ## Structure du dépôt
 
 ```
-bmci-lacourbe/
+bmci-gestion-carrieres/
 ├── README.md
 ├── docs/                     # Architecture & décisions techniques (ci-dessus)
 ├── design/                   # 🎨 Travail UI/UX déplacé ici

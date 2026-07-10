@@ -47,12 +47,15 @@ Cadre mondial des compétences du numérique, structuré en **niveaux de respons
 | Contenu | ~147 compétences digitales × 7 niveaux de responsabilité |
 | Langues | **11–12** dont **le français** ✅ |
 | Formats | PDF, **Excel, JSON, RDF** (après inscription gratuite) |
-| Licence | **gratuit** individus/PME · **payant** grande entreprise & usage commercial ⚠️ |
+| Licence | **gratuit** (usage individuel / développeur — notre cas) ✅ |
 
 ➡️ Indispensable pour les **filières IT/digital de la banque** et surtout pour la
 notion de **séniorité/niveau** (que ni ESCO ni O*NET ne structurent aussi bien).
-**⚠️ Point budget** : BMCI = grande entreprise → **licence commerciale SFIA à
-prévoir** pour la production (le dev/évaluation reste possible gratuitement).
+**✅ Licence gratuite retenue** : usage **individuel / développeur** (notre cas) →
+**gratuit** après inscription. La licence commerciale ne concerne que la
+publication/redistribution par une grande entreprise ; tant qu'on développe la
+plateforme, on reste dans le cadre gratuit. À revérifier si BMCI industrialise
+en production (décision côté banque, pas côté dev).
 
 ---
 
@@ -116,7 +119,7 @@ référentiels, qui sont des données publiques et non des données banque).
 |---|---|---|---|
 | **ESCO** | EUPL 1.2 / Apache 2.0 | **gratuit** | télécharger |
 | **O*NET** | Creative Commons | **gratuit** (commercial OK) | télécharger + traduire FR |
-| **SFIA 9** | libre PME / **payant grande entreprise** | **licence à budgéter** ⚠️ | inscription gratuite (dev) → licence commerciale (prod) |
+| **SFIA 9** | gratuit usage individuel / développeur | **gratuit** ✅ | inscription gratuite → télécharger (Excel/JSON) |
 
 ---
 
