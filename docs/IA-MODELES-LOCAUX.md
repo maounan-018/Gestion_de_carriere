@@ -152,9 +152,31 @@ ollama create lc-extracteur -f ia/modelfiles/lc-extracteur.Modelfile
 
 ---
 
+## Benchmarks réels — ta machine (RTX 5060 8 Go, 2026-07-13)
+
+> ⚠️ **La découverte la plus importante du projet : fixer `num_ctx`.**
+> Ollama charge par défaut le contexte **maximal du modèle (131072 = 128K)**. Le
+> cache KV correspondant est énorme → il ne rentre pas dans 8 Go → le modèle
+> **déborde sur le CPU** (jusqu'à 74 % des couches) → tout rame. En **fixant
+> `num_ctx=4096`**, les modèles 8B tiennent **100 % sur le GPU** → ×4 de débit.
+
+| Modèle | num_ctx défaut (128K) | **num_ctx=4096** | Placement @4096 |
+|---|---|---|---|
+| `hermes3:8b` | — | **61,6 tok/s** · prompt 598 | **100 % GPU** (5,0 Go) |
+| `llama3.1:8b` | 13,2 tok/s | **52,9 tok/s** · prompt 478 | **100 % GPU** (5,3 Go) |
+| `mistral-nemo` (12B) | 8,1 tok/s | **21 tok/s** · prompt 233 | 78 % GPU / 22 % CPU (7,9 Go) |
+
+**Enseignements :**
+- **Toujours fixer `num_ctx`** (4096–8192 selon la tâche) — c'est câblé dans `ia/routing.yaml`.
+- **Real-time = modèles 8B** (hermes3, llama3.1, qwen3) : 100 % GPU, 50-60 tok/s. Parfait.
+- **`mistral-nemo` (12B)** : meilleur FR mais déborde un peu (21 tok/s) → à réserver
+  au **conseil/rédaction** où la qualité prime sur la vitesse ; sinon fallback 8B.
+- Mesures faites en mode **équilibré (plafond 60 W)** → **encore plus rapide en Extreme (115 W)**.
+
 ## Adéquation VRAM (RTX 5060 Laptop, 8 Go)
 
 - **1 LLM 8B chaud** sur GPU (~5–6 Go) à la fois ; Ollama swap à la demande.
+- **Fixer `num_ctx`** (voir ci-dessus) — sinon le 128K par défaut force le CPU.
 - **Embeddings + reranker sur CPU** (Ryzen 9 = rapide) → VRAM réservée au LLM.
 - **Batch lourd** (`qwen3.6`, `deepseek-r1:32b`) → **CPU + 32 Go RAM**, hors-ligne.
 - On ne charge **jamais** LLM + embeddings + reranker simultanément sur le GPU.

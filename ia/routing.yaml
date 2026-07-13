@@ -2,49 +2,59 @@
 # Le backend (services/ai_router) lit ce fichier. Après un benchmark
 # (scripts/bench_models.py), remplace le "model" par le gagnant de la tâche.
 # Changer de modèle = UNE ligne ici, aucune refonte de code.
+#
+# ⚠️ LEÇON DE PERF (mesurée sur RTX 5060 8 Go, 2026-07-13) :
+#   Le contexte Ollama par défaut (131072 = 128K) fait exploser le cache KV
+#   → le modèle déborde sur le CPU → 13 tok/s. En fixant num_ctx=4096, les
+#   modèles 8B tiennent 100% sur le GPU → 50-60 tok/s (×4). TOUJOURS fixer num_ctx.
+#   Bench 8B @4096 : hermes3 61 tok/s · llama3.1 53 tok/s · mistral-nemo(12B) 21 tok/s.
 
 embeddings:
-  model: bge-m3                 # multilingue hybride (dense+sparse) — déjà installé
-  alt: qwen3-embedding          # option qualité FR (à benchmarker)
+  model: bge-m3                 # multilingue hybride (dense+sparse)
+  alt: snowflake-arctic-embed2  # alt multilingue (à benchmarker)
   device: cpu                   # libère la VRAM pour le LLM
 
 reranker:
-  model: bge-reranker-v2-m3     # servi via FlagEmbedding / TEI (hors Ollama)
+  model: bge-reranker-v2-m3     # servi via FlagEmbedding (env conda bmci-carrieres)
   engine: flagembedding
   device: cpu
 
 taches:
   extraction_competences:
-    model: hermes3:8b           # sortie structurée ++ (ou qwen3:8b) — à trancher au bench
+    model: hermes3:8b           # + rapide (61 tok/s) ET sortie structurée
     fallback: qwen3:8b
     temperature: 0
     format: json
-    num_ctx: 8192
+    num_ctx: 8192              # descriptifs de poste parfois longs
 
   normalisation:
-    model: qwen3:8b
-    fallback: mistral
+    model: llama3.1:8b          # 8B rapide, 100% GPU
+    fallback: qwen3:8b
     temperature: 0
     format: json
+    num_ctx: 4096
 
   conseil:                      # recommandations mobilité / mentor / formation
-    model: mistral              # meilleur en français
-    fallback: qwen3:8b
+    model: mistral-nemo         # meilleur FR (21 tok/s, léger offload accepté)
+    fallback: llama3.1:8b       # bascule si on veut la vitesse (53 tok/s)
     temperature: 0.3
+    num_ctx: 4096
 
   redaction:                    # reformulations, résumés d'entretien (FR/EN)
-    model: mistral
-    fallback: qwen3:8b
+    model: mistral-nemo
+    fallback: llama3.1:8b
     temperature: 0.4
+    num_ctx: 4096
 
   agent:                        # orchestration multi-étapes (function calling)
     model: qwen3:8b             # meilleur tool-calling sur 8 Go VRAM
     fallback: hermes3:8b
     temperature: 0
+    num_ctx: 8192
 
   raisonnement_batch:           # planification talents / succession (hors-ligne)
     model: qwen3.6              # 23 Go — CPU + RAM, pas de temps réel
     temperature: 0.2
+    num_ctx: 8192
 
-# Pool complet à télécharger : voir scripts/pull_models.sh
-# Méthode de sélection : voir docs/IA-MODELES-LOCAUX.md (§ benchmark par tâche)
+# Pool complet : voir scripts/pull_models.sh — Méthode : docs/IA-MODELES-LOCAUX.md
