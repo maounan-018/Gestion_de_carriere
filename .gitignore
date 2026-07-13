@@ -7,6 +7,14 @@ backend/.env.local
 *.db
 *.sqlite
 *.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Utilitaires ponctuels de reprise/diagnostic (hors MVC)
+backend/_embed_resume.py
+backend/_count.py
+backend/_embed_resume.log
 
 # Python
 __pycache__/
