@@ -34,6 +34,8 @@ class ReferentialSource(Base):
     version: Mapped[str | None] = mapped_column(String(40), default=None)
     languages: Mapped[str | None] = mapped_column(String(80), default=None)   # ex. "fr,en"
     license: Mapped[str | None] = mapped_column(String(80), default=None)
+    # Mention d'attribution EXIGÉE par le fournisseur, à afficher sur la plateforme.
+    attribution: Mapped[str | None] = mapped_column(String(400), default=None)
     imported_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     n_skills: Mapped[int] = mapped_column(Integer, default=0)
     n_occupations: Mapped[int] = mapped_column(Integer, default=0)

@@ -21,10 +21,11 @@ node_modules/
 frontend/dist/
 .vite/
 
-# Référentiels téléchargés (volumineux, publics — régénérables via scripts/)
-ia/referentiels/esco/
-ia/referentiels/onet/
-ia/referentiels/sfia/
+# Référentiels téléchargés (volumineux, publics — régénérables). On ignore TOUT
+# le contenu de ia/referentiels/ (ESCO/O*NET/SFIA, quel que soit le nom de dossier) ;
+# seul le dossier est conservé (.gitkeep).
+ia/referentiels/*
+!ia/referentiels/.gitkeep
 *.rdf
 *.ttl
 
