@@ -52,6 +52,13 @@ taches:
     temperature: 0
     num_ctx: 8192
 
+  crosswalk:                    # équivalence de compétences inter-référentiels (O*NET/SFIA↔ESCO)
+    model: hermes3:8b           # JSON strict + rapide (jugement oui/non + confiance)
+    fallback: qwen3:8b
+    temperature: 0
+    format: json
+    num_ctx: 2048
+
   raisonnement_batch:           # planification talents / succession (hors-ligne)
     model: qwen3.6              # 23 Go — CPU + RAM, pas de temps réel
     temperature: 0.2
