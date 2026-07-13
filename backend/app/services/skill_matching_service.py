@@ -6,12 +6,12 @@ RÔLE
     Fonctionnalité métier n°2. Mesure l'adéquation entre les compétences d'un
     collaborateur et celles requises par un poste :
       1) EXIGENCES — réutilise l'extraction de compétences du descriptif (n°1),
-         chaque exigence étant ancrée au graphe (libellé canonique + importance).
+         chaque exigence étant ancrée au graphe (libellé canonique + skill_id).
       2) COUVERTURE — pour chaque exigence, le reranker évalue si une compétence du
          profil la couvre (score ∈ [0,1] ≥ seuil -> couverte, sinon écart).
       3) SCORE — pondéré (compétences essentielles > souhaitées).
-    Sortie STRUCTURÉE (score, couvertes, écarts) directement exploitable par les
-    recommandations de parcours/formation (les écarts = besoins de formation).
+    Les briques `build_exigences` / `evaluate_coverage` sont RÉUTILISÉES par les
+    recommandations (les écarts = besoins de formation).
 
 SÉCURITÉ
     100 % local (extraction LLM locale + reranker local). Descriptif traité en donnée.
@@ -34,29 +34,28 @@ def _poids(importance: str | None) -> float:
     return 1.0 if str(importance or "").lower().startswith("essent") else 0.5
 
 
-def match_profile_to_job(db: Session, profil_competences: list[str],
-                         poste_texte: str, seuil: float = 0.5) -> dict:
-    """Calcule la correspondance profil ↔ poste. Renvoie un dict conforme à
-    `schemas.skill_matching.MatchResponse`."""
-    profil = [c.strip() for c in profil_competences if c and c.strip()]
-
-    # 1) Exigences du poste (extraction n°1, ancrée au graphe).
-    extraction = skill_extraction_service.extract_skills(db, poste_texte, top_k=1)
+def build_exigences(extraction: dict) -> list[dict]:
+    """Transforme la sortie d'extraction en liste d'exigences ancrées au graphe.
+    Chaque exigence : {competence (libellé canonique), requete (phrase brute),
+    importance, skill_id, skill_type}."""
     exigences = []
     for s in extraction.get("skills", []):
         match = s["matches"][0] if s.get("matches") else None
         exigences.append({
-            # libellé canonique (lien graphe) pour l'affichage…
             "competence": (match["label_fr"] if match else s["raw"]),
-            # …mais phrase BRUTE extraite pour juger la couverture (plus naturelle
-            # que le libellé ESCO parfois trop spécifique).
             "requete": s["raw"] or (match["label_fr"] if match else ""),
             "importance": s.get("importance") or "essentielle",
+            "skill_id": (match["skill_id"] if match else None),
+            "skill_type": (match["skill_type"] if match else None),
         })
+    return exigences
 
-    # 2) Couverture par le profil (reranker : exigence vs compétences du profil).
-    #    On teste DEUX formulations de l'exigence (libellé canonique + phrase brute)
-    #    et on retient la meilleure couverture — robuste aux libellés ESCO atypiques.
+
+def evaluate_coverage(profil: list[str], exigences: list[dict], seuil: float = 0.5):
+    """Évalue la couverture des exigences par le profil (reranker).
+    Renvoie (score, couvertes, ecarts). On teste deux formulations de l'exigence
+    (libellé canonique + phrase brute) et on garde la meilleure couverture."""
+    profil = [c.strip() for c in profil if c and c.strip()]
     couvertes, ecarts = [], []
     for ex in exigences:
         best, i_best = 0.0, -1
@@ -69,23 +68,24 @@ def match_profile_to_job(db: Session, profil_competences: list[str],
                     i = max(range(len(scores)), key=lambda j: scores[j])
                     if scores[i] > best:
                         best, i_best = scores[i], i
-
+        base = {"competence": ex["competence"], "importance": ex["importance"],
+                "skill_id": ex.get("skill_id"), "skill_type": ex.get("skill_type")}
         if best >= seuil and i_best >= 0:
-            couvertes.append({
-                "competence": ex["competence"], "importance": ex["importance"],
-                "couverte_par": profil[i_best], "similarite": round(best, 2),
-            })
+            couvertes.append({**base, "couverte_par": profil[i_best], "similarite": round(best, 2)})
         else:
-            ecarts.append({
-                "competence": ex["competence"], "importance": ex["importance"],
-                "meilleure_similarite": round(best, 2),
-            })
+            ecarts.append({**base, "meilleure_similarite": round(best, 2)})
 
-    # 3) Score pondéré.
     total = sum(_poids(e["importance"]) for e in exigences) or 1.0
     acquis = sum(_poids(c["importance"]) for c in couvertes)
-    score = round(100 * acquis / total)
+    return round(100 * acquis / total), couvertes, ecarts
 
+
+def match_profile_to_job(db: Session, profil_competences: list[str],
+                         poste_texte: str, seuil: float = 0.5) -> dict:
+    """Calcule la correspondance profil ↔ poste (conforme à MatchResponse)."""
+    extraction = skill_extraction_service.extract_skills(db, poste_texte, top_k=1)
+    exigences = build_exigences(extraction)
+    score, couvertes, ecarts = evaluate_coverage(profil_competences, exigences, seuil)
     logger.info("Matching : %d exigences, %d couvertes, score %d.", len(exigences), len(couvertes), score)
     return {
         "score": score,

@@ -59,6 +59,38 @@ def embed_missing_skills(db: Session, batch_size: int = 128) -> int:
     return n
 
 
+def _occupation_text(o: Occupation) -> str:
+    """Texte représentatif d'un métier pour l'embedding (bilingue + début de définition)."""
+    parts = [o.label_fr or "", o.label_en or "", (o.description_fr or o.description_en or "")[:300]]
+    seen, out = set(), []
+    for p in parts:
+        p = (p or "").strip()
+        if p and p.lower() not in seen:
+            seen.add(p.lower())
+            out.append(p)
+    return " — ".join(out) if out else "métier"
+
+
+def embed_missing_occupations(db: Session, batch_size: int = 128) -> int:
+    """Embedde et stocke dans vec_occupations tous les métiers sans vecteur.
+    Permet la recherche sémantique de métiers (passerelles/parcours)."""
+    existing = {r[0] for r in db.execute(text("SELECT occupation_id FROM vec_occupations"))}
+    todo = [o for o in db.scalars(select(Occupation)).all() if o.id not in existing]
+    logger.info("Vectorisation métiers : %d à embedder (%d déjà faits).", len(todo), len(existing))
+
+    ins = text("INSERT INTO vec_occupations(occupation_id, embedding) VALUES (:id, :emb)")
+    n = 0
+    for i in range(0, len(todo), batch_size):
+        chunk = todo[i:i + batch_size]
+        vectors = embed_batch([_occupation_text(o) for o in chunk], batch_size=64)
+        db.execute(ins, [{"id": o.id, "emb": json.dumps(v)} for o, v in zip(chunk, vectors)])
+        db.commit()
+        n += len(chunk)
+        logger.info("  … %d/%d métiers vectorisés", n, len(todo))
+    logger.info("Vectorisation métiers terminée : %d.", n)
+    return n
+
+
 def graph_stats(db: Session) -> dict:
     """État du graphe (pour vérification/monitoring)."""
     return {
