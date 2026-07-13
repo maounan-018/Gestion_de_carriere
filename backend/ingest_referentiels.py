@@ -15,7 +15,7 @@ import logging
 
 from app.database.init_db import init_db
 from app.database.session import SessionLocal
-from app.services.referentiels import esco_loader, onet_loader, graph_builder
+from app.services.referentiels import esco_loader, onet_loader, sfia_loader, graph_builder
 
 
 def main() -> None:
@@ -28,8 +28,7 @@ def main() -> None:
         # --- Référentiels (idempotents) ---
         esco_loader.load_esco(db)   # pivot multilingue FR/EN
         onet_loader.load_onet(db)   # richesse métier (EN, FR à traduire)
-        # from app.services.referentiels import sfia_loader
-        # sfia_loader.load_sfia(db)
+        sfia_loader.load_sfia(db)   # IT/digital, niveaux de responsabilité 1..7 (FR+EN)
 
         # --- Vectorisation (embeddings -> vec_skills) — longue sur ESCO (~14k) ---
         if skip_embed:
