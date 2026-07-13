@@ -22,18 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 def _create_vec_table() -> None:
-    """Crée la table vectorielle des compétences (sqlite-vec vec0). Tolérant :
-    si l'extension n'est pas chargée, on log et on continue (le reste marche)."""
+    """Crée les tables vectorielles sqlite-vec (vec0) : compétences ET métiers.
+    Tolérant : si l'extension n'est pas chargée, on log et on continue."""
     try:
         with engine.connect() as conn:
             conn.exec_driver_sql(
                 f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_skills USING vec0("
                 f"skill_id INTEGER PRIMARY KEY, embedding FLOAT[{settings.EMBED_DIM}])"
             )
+            conn.exec_driver_sql(
+                f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_occupations USING vec0("
+                f"occupation_id INTEGER PRIMARY KEY, embedding FLOAT[{settings.EMBED_DIM}])"
+            )
             conn.commit()
-        logger.info("Table vectorielle vec_skills prête (dim %d).", settings.EMBED_DIM)
+        logger.info("Tables vectorielles vec_skills / vec_occupations prêtes (dim %d).", settings.EMBED_DIM)
     except Exception as e:  # noqa: BLE001
-        logger.warning("vec_skills non créée (%s) — recherche vectorielle indisponible.", e)
+        logger.warning("tables vectorielles non créées (%s) — recherche vectorielle indisponible.", e)
 
 
 def init_db() -> None:
