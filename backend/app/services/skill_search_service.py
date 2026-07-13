@@ -32,9 +32,13 @@ _SQL = (
     "SELECT s.id, s.label_fr, s.label_en, s.skill_type, "
     "       s.description_fr, s.description_en, vk.distance "
     "FROM vec_skills vk JOIN skills s ON s.id = vk.skill_id "
-    "WHERE vk.embedding MATCH :q AND k = :k "
+    "WHERE vk.embedding MATCH :q AND k = :k {canon} "
     "ORDER BY vk.distance"
 )
+# Dédoublonnage : ne renvoyer que les compétences canoniques (les doublons O*NET/
+# SFIA alignés sur ESCO par le crosswalk sont marqués canonical=False -> masqués,
+# au profit de leur équivalent ESCO). Les compétences sans équivalent restent visibles.
+_CANON_FILTER = "AND s.canonical = 1"
 
 
 def _passage(c: dict) -> str:
@@ -50,7 +54,8 @@ def _passage(c: dict) -> str:
 
 def search_skills(db: Session, query: str, k: int = 5,
                   max_distance: float | None = None,
-                  rerank: bool | None = None) -> list[dict]:
+                  rerank: bool | None = None,
+                  canonical_only: bool = True) -> list[dict]:
     """Renvoie les `k` compétences canoniques les plus pertinentes pour `query`.
 
     Chaque résultat : {skill_id, label_fr, label_en, skill_type, distance, score,
@@ -66,7 +71,8 @@ def search_skills(db: Session, query: str, k: int = 5,
     pool = max(k * 5, 25) if use_rerank else k
 
     vec = json.dumps(embed_text(query))
-    rows = db.execute(text(_SQL), {"q": vec, "k": pool}).fetchall()
+    sql = _SQL.format(canon=_CANON_FILTER if canonical_only else "")
+    rows = db.execute(text(sql), {"q": vec, "k": pool}).fetchall()
 
     cand: list[dict] = []
     for sid, label_fr, label_en, skill_type, dfr, den, distance in rows:
