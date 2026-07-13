@@ -16,7 +16,7 @@ import logging
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.controllers import skill_extraction_controller
+from app.controllers import skill_extraction_controller, skill_matching_controller
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -28,6 +28,7 @@ app = FastAPI(
 
 # Un routeur par fonctionnalité (MVC : contrôleurs séparés).
 app.include_router(skill_extraction_controller.router)
+app.include_router(skill_matching_controller.router)
 
 
 @app.get("/sante", tags=["Système"], summary="Vérifier que l'API répond")
