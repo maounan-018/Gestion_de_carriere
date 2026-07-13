@@ -73,7 +73,9 @@ class Settings:
         self.OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
         self.OLLAMA_GENERATE_URL = f"{self.OLLAMA_BASE_URL}/api/generate"
         self.OLLAMA_CHAT_URL = f"{self.OLLAMA_BASE_URL}/api/chat"
-        self.OLLAMA_EMBED_URL = f"{self.OLLAMA_BASE_URL}/api/embeddings"
+        # /api/embed (pluriel) accepte une LISTE en entrée -> embeddings PAR LOTS
+        # (~18 ms/embed vs ~2 s en un-par-un). Indispensable pour ingérer ESCO (~14k).
+        self.OLLAMA_EMBED_URL = f"{self.OLLAMA_BASE_URL}/api/embed"
         self.OLLAMA_EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "bge-m3")
         # Dimension des vecteurs (fixe le schéma vec0). bge-m3 = 1024.
         self.EMBED_DIM = int(os.getenv("EMBED_DIM", "1024"))
