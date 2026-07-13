@@ -1,0 +1,76 @@
+# =====================================================================
+# GABARIT DE FICHE DE POSTE — BMCI Gestion des Carrières
+# =====================================================================
+# ÉDITABLE par un utilisateur AUTORISÉ (RBAC) — la typologie d'une fiche peut
+# changer : on ajoute / retire / renomme des sections ICI, sans toucher au code.
+# (À terme, éditable depuis l'interface ; pour l'instant, ce fichier fait foi.)
+#
+# Chaque section a un "kind" qui pilote son traitement à l'extraction :
+#   metadata    -> champ d'identification (recopié tel quel, pas de compétence)
+#   freetext    -> texte libre -> le LLM en EXTRAIT les compétences implicites
+#   skill_list  -> liste de compétences déjà nommées (une par ligne) -> ancrage direct
+#   languages   -> langues + niveau
+#   kpi         -> indicateurs de performance (contexte, pas des compétences)
+#
+# "categorie" = catégorie de compétence DÉCLARÉE par la fiche (signal fort, conservé
+# tel quel) : metier | comportementale | transversale | outil_technologie
+version: 1
+
+sections:
+  - key: famille_metier
+    label: "Famille (ligne) de métier"
+    kind: metadata
+    aide: "Corps de métier (ex. Corporate)"
+
+  - key: perimetre_bmci
+    label: "Périmètre BMCI"
+    kind: metadata
+    aide: "Département de la banque"
+
+  - key: code_poste
+    label: "Code poste"
+    kind: metadata
+    aide: "Nombre de 5-6 chiffres + désignation (liée à l'intitulé)"
+
+  - key: intitule_poste
+    label: "Intitulé du poste"
+    kind: metadata
+    aide: "Nom du poste"
+
+  - key: mission
+    label: "Mission"
+    kind: freetext
+    categorie: metier
+
+  - key: activites_principales
+    label: "Activités principales"
+    kind: freetext
+    categorie: metier
+
+  - key: competences_metiers
+    label: "Compétences métiers"
+    kind: skill_list
+    categorie: metier
+
+  - key: competences_comportementales
+    label: "Compétences comportementales"
+    kind: skill_list
+    categorie: comportementale
+
+  - key: competences_transversales
+    label: "Compétences transversales"
+    kind: skill_list
+    categorie: transversale
+
+  - key: langues
+    label: "Langues"
+    kind: languages
+
+  - key: methodologie_outils_technologies
+    label: "Méthodologie / Outils / Technologies"
+    kind: skill_list
+    categorie: outil_technologie
+
+  - key: indicateurs_performances
+    label: "Indicateurs de performances (non exhaustifs)"
+    kind: kpi
