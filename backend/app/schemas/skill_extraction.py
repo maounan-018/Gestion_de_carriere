@@ -30,6 +30,7 @@ class MatchedSkill(BaseModel):
     skill_type: str
     distance: float
     score: float
+    rerank_score: float | None = None  # pertinence cross-encoder (si reranker actif)
 
 
 class ExtractedSkill(BaseModel):
