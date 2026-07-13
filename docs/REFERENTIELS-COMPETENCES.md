@@ -123,6 +123,19 @@ référentiels, qui sont des données publiques et non des données banque).
 
 ---
 
+## Mentions d'attribution obligatoires (à afficher sur la plateforme)
+
+Chaque fournisseur impose une mention légale. Elles sont **centralisées** dans
+`backend/app/core/attributions.py` (source unique de vérité) et stockées avec
+chaque source (`ReferentialSource.attribution`). Le **frontend DOIT les afficher**
+(pied de page + écran « Mentions légales & crédits ») :
+
+- **ESCO** (déc. 2011, 2011/833/UE) : « Ce service utilise la classification ESCO de la Commission européenne. »
+- **O*NET** (CC BY 4.0) : attribution à l'USDOL/ETA (O*NET® est une marque déposée de l'USDOL/ETA).
+- **SFIA** : crédit à la SFIA Foundation.
+
+> ⚠️ Ne jamais retirer ces mentions : c'est une condition d'utilisation gratuite.
+
 ## Sources
 
 - [ESCO — Download](https://esco.ec.europa.eu/en/use-esco/download) · [ESCO API](https://esco.ec.europa.eu/en/use-esco/use-esco-services-api) · [ESCO v1.2.1](https://esco.ec.europa.eu/en/news/esco-v121-live)

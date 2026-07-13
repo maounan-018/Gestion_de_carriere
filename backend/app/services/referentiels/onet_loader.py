@@ -30,6 +30,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core import attributions
 from app.models.referential import ReferentialSource, SourceCode
 from app.models.skill import Skill, SkillType
 from app.models.occupation import Occupation, OccupationSkill, SkillRequirement
@@ -162,7 +163,7 @@ def load_onet(db: Session) -> dict:
     # 4) Enregistre la source (journal d'ingestion).
     db.add(ReferentialSource(
         code=SourceCode.ONET, name="O*NET (U.S. DOL/ETA)", version=ONET_VERSION,
-        languages="en", license="CC-BY-4.0",
+        languages="en", license="CC-BY-4.0", attribution=attributions.ONET,
         imported_at=datetime.now(timezone.utc),
         n_skills=len(element_to_skill), n_occupations=len(soc_to_occ),
     ))
