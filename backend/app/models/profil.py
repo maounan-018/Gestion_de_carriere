@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""
+models/profil.py — Profil collaborateur + compétences DÉTENUES.
+
+RÔLE
+    `Profil` = profil de carrière d'un collaborateur (distinct du compte User =
+    identité/auth ; lié à lui, ou synthétique pour la démo). `ProfilCompetence` =
+    les compétences que la personne POSSÈDE, avec leur NIVEAU de maîtrise et la
+    SOURCE de détection (CV, évaluation de mission, évaluation de performance,
+    déclaratif, mini-jeu). C'est ce capital de compétences qui est confronté aux
+    attendus d'une offre (candidature -> score) et qui alimente les recommandations.
+
+EMPLACEMENT MVC
+    Couche "models" : entités ORM.
+"""
+
+from datetime import datetime, timezone
+
+from sqlalchemy import String, Integer, Text, Boolean, Float, DateTime, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.database.base import Base
+
+
+class CompetenceSource:
+    """D'où provient une compétence détenue (traçabilité de la cartographie)."""
+    CV = "cv"
+    EVAL_MISSION = "evaluation_mission"     # évaluation de mission par le manager
+    EVAL_PERF = "evaluation_performance"
+    DECLARATIF = "declaratif"               # déclaré par le collaborateur
+    JEU = "jeu"                             # mini-jeu (futur)
+    FICHE = "fiche"                         # déduit du poste occupé
+
+
+class Profil(Base):
+    __tablename__ = "profils"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None, index=True)  # null = persona synthétique
+    nom: Mapped[str] = mapped_column(String(120))
+    prenom: Mapped[str | None] = mapped_column(String(120), default=None)
+    matricule: Mapped[str | None] = mapped_column(String(32), default=None, index=True)
+    poste_actuel: Mapped[str | None] = mapped_column(String(200), default=None)
+    departement_key: Mapped[str | None] = mapped_column(String(48), default=None, index=True)
+    manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)
+    date_entree: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    aspirations: Mapped[str | None] = mapped_column(Text, default=None)   # souhaits d'évolution (pour la reco)
+    synthetique: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class ProfilCompetence(Base):
+    __tablename__ = "profil_competences"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    profil_id: Mapped[int] = mapped_column(ForeignKey("profils.id"), index=True)
+    libelle: Mapped[str] = mapped_column(String(300))
+    categorie: Mapped[str | None] = mapped_column(String(24), default=None)
+    skill_id: Mapped[int | None] = mapped_column(ForeignKey("skills.id"), default=None, index=True)
+    skill_label_fr: Mapped[str | None] = mapped_column(String(300), default=None)
+    niveau: Mapped[int | None] = mapped_column(Integer, default=None)      # 1-5 / niveau SFIA
+    source: Mapped[str] = mapped_column(String(24), default=CompetenceSource.DECLARATIF)
+    rerank_score: Mapped[float | None] = mapped_column(Float, default=None)
+    acquired_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+
+    __table_args__ = (Index("ix_profil_comp_profil", "profil_id"),)

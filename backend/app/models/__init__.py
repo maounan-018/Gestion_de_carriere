@@ -8,6 +8,9 @@ from app.models.skill_crosswalk import SkillCrosswalk
 from app.models.fiche import Fiche, FicheCompetence, FicheSource
 from app.models.user import User, UserSession, Role, UserType
 from app.models.audit_log import AuditLog, AuditEventType
+from app.models.offre import Offre, OffreCompetence, OffreType, OffreStatut
+from app.models.candidature import Candidature, CandidatureStatut
+from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -18,4 +21,7 @@ __all__ = [
     "Fiche", "FicheCompetence", "FicheSource",
     "User", "UserSession", "Role", "UserType",
     "AuditLog", "AuditEventType",
+    "Offre", "OffreCompetence", "OffreType", "OffreStatut",
+    "Candidature", "CandidatureStatut",
+    "Profil", "ProfilCompetence", "CompetenceSource",
 ]
