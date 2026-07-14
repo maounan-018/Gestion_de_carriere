@@ -530,17 +530,21 @@ button{font-family:inherit}
   .offer,.kpi,.rec,.org-n,.match,.crow,.btn{transition:none}
   .offer:hover,.kpi:hover,.org-n:hover,.match:hover,.rec:hover,.btn-p:hover,.btn-g:hover,.btn-s:hover{transform:none}
 }
+.demoflag{background:var(--gold-soft);color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);border-radius:10px;padding:8px 10px;font-size:11px;font-weight:700;line-height:1.35}
+.demo-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:var(--gold-soft);color:var(--gold);font-size:11px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
 </style>
 
 <div class="root"><div class="proto">
   <aside class="rail">
     <div class="rail-b"><div class="mk">B</div><div><b>BMCI Carrière</b><span>Refonte « La Courbe »</span></div></div>
+    <div class="demoflag">⚠ Maquette de démonstration — personas, chiffres et offres SYNTHÉTIQUES (aucune donnée réelle BMCI).</div>
     <div class="rail-note">Identité <b>blanc + vert</b>, typo Bricolage/Hanken, la carrière rendue en <b>arc</b>. Nav unifiée par rôle, e-mail <b>@bmci.local</b>.</div>
     <div id="railNav"></div>
   </aside>
   <main class="stage">
     <div class="sbar">
       <div><div class="st-t" id="scT">Portail d'entrée</div><div class="st-p" id="scP">Accès</div></div>
+      <span class="demo-pill">⚠ Démo · données synthétiques</span>
       <div class="sp"></div>
       <button class="ib" id="prev">← Précédent</button><button class="ib" id="next">Suivant →</button>
     </div>
@@ -732,20 +736,41 @@ S.rh=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main"
     <div class="kpi"><div class="ki">${ic('pin','s')}</div><b class="disp">Siège</b><small>Périmètre · Casablanca</small><button class="link" style="margin-top:2px">Changer d'entité</button></div></div>
   </div></div></div>`;
 
-S.reco=()=>`<div class="fade app">${sidebar('collab','Recommandations')}<div class="main">${top('Recommandations de parcours','Basé sur vos compétences, évaluations et les besoins du Groupe','collab')}
-  <div class="content"><div class="toolbar"><span class="eyebrow" style="flex:1">3 trajectoires suggérées</span><button class="btn btn-g btn-sm">${ic('filter','s')} Filtrer</button><button class="btn btn-ai btn-sm">${ic('spark','s')} Actualiser via IA</button></div>
-  <div class="cols"><div class="match"><div class="mt"><div><span class="pill new">Recommandation prioritaire</span><h4 style="margin-top:8px">Manager de Pôle</h4><p class="muted" style="font-size:12.5px">Direction de la Clientèle Entreprise</p></div><div class="pct"><b>92 %</b><small>Match</small></div></div>
-    <div class="divider"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><div class="eyebrow" style="margin-bottom:6px">Acquises</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip g">Analyse fin.</span><span class="chip g">Leadership</span><span class="chip g">Gestion projet</span></div></div>
-    <div><div class="eyebrow" style="margin-bottom:6px">À développer</div><div style="display:flex;flex-wrap:wrap;gap:6px"><span class="chip gap">Stratégie BMCI</span><span class="chip gap">RH & management</span></div></div></div>
-    <div class="wnote ok">${ic('book','s')} Formation recommandée : « Leadership Excellence @BNP »</div><button class="btn btn-p btn-sm" style="width:max-content" data-go="recoDetail">Explorer ce parcours →</button></div>
-  <div class="stack"><div class="match"><div class="mt"><div><h4>Expert Risk Management</h4><p class="muted" style="font-size:12.5px">Risques & Conformité</p></div><div class="pct"><b>85 %</b><small>Match</small></div></div><div class="bar-row"><div class="lab"><span>Progression</span><b>75 %</b></div><div class="bar-tr"><i style="width:75%"></i></div></div><button class="btn btn-g btn-sm" style="width:max-content">Explorer</button></div>
-    <div class="match"><div class="mt"><div><h4>Data Analyst Senior</h4><p class="muted" style="font-size:12.5px">Stratégie Digitale</p></div><div class="pct"><b>78 %</b><small>Match</small></div></div><div class="bar-row"><div class="lab"><span>Progression</span><b>60 %</b></div><div class="bar-tr"><i style="width:60%"></i></div></div><button class="btn btn-g btn-sm" style="width:max-content">Explorer</button></div></div></div>
-  <div class="callout"><div class="ci">${ic('spark','s')}</div><div style="flex:1"><h4>Le conseil de votre Coach IA</h4><p>« Votre profil mène vers <b>Manager de Pôle</b>. En complétant <i>Leadership Excellence</i>, votre compatibilité passerait à 96 %. »</p></div><button class="btn btn-ai btn-sm" style="align-self:center" data-go="entretien">Discuter avec le Coach</button></div>
-  <div class="card p"><div class="sec-h"><h3>Votre prochain jalon : Manager de Pôle</h3></div><div class="jalons">
-    <div class="jalon done"><div class="jn">${ic('check','s')}</div><h5>Auto-évaluation</h5><small>Complété</small></div>
-    <div class="jalon active"><div class="jn">2</div><h5>Entretien manager</h5><small>À venir · One-to-One</small></div>
-    <div class="jalon"><div class="jn">3</div><h5>Formation certifiante</h5><small>Leadership L1</small></div>
-    <div class="jalon"><div class="jn">4</div><h5>Postulation interne</h5><small>Offres ciblées</small></div></div></div>
+S.reco=()=>`<div class="fade app">${sidebar('collab','Recommandations')}<div class="main">${top('Recommandations formation & parcours','Ancré sur les compétences du poste visé · ESCO · O*NET · SFIA','collab')}
+  <div class="content">
+    <div class="card p"><div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px"><div class="eyebrow" style="color:var(--green-deep)">Poste visé</div>
+        <h2 class="disp" style="font-size:22px;margin:2px 0 4px">Manager de Pôle Entreprises</h2>
+        <p class="muted" style="font-size:12.5px">Le matching <b>classe par compatibilité</b> (un score) — il ne masque ni les postes ni les candidats.</p></div>
+      <div style="text-align:center"><b class="disp" style="font-size:38px;color:var(--green-deep);line-height:1">62%</b><div class="muted" style="font-size:11px">adéquation actuelle</div></div>
+      <button class="btn btn-ai btn-sm" data-go="entretien">${ic('spark','s')} Discuter avec le Coach</button>
+    </div></div>
+    <div class="cols"><div class="stack">
+      <div class="card p"><div class="sec-h"><h3>Compétences à développer</h3><span class="pill mut">écarts · 3 socles</span></div>
+        <div class="stack" style="gap:10px">
+          <div class="rec ai"><div class="ri">${ic('route','s')}</div><div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><h4>Diriger une équipe</h4><span class="pill new">essentielle</span></div>
+            <p style="font-size:12px;color:var(--ink-3);margin-top:2px">Encadrer, motiver et développer un collectif. <span class="chip">ESCO</span></p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"><span class="chip">étape · gestion d'équipe</span><span class="chip">étape · conduite d'entretien</span></div>
+            <button class="link" style="margin-top:7px">${ic('book','s')} Rechercher des cours pour cette compétence</button></div></div>
+          <div class="rec ai"><div class="ri">${ic('route','s')}</div><div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><h4>Stratégies de vente</h4><span class="pill new">essentielle</span></div>
+            <p style="font-size:12px;color:var(--ink-3);margin-top:2px">Concevoir et piloter l'action commerciale. <span class="chip">ESCO</span></p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"><span class="chip">étape · argumentaire de vente</span></div>
+            <button class="link" style="margin-top:7px">${ic('book','s')} Rechercher des cours pour cette compétence</button></div></div>
+          <div class="rec crit"><div class="ri">${ic('shield','s')}</div><div style="flex:1"><div style="display:flex;justify-content:space-between;gap:8px"><h4>Se conformer aux réglementations</h4><span class="pill new">essentielle</span></div>
+            <p style="font-size:12px;color:var(--ink-3);margin-top:2px">Cadre de conformité bancaire. <span class="chip">SFIA · niveau 4</span></p>
+            <button class="link" style="margin-top:7px">${ic('book','s')} Rechercher des cours pour cette compétence</button></div></div>
+        </div></div>
+    </div><div class="stack">
+      <div class="card p"><div class="sec-h"><h3>Passerelles métiers</h3><span class="pill ai">${ic('spark','s')} recherche sémantique</span></div>
+        <div class="stack" style="gap:9px">
+          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Responsable commercial</h4><span class="pill mut">ESCO · 0.24</span></div></div>
+          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Gestionnaire des crédits</h4><span class="pill mut">ESCO · 0.19</span></div></div>
+          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Financial Managers</h4><span class="pill mut">O*NET · 0.16</span></div></div>
+        </div></div>
+      <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>Plan de développement — Coach IA</h4>
+        <p>Pour progresser vers Manager de Pôle : (1) <b>Diriger une équipe</b> — gestion d'équipe, communication et motivation ; (2) <b>Stratégies de vente</b> — techniques de vente et lecture du marché ; (3) <b>Conformité</b> — cadre réglementaire bancaire.</p>
+        <p class="muted" style="font-size:11px;margin-top:6px">Généré par mistral-nemo (FR), strictement ancré sur les écarts ci-contre — aucune formation inventée.</p></div></div>
+    </div></div>
   </div></div></div>`;
 
 S.entretien=()=>`<div class="fade app">${sidebar('collab','Entretiens')}<div class="main">${top('Simulation d\'entretien IA','Entretien annuel 2026 · entraînement','collab')}
@@ -789,7 +814,7 @@ ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détail
 ["offreDetail","Détail de l'offre","Collaborateur · parcours détaillé","Collaborateur"],
 ["mesCandidatures","Mes candidatures","Collaborateur · parcours détaillé","Collaborateur"],
 ["souhaitSuivi","Mes souhaits d'évolution","Collaborateur · parcours détaillé","Collaborateur"],
-["ficheCollab","Fiche collaborateur","Manager · parcours détaillé","Manager"],
+["ficheCollab","Profil collaborateur","Manager · parcours détaillé","Manager"],
 ["evalNew","Nouvelle évaluation","Manager · parcours détaillé","Manager"],
 ["posterOffre","Publier une offre","Manager · parcours détaillé","Manager"],
 ["souhaitsRecus","Souhaits d'évolution reçus","Manager · parcours détaillé","Manager"],
@@ -797,7 +822,7 @@ ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détail
 ["pousserCours","Pousser un cours","Manager · parcours détaillé","Manager"],
 ["rhPerso","Espace RH — Vue personnelle","RH · parcours détaillé","RH"],
 ["cartoDetail","Cartographie — Pôle Risques","RH · parcours détaillé","RH"],
-["ficheCollabRh","Fiche collaborateur — RH","RH · parcours détaillé","RH"],
+["ficheCollabRh","Profil collaborateur — RH","RH · parcours détaillé","RH"],
 ["hautsPotentiels","Hauts potentiels & succession","RH · parcours détaillé","RH"],
 ["posterPoste","Publier un poste","RH · parcours détaillé","RH"],
 ["campagneEval","Campagne d'évaluation","RH · parcours détaillé","RH"],
@@ -1099,7 +1124,7 @@ S.souhaitSuivi=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div 
 </div></div>`;
 
 /* ===== mod_manager.js ===== */
-S.ficheCollab=()=>`<div class="fade app">${sidebar('manager','Mon équipe')}<div class="main">${top('Fiche collaborateur','Profil détaillé d\'un membre de votre équipe','manager')}
+S.ficheCollab=()=>`<div class="fade app">${sidebar('manager','Mon équipe')}<div class="main">${top('Profil collaborateur','Profil détaillé d\'un membre de votre équipe','manager')}
   <div class="content">
     ${crumb([['Mon équipe','manager'],['Alice Martin',null]])}
     <div class="card p"><div class="phead">
@@ -1168,6 +1193,7 @@ S.posterOffre=()=>`<div class="fade app">${sidebar('manager','Offres internes')}
   <div class="content">
     ${crumb([['Offres internes','offres'],['Publier',null]])}
     <div class="cols"><div class="stack">
+      <div class="card p"><div class="sec-h"><h3>Fiche de poste de référence</h3></div><div class="formrow"><label>Partir d'une fiche du référentiel BMCI</label><select class="ctrl"><option>Analyste Crédit Senior — Corporate Banking</option><option>Chargé d'Affaires Entreprises</option><option>Chef de Projet Lean Management</option><option>Data Steward — Digital</option><option>— Créer sans fiche (exceptionnel)</option></select></div><div class="wnote ok">${ic('check','s')} L'offre <b>dérive</b> de cette fiche (intitulé, mission, compétences pré-remplis). Vos modifications ici ne changent <b>pas</b> la fiche de référence.</div></div>
       <div class="card p"><div class="sec-h"><h3>Type d'opportunité</h3></div>
         <div class="seg" id="offerType"><button class="on" data-t="Poste">Poste</button><button data-t="Mission">Mission</button><button data-t="Projet">Projet</button><button data-t="Gig">Gig</button></div>
         <div class="wnote" id="offerNote" style="display:none;margin-top:14px">${ic('bell','s')} Pour une mission / projet, le manager du candidat sera automatiquement informé.</div>
@@ -1345,9 +1371,9 @@ S.cartoDetail=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div cla
       <div class="hleg"><span><i style="background:var(--heat-1)"></i>Émergent (1–2)</span><span><i style="background:var(--heat-2)"></i>Avancé (3)</span><span><i style="background:var(--heat-3)"></i>Confirmé (4)</span><span><i style="background:var(--heat-4)"></i>Expert (5)</span></div>
       <p class="muted" style="font-size:11px;margin-top:8px">Le niveau est indiqué en chiffre dans chaque case — l'information ne repose pas que sur la couleur (accessibilité WCAG). Cliquez un nom pour ouvrir la fiche.</p></div>
   </div></div></div>`;
-WIRE.cartoDetail=function(){const seg=$('#cartoSeg');if(seg)seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});$('.cartoName').forEach(b=>b.addEventListener('click',()=>toast('Fiche détaillée en préparation','info')));};
+WIRE.cartoDetail=function(){const seg=$('#cartoSeg');if(seg)seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');});$('.cartoName').forEach(b=>b.addEventListener('click',()=>toast('Profil détaillé en préparation','info')));};
 
-S.ficheCollabRh=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main">${top('Fiche collaborateur','Aya Bennani · Pôle Risques','rh')}
+S.ficheCollabRh=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main">${top('Profil collaborateur','Aya Bennani · Pôle Risques','rh')}
   <div class="content">
     ${crumb([["Cartographie","rh"],["Pôle Risques","cartoDetail"],["Aya Bennani",null]])}
     <div class="card p"><div class="phead"><div class="ava xl ph woman2">AB</div>
@@ -1399,7 +1425,7 @@ S.posterPoste=()=>`<div class="fade app">${sidebar('rh','Offres internes')}<div 
   <div class="content">
     ${crumb([["Offres internes","offres"],["Publier un poste",null]])}
     <div class="card p" style="max-width:760px">
-      <div class="formrow"><label>Type d'offre</label><div class="seg" id="typeSeg"><button class="on">Poste</button><button>Mission transverse</button><button>Projet</button><button>Gig ponctuel</button></div></div>
+      <div class="formrow"><label>Fiche de poste de référence</label><select class="ctrl"><option>Analyste Crédit Senior — Corporate Banking</option><option>Gestionnaire de Patrimoine</option><option>Responsable Conformité</option><option>— Créer sans fiche (exceptionnel)</option></select></div><div class="wnote ok" style="margin-bottom:14px">${ic('check','s')} Le poste <b>dérive</b> de cette fiche ; la modifier ici ne change pas la fiche de référence.</div><div class="formrow"><label>Type d'offre</label><div class="seg" id="typeSeg"><button class="on">Poste</button><button>Mission transverse</button><button>Projet</button><button>Gig ponctuel</button></div></div>
       <div class="formrow"><label>Titre du poste</label><input class="ctrl" placeholder="Ex : Analyste Crédit Senior — Corporate Banking"></div>
       <div class="formrow"><label>Description</label><textarea class="ta" placeholder="Missions, responsabilités, profil recherché, compétences attendues…"></textarea></div>
       <div class="cols" style="grid-template-columns:1fr 1fr">
