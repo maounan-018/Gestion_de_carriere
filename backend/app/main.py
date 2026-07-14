@@ -14,10 +14,11 @@ EMPLACEMENT MVC
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.controllers import (skill_extraction_controller, skill_matching_controller,
-                             recommendation_controller, fiche_controller)
+                             recommendation_controller, fiche_controller, auth_controller)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -27,7 +28,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# CORS — origines explicites + credentials (cookies). JAMAIS "*" avec credentials.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*", settings.CSRF_HEADER],
+)
+
 # Un routeur par fonctionnalité (MVC : contrôleurs séparés).
+app.include_router(auth_controller.router)
 app.include_router(skill_extraction_controller.router)
 app.include_router(skill_matching_controller.router)
 app.include_router(recommendation_controller.router)

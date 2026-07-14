@@ -119,9 +119,24 @@ class Settings:
         self.SEED_DEMO_ACCOUNTS = os.getenv("SEED_DEMO_ACCOUNTS", "true").strip().lower() in ("1", "true", "yes")
         self.SEED_SYNTHETIC_PERSONAS = os.getenv("SEED_SYNTHETIC_PERSONAS", "true").strip().lower() in ("1", "true", "yes")
 
+        # --- Cookies de session (HttpOnly) + CSRF double-submit ---
+        self.SESSION_COOKIE = os.getenv("SESSION_COOKIE", "bmci_session")
+        self.CSRF_COOKIE = os.getenv("CSRF_COOKIE", "bmci_csrf")
+        self.CSRF_HEADER = os.getenv("CSRF_HEADER", "X-CSRF-Token")
+        # "auto" = sécurisé en production (HTTPS), permissif en dev (HTTP localhost).
+        self._cookie_secure_raw = os.getenv("COOKIE_SECURE", "auto").strip().lower()
+        self.COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+
     @property
     def is_production(self) -> bool:
         return self.ENV in ("production", "prod")
+
+    @property
+    def cookie_secure(self) -> bool:
+        """Flag Secure des cookies : forcé en prod (HTTPS), sinon selon COOKIE_SECURE."""
+        if self._cookie_secure_raw == "auto":
+            return self.is_production
+        return self._cookie_secure_raw in ("1", "true", "yes")
 
     def task_model(self, task: str) -> dict:
         """Renvoie la config du modèle pour une tâche (modèle, num_ctx, température,
