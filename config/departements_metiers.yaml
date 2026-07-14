@@ -2,11 +2,9 @@
 # CARTOGRAPHIE DÉPARTEMENTS → MÉTIERS — BMCI Gestion des Carrières
 # =====================================================================
 # Référence ÉDITABLE (accès autorisé) pilotant la génération des fiches de poste.
-# La "famille (ligne) de métier" et le "périmètre BMCI" du gabarit de fiche se
-# déduisent de "pole" et "nom" ci-dessous. Les métiers listés sont des rôles-types
-# validés avec le métier ; ils servent de base à l'inférence des compétences.
-# ⚠️ Contenu de travail (rôles-types) — les fiches générées seront étiquetées SYNTHÉTIQUES.
-version: 1
+# La "famille (ligne) de métier" et le "périmètre BMCI" du gabarit se déduisent de
+# "pole" et "nom". ~165 métiers-types. ⚠️ Fiches générées = SYNTHÉTIQUES.
+version: 2
 
 departements:
   # ---------- A. Lignes métiers commerciales ----------
@@ -14,12 +12,15 @@ departements:
     nom: "Retail Banking"
     pole: "Lignes métiers commerciales"
     metiers: ["Conseiller clientèle particuliers", "Directeur d'agence",
-              "Chargé de clientèle professionnels", "Conseiller MRE"]
+              "Chargé de clientèle professionnels", "Conseiller MRE",
+              "Téléconseiller banque à distance", "Chargé de clientèle patrimoniale agence",
+              "Animateur commercial réseau", "Conseiller clientèle digitale"]
   - key: corporate_banking
     nom: "Corporate Banking"
     pole: "Lignes métiers commerciales"
     metiers: ["Chargé d'affaires entreprises", "Analyste crédit corporate",
-              "Relationship Manager grandes entreprises", "Chargé Trade Finance"]
+              "Relationship Manager grandes entreprises", "Chargé Trade Finance",
+              "Chargé d'affaires PME", "Cash management officer", "Analyste sectoriel"]
   - key: banque_financiere
     nom: "Banque financière (Financement & Investissement)"
     pole: "Lignes métiers commerciales"
@@ -28,132 +29,156 @@ departements:
   - key: banque_privee
     nom: "Banque Privée"
     pole: "Lignes métiers commerciales"
-    metiers: ["Banquier privé", "Gestionnaire de patrimoine", "Ingénieur patrimonial"]
+    metiers: ["Banquier privé", "Gestionnaire de patrimoine", "Ingénieur patrimonial",
+              "Conseiller en investissements financiers"]
   - key: bmci_najmah
     nom: "BMCI Najmah (banque participative)"
     pole: "Lignes métiers commerciales"
     metiers: ["Conseiller banque participative", "Spécialiste produits participatifs (Mourabaha/Ijara)",
-              "Référent conformité charia"]
+              "Référent conformité charia", "Chargé de développement banque participative"]
   - key: bu_credit_conso
     nom: "BU Crédit Conso"
     pole: "Lignes métiers commerciales"
-    metiers: ["Chargé de crédit à la consommation", "Analyste octroi", "Gestionnaire back-office crédit"]
+    metiers: ["Chargé de crédit à la consommation", "Analyste octroi",
+              "Gestionnaire back-office crédit", "Chargé de recouvrement crédit conso"]
   - key: prod_appui_commercial
     nom: "Production & Appui commercial"
     pole: "Lignes métiers commerciales"
-    metiers: ["Gestionnaire middle/back-office", "Support réseau commercial", "Chargé de production bancaire"]
+    metiers: ["Gestionnaire middle/back-office", "Support réseau commercial",
+              "Chargé de production bancaire", "Gestionnaire des opérations clientèle"]
 
   # ---------- B. Marchés, international & filiales spécialisées ----------
   - key: imex
     nom: "IMEX (opérations internationales / Trade Finance)"
     pole: "Marchés, international & filiales"
     metiers: ["Gestionnaire opérations documentaires (CREDOC, remises)", "Spécialiste Trade Finance",
-              "Chargé de garanties internationales", "Gestionnaire transferts internationaux"]
+              "Chargé de garanties internationales", "Gestionnaire transferts internationaux",
+              "Analyste conformité opérations internationales"]
   - key: bmci_bourse
     nom: "BMCI Bourse"
     pole: "Marchés, international & filiales"
-    metiers: ["Négociateur / Trader actions", "Analyste financier sell-side", "Sales bourse"]
+    metiers: ["Négociateur / Trader actions", "Analyste financier sell-side", "Sales bourse",
+              "Gestionnaire back-office titres"]
   - key: alm_treasury
     nom: "ALM Treasury"
     pole: "Marchés, international & filiales"
-    metiers: ["Trésorier", "Gestionnaire ALM (actif-passif)", "Opérateur salle des marchés", "Middle-office marchés"]
+    metiers: ["Trésorier", "Gestionnaire ALM (actif-passif)", "Opérateur salle des marchés",
+              "Middle-office marchés", "Analyste liquidité & refinancement", "Économiste de marché"]
   - key: bmci_leasing
     nom: "BMCI Leasing"
     pole: "Marchés, international & filiales"
-    metiers: ["Chargé d'affaires leasing", "Analyste crédit-bail", "Gestionnaire de contrats"]
+    metiers: ["Chargé d'affaires leasing", "Analyste crédit-bail", "Gestionnaire de contrats",
+              "Chargé de recouvrement leasing"]
   - key: bmci_assurance
     nom: "BMCI Assurance"
     pole: "Marchés, international & filiales"
-    metiers: ["Chargé bancassurance", "Souscripteur", "Gestionnaire sinistres"]
+    metiers: ["Chargé bancassurance", "Souscripteur", "Gestionnaire sinistres", "Actuaire"]
   - key: bmci_offshore
     nom: "BMCI Offshore"
     pole: "Marchés, international & filiales"
-    metiers: ["Chargé de clientèle offshore", "Gestionnaire opérations internationales"]
+    metiers: ["Chargé de clientèle offshore", "Gestionnaire opérations internationales",
+              "Analyste conformité offshore"]
   - key: monetique
     nom: "Monétique"
     pole: "Marchés, international & filiales"
-    metiers: ["Chef de produit cartes / paiement", "Expert monétique", "Gestionnaire fraude cartes"]
+    metiers: ["Chef de produit cartes / paiement", "Expert monétique", "Gestionnaire fraude cartes",
+              "Ingénieur systèmes monétiques", "Chargé acquisition e-commerce", "Chef de projet paiement instantané"]
 
   # ---------- C. Risques, conformité & contrôle ----------
   - key: risques
     nom: "Risques"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Risk manager crédit", "Risk manager marché", "Risk manager opérationnel", "Modélisateur risque"]
+    metiers: ["Risk manager crédit", "Risk manager marché", "Risk manager opérationnel",
+              "Modélisateur risque (scoring/rating)", "Analyste stress tests",
+              "Chargé de reporting risques", "Analyste risque de contrepartie"]
   - key: engagement
     nom: "Engagement"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Analyste engagements / crédit", "Chargé d'études engagements", "Décideur crédit"]
+    metiers: ["Analyste engagements / crédit", "Chargé d'études engagements", "Décideur crédit",
+              "Analyste risque de contrepartie"]
   - key: conformite
     nom: "Conformité"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Compliance officer", "Analyste LCB-FT (AML)", "Référent KYC"]
+    metiers: ["Compliance officer", "Analyste LCB-FT (AML)", "Référent KYC",
+              "Chargé de conformité réglementaire", "Data protection officer (DPO)",
+              "Analyste sanctions & embargos"]
   - key: recouvrement
     nom: "Recouvrement amiable & contentieux"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Chargé de recouvrement amiable", "Juriste contentieux", "Gestionnaire précontentieux"]
+    metiers: ["Chargé de recouvrement amiable", "Juriste contentieux", "Gestionnaire précontentieux",
+              "Chargé de restructuration de créances"]
   - key: affaires_juridiques
     nom: "Affaires juridiques"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Juriste bancaire", "Juriste corporate", "Legal counsel"]
+    metiers: ["Juriste bancaire", "Juriste corporate", "Legal counsel", "Juriste réglementaire"]
   - key: inspection_generale
     nom: "Inspection générale"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Inspecteur / Auditeur interne", "Chef de mission d'audit"]
+    metiers: ["Inspecteur / Auditeur interne", "Chef de mission d'audit", "Auditeur SI"]
   - key: opc
     nom: "Operational Permanent Control"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Contrôleur permanent", "Analyste risque opérationnel (2e ligne)"]
+    metiers: ["Contrôleur permanent", "Analyste risque opérationnel (2e ligne)", "Chargé de contrôle interne"]
   - key: securite
     nom: "Sécurité"
     pole: "Risques, conformité & contrôle"
-    metiers: ["Responsable sûreté", "Expert sécurité des SI (RSSI)", "Gestionnaire continuité d'activité"]
+    metiers: ["Responsable sûreté", "Expert sécurité des SI (RSSI)", "Gestionnaire continuité d'activité (PCA)",
+              "Analyste SOC / cybersécurité", "Chargé de sécurité physique"]
 
   # ---------- D. Finance, stratégie & pilotage ----------
   - key: finance
     nom: "Finance"
     pole: "Finance, stratégie & pilotage"
-    metiers: ["Contrôleur de gestion", "Comptable", "Chargé de reporting réglementaire (Bank Al-Maghrib)"]
+    metiers: ["Contrôleur de gestion", "Comptable", "Chargé de reporting réglementaire (Bank Al-Maghrib)",
+              "Analyste financier", "Responsable consolidation", "Fiscaliste", "Trésorier comptable"]
   - key: strategie_gouvernance
     nom: "Stratégie & Gouvernance"
     pole: "Finance, stratégie & pilotage"
-    metiers: ["Chargé de stratégie", "PMO gouvernance", "Analyste corporate"]
+    metiers: ["Chargé de stratégie", "PMO gouvernance", "Analyste corporate", "Chargé de veille & études"]
   - key: transformation_efficacite
     nom: "Transformation & Efficacité Opérationnelle"
     pole: "Finance, stratégie & pilotage"
-    metiers: ["Chef de projet transformation", "Consultant interne / Lean", "Business analyst"]
+    metiers: ["Chef de projet transformation", "Consultant interne / Lean", "Business analyst",
+              "Chargé d'organisation & processus"]
 
   # ---------- E. Data, IT & digital ----------
   - key: systeme_information
     nom: "Système d'Information"
     pole: "Data, IT & digital"
-    metiers: ["Développeur", "Architecte SI", "Administrateur systèmes & réseaux", "Chef de projet IT"]
+    metiers: ["Développeur", "Architecte SI", "Administrateur systèmes & réseaux", "Chef de projet IT",
+              "Ingénieur DevOps", "Administrateur base de données", "Ingénieur support production", "Ingénieur cloud"]
   - key: digital_factory
     nom: "Digital Factory"
     pole: "Data, IT & digital"
-    metiers: ["Product owner", "Développeur full-stack", "UX/UI designer", "Scrum master"]
+    metiers: ["Product owner", "Développeur full-stack", "UX/UI designer", "Scrum master",
+              "Développeur mobile", "Ingénieur QA / test"]
   - key: chief_data_office
     nom: "Chief Data Office"
     pole: "Data, IT & digital"
-    metiers: ["Data scientist", "Data engineer", "Data steward / gouvernance", "Analyste BI"]
+    metiers: ["Data scientist", "Data engineer", "Data steward / gouvernance", "Analyste BI",
+              "Data analyst", "Machine learning engineer", "Chef de projet data"]
   - key: programme_sab
     nom: "Programme SAB (core banking)"
     pole: "Data, IT & digital"
-    metiers: ["Consultant / paramétreur SAB", "Chef de projet core banking", "Support applicatif SAB"]
+    metiers: ["Consultant / paramétreur SAB", "Chef de projet core banking", "Support applicatif SAB",
+              "Analyste fonctionnel SAB"]
 
   # ---------- F. Fonctions support & corporate ----------
   - key: ressources_humaines
     nom: "Ressources Humaines"
     pole: "Fonctions support & corporate"
-    metiers: ["Chargé RH", "Gestionnaire paie", "Responsable formation", "Chargé de recrutement / talent"]
+    metiers: ["Chargé RH", "Gestionnaire paie", "Responsable formation", "Chargé de recrutement / talent",
+              "HR business partner", "Chargé GPEC / gestion des carrières", "Chargé relations sociales"]
   - key: marketing_communication
     nom: "Marketing & Communication"
     pole: "Fonctions support & corporate"
-    metiers: ["Chef de produit", "Chargé de communication", "Responsable marketing digital"]
+    metiers: ["Chef de produit", "Chargé de communication", "Responsable marketing digital",
+              "Chargé d'études marketing", "Community manager", "Chargé CRM"]
   - key: achats
     nom: "Achats"
     pole: "Fonctions support & corporate"
-    metiers: ["Acheteur", "Gestionnaire fournisseurs", "Category manager"]
+    metiers: ["Acheteur", "Gestionnaire fournisseurs", "Category manager", "Chargé achats IT"]
   - key: fondation
     nom: "Fondation BMCI"
     pole: "Fonctions support & corporate"
-    metiers: ["Chargé de projets RSE / mécénat", "Coordinateur partenariats"]
+    metiers: ["Chargé de projets RSE / mécénat", "Coordinateur partenariats", "Chargé de communication RSE"]
