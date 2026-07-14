@@ -6,6 +6,8 @@ from app.models.occupation import Occupation, OccupationSkill, SkillRequirement
 from app.models.skill_mapping import SkillMapping, MappingMethod
 from app.models.skill_crosswalk import SkillCrosswalk
 from app.models.fiche import Fiche, FicheCompetence, FicheSource
+from app.models.user import User, UserSession, Role, UserType
+from app.models.audit_log import AuditLog, AuditEventType
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -14,4 +16,6 @@ __all__ = [
     "SkillMapping", "MappingMethod",
     "SkillCrosswalk",
     "Fiche", "FicheCompetence", "FicheSource",
+    "User", "UserSession", "Role", "UserType",
+    "AuditLog", "AuditEventType",
 ]
