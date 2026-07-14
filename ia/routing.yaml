@@ -59,6 +59,13 @@ taches:
     format: json
     num_ctx: 2048
 
+  generation_fiche:             # génération d'une fiche de poste (compétences inférées, FR)
+    model: mistral-nemo         # meilleur français pour rédiger une fiche réaliste
+    fallback: hermes3:8b
+    temperature: 0.3
+    format: json
+    num_ctx: 8192
+
   raisonnement_batch:           # planification talents / succession (hors-ligne)
     model: qwen3.6              # 23 Go — CPU + RAM, pas de temps réel
     temperature: 0.2

@@ -16,10 +16,30 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.schemas.fiche_extraction import FicheRequest, FicheResponse, GabaritResponse
-from app.services import fiche_config_service, fiche_extraction_service
+from app.schemas.fiche_extraction import (FicheRequest, FicheResponse, GabaritResponse,
+                                          DepartementInfo, FicheGenerationRequest, FicheGeneree)
+from app.services import (fiche_config_service, fiche_extraction_service,
+                          fiche_generation_service, cartography_service)
 
 router = APIRouter(prefix="/api/fiches", tags=["Fiches de poste"])
+
+
+@router.get("/departements", response_model=list[DepartementInfo],
+            summary="Lister la cartographie départements → métiers")
+def lister_departements() -> list[dict]:
+    """Renvoie la cartographie BMCI (départements, pôles, métiers-types)."""
+    return cartography_service.departements()
+
+
+@router.post("/generation", response_model=FicheGeneree,
+             summary="Générer une fiche de poste (compétences inférées, SYNTHÉTIQUE)")
+def generer_fiche(req: FicheGenerationRequest, db: Session = Depends(get_db)) -> FicheGeneree:
+    """Génère une fiche de poste pour un métier d'un département (compétences inférées
+    depuis le graphe + rédaction FR). Contenu SYNTHÉTIQUE (jamais des données réelles)."""
+    dept = cartography_service.get_departement(req.departement_key)
+    if not dept:
+        raise HTTPException(status_code=404, detail=f"Département inconnu : {req.departement_key}")
+    return fiche_generation_service.generate_fiche(db, req.metier, dept)
 
 
 @router.get("/gabarit", response_model=GabaritResponse,

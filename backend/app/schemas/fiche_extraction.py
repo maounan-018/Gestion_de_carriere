@@ -58,3 +58,26 @@ class GabaritSection(BaseModel):
 class GabaritResponse(BaseModel):
     version: int | None = None
     sections: list[GabaritSection]
+
+
+# ---- Cartographie & génération de fiche ----
+
+class DepartementInfo(BaseModel):
+    key: str
+    nom: str
+    pole: str | None = None
+    metiers: list[str] = Field(default_factory=list)
+
+
+class FicheGenerationRequest(BaseModel):
+    metier: str = Field(..., min_length=2, description="Intitulé du métier à générer.")
+    departement_key: str = Field(..., description="Clé de département (cartographie).")
+
+
+class FicheGeneree(BaseModel):
+    metier: str
+    departement: str
+    synthetique: bool = Field(True, description="Contenu généré (jamais des données réelles).")
+    sections: dict[str, str] = Field(..., description="Fiche au format du gabarit.")
+    competences_reference: list[str] = Field(default_factory=list,
+                                             description="Compétences du graphe ayant ancré la génération.")
