@@ -135,9 +135,18 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
     attempts = max(1, settings.AI_MAX_ATTEMPTS)
 
     last_parsed = None
+    last_error: HTTPException | None = None
     for model in models:
         for attempt in range(1, attempts + 1):
-            text = _post_generate(model, prompt, system, num_ctx, temperature, as_json)
+            try:
+                text = _post_generate(model, prompt, system, num_ctx, temperature, as_json)
+            except HTTPException as e:
+                # Erreur d'infra (503/504/500 d'Ollama) : inutile de réessayer CE
+                # modèle -> on bascule sur le suivant (fallback défini dans routing.yaml).
+                last_error = e
+                logger.warning("[%s] modèle %s indisponible (%s) — bascule vers le suivant.",
+                               task, model, e.detail)
+                break
             logger.debug("[%s/%s] essai %d : %s…", task, model, attempt, text[:200])
 
             if not as_json:
@@ -153,10 +162,11 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
                 return result
             last_parsed = result or last_parsed
 
-    # Épuisé : on rend le dernier JSON parsable (l'appelant complète ses défauts),
-    # ou on échoue proprement.
-    if as_json:
-        if last_parsed is not None:
-            return last_parsed
-        raise HTTPException(status_code=500, detail=f"Réponse IA invalide pour la tâche '{task}'.")
-    raise HTTPException(status_code=500, detail=f"Réponse IA vide pour la tâche '{task}'.")
+    # Épuisé : on rend le dernier JSON parsable (l'appelant complète ses défauts) ;
+    # sinon on remonte l'erreur d'infra si tous les modèles ont échoué, ou on échoue proprement.
+    if as_json and last_parsed is not None:
+        return last_parsed
+    if last_error is not None:
+        raise last_error
+    raise HTTPException(status_code=500,
+                        detail=f"Réponse IA {'invalide' if as_json else 'vide'} pour la tâche '{task}'.")
