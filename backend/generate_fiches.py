@@ -77,16 +77,25 @@ def main() -> None:
             todo = todo[:limit]
         logger.info("À générer : %d fiches (%d déjà en base).", len(todo), len(existing))
 
-        made = 0
-        for dept_key, dept, metier in todo:
-            gen = fiche_generation_service.generate_fiche(db, metier, dept)
-            _persist(db, dept_key, gen)
-            db.commit()
-            made += 1
-            logger.info("  [%d/%d] %s — %s", made, len(todo), dept["nom"], metier)
+        made, failed = 0, 0
+        for i, (dept_key, dept, metier) in enumerate(todo, 1):
+            # RÉSILIENCE : une fiche qui échoue (ex. timeout Ollama transitoire sous
+            # contention GPU) est SAUTÉE puis reprise au prochain run (idempotent),
+            # au lieu de faire planter tout le batch.
+            try:
+                gen = fiche_generation_service.generate_fiche(db, metier, dept)
+                _persist(db, dept_key, gen)
+                db.commit()
+                made += 1
+                logger.info("  [%d/%d] %s — %s", i, len(todo), dept["nom"], metier)
+            except Exception as e:  # noqa: BLE001
+                db.rollback()
+                failed += 1
+                logger.warning("  ÉCHEC [%d/%d] %s — %s : %s (sautée, reprise au prochain run)",
+                               i, len(todo), dept["nom"], metier, str(e)[:120])
 
         total = db.scalar(select(func.count()).select_from(Fiche))
-        print(f"\n=== {made} fiches générées cette exécution — {total} fiches en base ===")
+        print(f"\n=== {made} générées, {failed} sautées cette exécution — {total} fiches en base ===")
     finally:
         db.close()
 
