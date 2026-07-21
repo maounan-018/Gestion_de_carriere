@@ -17,3 +17,7 @@ alembic>=1.13            # migrations (prod)
 FlagEmbedding>=1.2
 
 # SSO SAML (optionnel, prod) : voir requirements-saml.txt
+
+# --- Tests (bonnes pratiques) ---
+pytest>=8.0
+httpx>=0.27   # requis par fastapi.testclient
