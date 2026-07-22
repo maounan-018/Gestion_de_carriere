@@ -589,8 +589,8 @@ S.portail=()=>`<div class="fade portal"><div class="demoflag" style="grid-column
         <circle class="nd" cx="36" cy="344" r="6"/><circle class="nd" cx="250" cy="208" r="6"/><circle class="nd gold" cx="452" cy="58" r="7"/>
       </svg></div>
       <div class="pv pv-skill"><div class="mini-ring" style="--p:88;margin:0 auto"><i>88%</i></div><div class="lab">Analyse financière</div></div>
-      <div class="pv pv-profile"><div class="row"><div class="ava md ph jm">JM</div><div style="flex:1;min-width:0"><h4>Jean-Marc Dupont</h4><div class="rl">Analyste Risque Senior</div></div><div class="mini-ring" style="--p:76"><i>76%</i></div></div></div>
-      <div class="pv pv-goal"><div class="eyebrow" style="color:var(--gold)">Prochaine station</div><div class="gr"><b>Manager de Pôle</b><span class="pct">92%</span></div><div class="bar-tr"><i style="width:78%"></i></div></div>
+      <div class="pv pv-profile"><div class="row"><div class="ava md ph jm">JM</div><div style="flex:1;min-width:0"><h4>Jean-Marc Dupont</h4><div class="rl">Directeur de Pôle Risques</div></div><div class="mini-ring" style="--p:76"><i>76%</i></div></div></div>
+      <div class="pv pv-goal"><div class="eyebrow" style="color:var(--gold)">Prochaine station</div><div class="gr"><b>Directeur Exécutif</b><span class="pct">92%</span></div><div class="bar-tr"><i style="width:78%"></i></div></div>
       <div class="pv pv-chip"><span class="dot">${ic('check','s')}</span> Évoluez sereinement</div>
     </div>
     <div class="hero-foot"><span>${ic('shield','s')} Connexion sécurisée SSL</span><span>${ic('user','s')} Réservé aux collaborateurs BMCI</span></div>
@@ -856,9 +856,7 @@ S.offres=()=>`<div class="fade app">${sidebar('manager','Offres internes')}<div 
 /* ---------- ROUTER ---------- */
 const ORDER=[['portail','Portail','Accès','Accès'],['inscription','Inscription','Accès','Accès'],['otp','Vérification OTP','Accès','Accès'],['connexion','Connexion','Accès','Accès'],['onboarding','Configuration du profil','Onboarding','Onboarding'],['onboardingErreur','Onboarding · annuaire','Onboarding','Onboarding'],['bienvenue','Bienvenue','Onboarding','Onboarding'],['managerDash','Tableau de bord','Espace manager','Espace manager'],['manager','Mon équipe','Espace manager','Espace manager'],['managerPerso','Mon profil','Espace manager','Espace manager'],['reco','Recommandations','Espace manager','Espace manager'],['entretien','Entretien annuel','Espace manager','Espace manager'],['offres','Offres internes','Espace manager','Espace manager'],['coach','Coach Carrière','Module IA','Modules IA']];
 /* ==== ÉCRANS SUPPLÉMENTAIRES (modules) ==== */
-ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détaillé","Collaborateur"],
-["recoDetail","Parcours : Manager de Pôle","Collaborateur · parcours détaillé","Collaborateur"],
-["formation","Formations","Collaborateur · parcours détaillé","Collaborateur"],
+ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détaillé","Collaborateur"],["formation","Formations","Collaborateur · parcours détaillé","Collaborateur"],
 ["offreDetail","Détail de l'offre","Collaborateur · parcours détaillé","Collaborateur"],
 ["mesCandidatures","Mes candidatures","Collaborateur · parcours détaillé","Collaborateur"],
 ["souhaitSuivi","Mes souhaits d'évolution","Collaborateur · parcours détaillé","Collaborateur"],
