@@ -46,7 +46,7 @@ button{font-family:inherit}
 .muted{color:var(--ink-3)}
 
 /* ============ PROTOTYPE SHELL ============ */
-.proto{display:grid;grid-template-columns:286px 1fr;min-height:100vh}
+.proto{display:block;min-height:100vh}
 .rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;background:var(--paper);border-right:1px solid var(--border);
   padding:20px 16px;display:flex;flex-direction:column;gap:16px}
 .rail-b{display:flex;align-items:center;gap:10px;padding:2px 4px}
@@ -539,16 +539,7 @@ button{font-family:inherit}
 </style>
 
 <div class="root"><div class="proto">
-  <aside class="rail">
-    <div class="rail-b"><div class="mk">B</div><div><b>BMCI · Gestion de carrière</b><span>Groupe BNP Paribas</span></div></div>
-    <div id="railNav"></div>
-  </aside>
   <main class="stage">
-    <div class="sbar">
-      <div><div class="st-t" id="scT">Portail d'entrée</div><div class="st-p" id="scP">Accès</div></div>
-      <div class="sp"></div>
-      <button class="ib" id="prev">← Précédent</button><button class="ib" id="next">Suivant →</button>
-    </div>
     <div class="sscroll"><div class="vp" id="vp"></div></div>
   </main>
 </div></div>
@@ -638,7 +629,7 @@ S.otp=()=>`<div class="fade auth"><div class="acard">
   <div class="otp" id="otp">${[0,1,2,3,4,5].map(i=>`<input inputmode="numeric" maxlength="1" aria-label="Chiffre ${i+1}">`).join('')}</div>
   <div class="fhint ok" id="ohint" hidden>${ic('check','s')} Code complet · validation…</div>
   <button class="btn btn-p block" id="oval" style="margin-top:18px">Valider</button>
-  <p class="sub" style="margin:16px 0 0">Pas reçu ? <button class="link">Renvoyer le code</button></p>
+  <p class="sub" style="margin:16px 0 0">Pas reçu ? <button class="link" id="otpResend">Renvoyer le code</button></p>
 </div></div>`;
 
 S.connexion=()=>`<div class="fade auth"><div class="acard">
@@ -651,7 +642,7 @@ S.connexion=()=>`<div class="fade auth"><div class="acard">
   <p class="sub" style="margin:16px 0 0">Démo : ouvrez ensuite <b>Espace Manager</b> ou <b>RH</b> dans l'index.</p>
 </div></div>`;
 
-S.onboarding=()=>`<div class="fade"><div class="card p ob-card">
+S.onboarding=()=>`<div class="fade"><div class="card p ob-card">${stepper(2)}
   <div class="ob-p"><span class="pt" id="obStep">Étape 1 sur 3</span><div class="track"><i id="obBar" style="width:33%"></i></div></div>
   <div style="text-align:center;margin:2px 0 12px"><span class="eyebrow" style="color:var(--green-deep)">Configuration de votre profil</span></div>
   <div class="chat" id="obChat"></div><div id="obZone" style="margin-top:14px"></div>
@@ -1413,9 +1404,8 @@ WIRE.confidentialite=function(){
 
 let cur='portail';
 let cartoPole='Risques';
-(function(){const g={};ORDER.forEach(([id,t,,gr],i)=>{(g[gr]=g[gr]||[]).push([id,t,i+1]);});
-  $('#railNav').innerHTML=Object.entries(g).map(([gr,it])=>`<div class="rgrp"><h5>${gr}</h5>${it.map(([id,t,n])=>`<button class="ritem" data-screen="${id}"><span class="n">${n}</span><span>${t}</span></button>`).join('')}</div>`).join('');})();
-function render(id){cur=id;const m=ORDER.find(o=>o[0]===id);if(m){$('#scT').textContent=m[1];$('#scP').textContent=m[2];}$('#vp').innerHTML=S[id]();
+
+function render(id){cur=id;$('#vp').innerHTML=S[id]();
   $$('.ritem').forEach(b=>b.classList.toggle('on',b.dataset.screen===id));$('.sscroll').scrollTop=0;window.scrollTo(0,0);wire(id);}
 function go(id){if(S[id])render(id);}
 const modalRoot=document.createElement('div');modalRoot.id='modalRoot';document.body.appendChild(modalRoot);
@@ -1431,8 +1421,7 @@ document.addEventListener('click',e=>{const r=e.target.closest('[data-screen]');
   const t=e.target.closest('[data-tog]');if(t){const on=t.getAttribute('aria-checked')==='true';t.setAttribute('aria-checked',!on);const s=t.querySelector('.on');if(s)s.textContent=on?'Privé':'Public';return;}
   if(e.target.closest('[data-mclose]')||e.target.hasAttribute('data-ovclose'))return closeModal();
   const f=e.target.closest('.fchip');if(f){f.parentElement.querySelectorAll('.fchip').forEach(x=>x.classList.remove('on'));f.classList.add('on');}});
-$('#prev').addEventListener('click',()=>{const i=ORDER.findIndex(o=>o[0]===cur);if(i>0)go(ORDER[i-1][0]);});
-$('#next').addEventListener('click',()=>{const i=ORDER.findIndex(o=>o[0]===cur);if(i<ORDER.length-1)go(ORDER[i+1][0]);});
+/* barre proto prev/suivant retirée — rendu écran réel */
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 
@@ -1462,9 +1451,9 @@ function wireReg(){const name=$('#rname'),email=$('#remail'),pass=$('#rpass'),bt
   function rf(){btn.disabled=!(ep()&&ee()&&name.value.trim().length>1);}
   [name,email,pass].forEach(el=>el.addEventListener('input',rf));
   $('#tpass').addEventListener('click',()=>{const t=pass.type==='password';pass.type=t?'text':'password';$('#tpass').innerHTML=ic(t?'eyeoff':'eye','s');$('#tpass').setAttribute('aria-label',t?'Masquer le mot de passe':'Afficher le mot de passe');});
-  btn.addEventListener('click',()=>go('otp'));rf();}
+  btn.addEventListener('click',()=>{toast('Compte créé · confirmez votre e-mail','info');go('otp');});rf();}
 function wireOtp(){const inp=$$('#otp input');inp.forEach((x,i)=>{x.addEventListener('input',()=>{x.value=x.value.replace(/\D/g,'').slice(0,1);if(x.value&&i<5)inp[i+1].focus();const full=inp.every(y=>y.value);const hn=$('#ohint');hn.hidden=!full;if(full){hn.className='fhint ok';hn.innerHTML=ic('check','s')+' Code complet · validation…';setTimeout(()=>go('onboarding'),650);}});
-  x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&i>0)inp[i-1].focus();});});inp[0].focus();
+  x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&i>0)inp[i-1].focus();});});inp[0].focus();const rs=$('#otpResend');if(rs)rs.addEventListener('click',()=>toast('Nouveau code envoyé','info'));
   $('#oval').addEventListener('click',()=>{if(inp.every(y=>y.value)){go('onboarding');}else{const hn=$('#ohint');hn.hidden=false;hn.className='fhint err';hn.innerHTML=ic('lock','s')+' Saisissez les 6 chiffres du code.';(inp.find(y=>!y.value)||inp[0]).focus();}});}
 function wireOb(){const chat=$('#obChat'),zone=$('#obZone'),bar=$('#obBar'),lbl=$('#obStep');
   const ent=['Banque de Détail','Corporate & Investment','Risques','IT & Digital','Finance','Ressources Humaines','Audit & Conformité'];
