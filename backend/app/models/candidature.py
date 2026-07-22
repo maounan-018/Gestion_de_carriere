@@ -42,6 +42,7 @@ class Candidature(Base):
     motivation: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))
+    reevaluated_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)  # dernière réévaluation (traçabilité)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)  # décideur (humain)
 
