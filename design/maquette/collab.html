@@ -897,7 +897,7 @@ function offerCard(o){const note=o.note0==='muted'?`<p class="muted" style="font
 let curOffer='ambassadeur';
 WIRE.offres=function(){const off=$('#off');if(!off)return;off.addEventListener('click',e=>{const c=e.target.closest('.fchip');if(!c)return;const val=c.dataset.ligne;let shown=0;$$('#ogrid .offer').forEach(card=>{const ok=val==='Tout'||card.dataset.ligne===val;card.style.display=ok?'':'none';if(ok)shown++;});const em=$('#offEmpty');if(em)em.hidden=shown>0;});};
 S.offres=()=>`<div class="fade app">${sidebar('collab','Offres internes')}<div class="main">${top('Offres internes & mobilité','Postes, missions et projets du Groupe','collab')}
-  <div class="content"><div class="toolbar"><div class="search">${ic('search','s')}<input placeholder="Rechercher un métier, une compétence, une ville…"></div><button class="btn btn-g btn-sm">Tous types ▾</button><button class="btn btn-g btn-sm">Localisation ▾</button></div>
+  <div class="content"><div class="toolbar"><div class="search">${ic('search','s')}<input placeholder="Rechercher un métier, une compétence, une ville…"></div><button class="btn btn-g btn-sm">Tous types ▾</button><button class="btn btn-g btn-sm">Localisation ▾</button><span style="flex:1"></span><button class="btn btn-g btn-sm" data-go="mesCandidatures">${ic('send','s')} Mes candidatures</button></div>
   <div class="ofilters" id="off">${['Tout','Finance','Digital & IT','Risque','Clientèle','RH'].map((f,i)=>`<button class="fchip ${i===0?'on':''}" data-ligne="${f}">${f}</button>`).join('')}</div>
   <p class="muted" style="font-size:12px;margin:4px 0 10px">Offres classées par <b>adéquation</b> avec votre profil · baromètre vert à gauche de chaque carte.</p>
   <div class="ogrid" id="ogrid">${OFFERS.map(offerCard).join('')}</div>
@@ -1383,6 +1383,7 @@ const PEOPLE=[
  ["LT","Leïla Tazi","Data Analyst","IT & Digital",["Python","Data viz","SQL"]],
  ["OM","Omar Mansouri","Chef de Projet Digital","IT & Digital",["Gestion de projet","Agile","Culture produit"]]
 ];
+let curPeople='AB';
 function peopleCard(p){return `<div class="offer pcard" data-person="${p[0]}" style="cursor:pointer"><div style="display:flex;align-items:center;gap:11px"><div class="ava md">${p[0]}</div><div style="flex:1;min-width:0"><h4>${p[1]}</h4><p class="od">${p[2]} · ${p[3]}</p></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px">${p[4].map(s=>`<span class="chip">${s}</span>`).join('')}</div><button class="btn btn-g btn-sm" data-person="${p[0]}">${ic('user','s')} Voir le profil</button></div>`;}
 S.recherche=()=>`<div class="fade app">${sidebar('collab','Rechercher')}<div class="main">${top('Rechercher des collègues','Trouvez et découvrez les profils du Groupe','collab')}
   <div class="content">
@@ -1400,8 +1401,29 @@ WIRE.recherche=function(){
   }
   function filter(){const q=(inp.value||'').toLowerCase().trim();let shown=0;$$('#pgrid .pcard').forEach(function(card){const p=PEOPLE.find(x=>x[0]===card.dataset.person);const hay=(p[1]+' '+p[2]+' '+p[3]+' '+p[4].join(' ')).toLowerCase();const ok=!q||hay.indexOf(q)>=0;card.style.display=ok?'':'none';if(ok)shown++;});const em=$('#pEmpty');if(em)em.hidden=shown>0;const cnt=$('#pCount');if(cnt)cnt.textContent=shown+' collègue(s) · seules les informations publiques sont visibles.';}
   if(inp) inp.addEventListener('input',filter);
-  grid.addEventListener('click',function(e){const t=e.target.closest('[data-person]');if(t)personModal(t.dataset.person);});
+  grid.addEventListener('click',function(e){const t=e.target.closest('[data-person]');if(t){curPeople=t.dataset.person;go('profilPublic');}});
 };
+S.profilPublic=()=>{const p=PEOPLE.find(x=>x[0]===curPeople)||PEOPLE[0];return `<div class="fade app">${sidebar('collab','Rechercher')}<div class="main">${top('Profil public',p[1]+' · '+p[3],'collab')}
+  <div class="content">
+    ${crumb([['Rechercher','recherche'],[p[1],null]])}
+    <div class="card p"><div class="phead"><div class="ava xl">${p[0]}</div>
+      <div class="pinfo"><h2>${p[1]}</h2><div class="role">${p[2]} · ${p[3]}</div>
+        <div class="pmeta"><span>${ic('pin','s')} Groupe BMCI</span><span>${ic('shield','s')} Profil public</span></div></div>
+      <button class="btn btn-p btn-sm" id="ppContact">${ic('mail','s')} Contacter</button></div></div>
+    <div class="wnote" style="margin-bottom:14px">${ic('shield','s')} Vous consultez les informations publiques de ce profil. Les données de carrière détaillées restent privées.</div>
+    <div class="cols"><div class="stack">
+      <div class="card p"><div class="sec-h"><h3>Compétences publiques</h3></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">${p[4].map(s=>`<span class="chip g">${s}</span>`).join('')}</div></div>
+      <div class="card p"><div class="sec-h"><h3>À propos</h3></div>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.6">${p[1]} est ${p[2].toLowerCase()} au sein de ${p[3]}. Ce profil partage publiquement ses principales compétences pour faciliter les mises en relation et la mobilité interne au sein du Groupe.</p></div>
+    </div><div class="stack">
+      <div class="card p"><div class="sec-h"><h3>Entité &amp; poste</h3></div>
+        <div class="stack" style="gap:8px"><div class="wish">${ic('grid','s')} ${p[3]}</div><div class="wish">${ic('brief','s')} ${p[2]}</div></div></div>
+      <div class="callout"><div class="ci">${ic('route','s')}</div><div><h4>Mobilité interne</h4><p>Échangez avec ce collègue sur son métier, ou explorez les offres internes correspondant à ces compétences.</p><button class="btn btn-g btn-sm" style="margin-top:8px" data-go="offres">${ic('brief','s')} Voir les offres internes</button></div></div>
+    </div></div>
+  </div></div></div>`;};
+WIRE.profilPublic=function(){const c=$('#ppContact');if(c)c.addEventListener('click',function(){const p=PEOPLE.find(x=>x[0]===curPeople)||PEOPLE[0];toast('Message envoyé à '+p[1].split(' ')[0]);});};
+ORDER.push(["profilPublic","Profil public d'un collègue","Collaborateur · parcours détaillé","Collaborateur"]);
 S.notifications=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')}<div class="main">${top('Notifications','Ce qui a bougé sur votre carrière','collab')}
   <div class="content">
     ${crumb([['Tableau de bord','collab'],['Notifications',null]])}
