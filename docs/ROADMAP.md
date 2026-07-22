@@ -113,9 +113,11 @@ SAML = placeholder documenté seulement.
 ## VIII. Qualité, tests & lancement
 - ⏳ Suite **pytest** — **échafaudage posé** (`app/tests/conftest.py`, `test_profil.py`) ;
   reste : **couvrir sécurité, RBAC, matching, extraction** (appli sensible)
-- ⏳ Migrations **Alembic** — **baseline `895f8467eae9` = stamp vide** du `create_all` ;
-  reste : **éprouver le workflow de migration incrémentale** (faire évoluer Offre/Candidature/niveau
-  **sans recréer la base ni perdre les 164 fiches**)
+- ✅ Migrations **Alembic** — **workflow incrémental ÉPROUVÉ** (2026-07-22) : révision
+  `66913f77409f` (`candidatures.reevaluated_at`) autogénérée, cycle upgrade/downgrade/upgrade
+  validé sur copie puis appliquée à la vraie base — **164 fiches préservées**.
+  Point ouvert : baseline `895f8467eae9` à `upgrade()` vide → sur base NEUVE, `upgrade head`
+  ne crée rien (bootstrap = `create_all`) ; à trancher si besoin d'une baseline reproductible
 - ⬜ **Scripts de lancement** dev (`LANCER_APP.bat` / `start_app.sh` / `VERIFIER.*`)
 - 🅿️ **CI** (GitHub Actions) · **PostgreSQL + pgvector** · **Docker** — optionnels (surtout prod → hors scope)
 - 🅿️ **Mise en production banque** (HTTPS, multi-worker, supervision, DSI) — **pas nous**
