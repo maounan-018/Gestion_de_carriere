@@ -46,7 +46,7 @@ button{font-family:inherit}
 .muted{color:var(--ink-3)}
 
 /* ============ PROTOTYPE SHELL ============ */
-.proto{display:grid;grid-template-columns:286px 1fr;min-height:100vh}
+.proto{display:block;min-height:100vh}
 .rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;background:var(--paper);border-right:1px solid var(--border);
   padding:20px 16px;display:flex;flex-direction:column;gap:16px}
 .rail-b{display:flex;align-items:center;gap:10px;padding:2px 4px}
@@ -536,16 +536,7 @@ button{font-family:inherit}
 </style>
 
 <div class="root"><div class="proto">
-  <aside class="rail">
-    <div class="rail-b"><div class="mk">B</div><div><b>BMCI · Gestion de carrière</b><span>Groupe BNP Paribas</span></div></div>
-    <div id="railNav"></div>
-  </aside>
   <main class="stage">
-    <div class="sbar">
-      <div><div class="st-t" id="scT">Portail d'entrée</div><div class="st-p" id="scP">Accès</div></div>
-      <div class="sp"></div>
-      <button class="ib" id="prev">← Précédent</button><button class="ib" id="next">Suivant →</button>
-    </div>
     <div class="sscroll"><div class="vp" id="vp"></div></div>
   </main>
 </div></div>
@@ -568,11 +559,11 @@ filter:'M4 5h16l-6 8v5l-4 2v-7z',award:'M12 14a5 5 0 100-10 5 5 0 000 10zM8.5 13
 eye:'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 15a3 3 0 100-6 3 3 0 000 6',
 eyeoff:'M3 3l18 18M10.6 10.6a3 3 0 004 4M9.9 5.1A9.5 9.5 0 0112 5c6.5 0 10 7 10 7a17 17 0 01-3.3 4.1M6.6 6.6C3.9 8.2 2 12 2 12s3.5 7 10 7a9.8 9.8 0 004.4-1'};
 const ic=(n,c='')=>`<svg class="svgi ${c}" viewBox="0 0 24 24" stroke="currentColor"><path d="${IC[n]||''}"/></svg>`;
-const EMAIL='prenom.nom@bnpparibas.com', USER='jm.dupont@bnpparibas.com';
+const EMAIL='prenom.nom@bnpparibas.com', USER='marc.bennani@bnpparibas.com';
 
 /* canonical nav per role */
 const NAV={
- collab:[['dashboard','home','Tableau de bord'],['collab','user','Mon profil'],['reco','route','Recommandations'],['entretien','chat','Entretiens'],['offres','brief','Offres internes'],['formation','book','Formations'],['coach','spark','Coach Carrière']]
+ collab:[['dashboard','home','Tableau de bord'],['collab','user','Mon profil'],['reco','route','Recommandations'],['entretien','chat','Entretiens'],['offres','brief','Offres internes'],['formation','book','Formations'],['recherche','search','Rechercher'],['coach','spark','Coach Carrière']]
 };
 function sidebar(role,active){
   const items=NAV[role].map(([t,i,l])=>`<button class="nav-i ${l===active?'on':''}" data-go="${t}">${ic(i)}<span>${l}</span></button>`).join('');
@@ -581,7 +572,7 @@ function sidebar(role,active){
 }
 function top(t,s,role){const b=role==='manager'?'<span class="badge b-role">Manager</span>':role==='rh'?'<span class="badge b-role">RH</span>':'<span class="badge b-mut">Collaborateur</span>';
   return `<div class="top"><div><div class="tt">${t}</div><div class="ts">${s}</div></div><div class="sp"></div>${b}
-   <button class="ib2" data-go="notifications" title="Notifications">${ic('bell','s')}</button><div class="ava md ph jm">JM</div></div>`;}
+   <button class="ib2" data-go="notifications" title="Notifications">${ic('bell','s')}</button><div class="ava md ph jm">MB</div></div>`;}
 function stepper(a){return `<div class="stepper">${['Compte','Vérification','Profil'].map((s,i)=>{const c=i<a?'done':i===a?'active':'';return `<div class="st ${c}"><span class="dot">${i<a?'✓':i+1}</span><span class="lbl">${s}</span></div>${i<2?'<span class="bar"></span>':''}`;}).join('')}</div>`;}
 
 const S={};
@@ -598,7 +589,7 @@ S.portail=()=>`<div class="fade portal"><div class="demoflag" style="grid-column
         <circle class="nd" cx="36" cy="344" r="6"/><circle class="nd" cx="250" cy="208" r="6"/><circle class="nd gold" cx="452" cy="58" r="7"/>
       </svg></div>
       <div class="pv pv-skill"><div class="mini-ring" style="--p:88;margin:0 auto"><i>88%</i></div><div class="lab">Analyse financière</div></div>
-      <div class="pv pv-profile"><div class="row"><div class="ava md ph jm">JM</div><div style="flex:1;min-width:0"><h4>Jean-Marc Dupont</h4><div class="rl">Analyste Risque Senior</div></div><div class="mini-ring" style="--p:76"><i>76%</i></div></div></div>
+      <div class="pv pv-profile"><div class="row"><div class="ava md ph jm">MB</div><div style="flex:1;min-width:0"><h4>Marc Bennani</h4><div class="rl">Analyste Risque Senior</div></div><div class="mini-ring" style="--p:76"><i>76%</i></div></div></div>
       <div class="pv pv-goal"><div class="eyebrow" style="color:var(--gold)">Prochaine station</div><div class="gr"><b>Manager de Pôle</b><span class="pct">92%</span></div><div class="bar-tr"><i style="width:78%"></i></div></div>
       <div class="pv pv-chip"><span class="dot">${ic('check','s')}</span> Évoluez sereinement</div>
     </div>
@@ -635,7 +626,7 @@ S.otp=()=>`<div class="fade auth"><div class="acard">
   <div class="otp" id="otp">${[0,1,2,3,4,5].map(i=>`<input inputmode="numeric" maxlength="1" aria-label="Chiffre ${i+1}">`).join('')}</div>
   <div class="fhint ok" id="ohint" hidden>${ic('check','s')} Code complet · validation…</div>
   <button class="btn btn-p block" id="oval" style="margin-top:18px">Valider</button>
-  <p class="sub" style="margin:16px 0 0">Pas reçu ? <button class="link">Renvoyer le code</button></p>
+  <p class="sub" style="margin:16px 0 0">Pas reçu ? <button class="link" id="otpResend">Renvoyer le code</button></p>
 </div></div>`;
 
 S.connexion=()=>`<div class="fade auth"><div class="acard">
@@ -648,7 +639,7 @@ S.connexion=()=>`<div class="fade auth"><div class="acard">
   <p class="sub" style="margin:16px 0 0">Démo : ouvrez ensuite <b>Espace Manager</b> ou <b>RH</b> dans l'index.</p>
 </div></div>`;
 
-S.onboarding=()=>`<div class="fade"><div class="card p ob-card">
+S.onboarding=()=>`<div class="fade"><div class="card p ob-card">${stepper(2)}
   <div class="ob-p"><span class="pt" id="obStep">Étape 1 sur 3</span><div class="track"><i id="obBar" style="width:33%"></i></div></div>
   <div style="text-align:center;margin:2px 0 12px"><span class="eyebrow" style="color:var(--green-deep)">Configuration de votre profil</span></div>
   <div class="chat" id="obChat"></div><div id="obZone" style="margin-top:14px"></div>
@@ -672,8 +663,8 @@ S.bienvenue=()=>`<div class="fade portal" style="min-height:420px">
 
 S.collab=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div class="main">${top('Mon profil','Votre trajectoire au sein du Groupe','collab')}
   <div class="content">
-    <div class="card p"><div class="phead"><div class="ava xl ph jm">JM</div>
-      <div class="pinfo"><h2>Jean-Marc Dupont <span class="badge b-gold">${ic('award','s')} Top évaluation 2025</span></h2>
+    <div class="card p"><div class="phead"><div class="ava xl ph jm">MB</div>
+      <div class="pinfo"><h2>Marc Bennani <span class="badge b-gold">${ic('award','s')} Top évaluation 2025</span></h2>
         <div class="role">Analyste Risque Senior · Direction de l'Audit</div>
         <div class="pmeta"><span>${ic('pin','s')} Casablanca, Siège</span><span>${ic('mail','s')} ${USER}</span><span>${ic('cal','s')} Arrivé en 2018</span></div></div>
       <div class="ring"><svg width="76" height="76" viewBox="0 0 76 76"><circle class="rt" cx="38" cy="38" r="32"/><circle class="rp" id="ringP" cx="38" cy="38" r="32"/></svg><div class="rc"><div><b class="tnum">76%</b><small>Profil</small></div></div></div>
@@ -690,16 +681,17 @@ S.collab=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div class=
       <div class="card p"><div class="sec-h"><h3>Réalisations marquantes</h3><button class="link" data-go="editProfil">Modifier</button></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="ach"><div class="ai">${ic('bolt','s')}</div><div><h4>Automatisation du reporting</h4><p>−15 h / mois.</p></div></div>
         <div class="ach"><div class="ai">${ic('team','s')}</div><div><h4>Mentorat juniors</h4><p>3 nouveaux arrivants.</p></div></div></div></div>
+      <div class="card p"><div class="sec-h"><h3>Avis des pairs</h3><button class="tog" aria-checked="true" data-tog><span class="on">Public</span><span class="tk"><span class="kn"></span></span></button></div>
+        <div class="rev"><div class="ava sm ph sk">SK</div><div><p>« Expert rigoureux, analyses précises et étayées. »</p><div class="who"><span class="stars">★★★★★</span> Sarah K. · Directrice</div></div></div>
+        <div class="rev"><div class="ava sm ph ahmed">AB</div><div><p>« Toujours prêt à aider sur Python. Un vrai pilier. »</p><div class="who"><span class="stars">★★★★★</span> Ahmed B. · Analyste</div></div></div></div>
     </div><div class="stack">
       <div class="card p"><div class="sec-h"><h3>Mes compétences</h3><button class="tog" aria-checked="true" data-tog><span class="on">Public</span><span class="tk"><span class="kn"></span></span></button></div>
         <div class="gauges" id="gauges"></div><div style="display:flex;flex-wrap:wrap;gap:7px"><span class="chip g">Compliance</span><span class="chip g">Python · SQL</span><span class="chip g">Audit interne</span><span class="chip add">+ Ajouter</span></div></div>
       <div class="card p"><div class="sec-h"><h3>Poste visé &amp; aspirations</h3><button class="link" data-go="editProfil">Déclarer / modifier</button></div><div class="callout" style="margin:0 0 10px"><div class="ci">${ic('route','s')}</div><div><h4>Poste visé : Manager d'équipe Risques · horizon 1 an</h4><p>Encadrer une équipe et monter en expertise réglementaire (Bâle III).</p></div></div><div style="display:flex;flex-wrap:wrap;gap:7px"><span class="chip">Type : management</span><span class="chip">Mobilité : Paris / Londres</span><span class="chip">Disponibilité : 6-12 mois</span><span class="chip add">+ Préciser</span></div><p class="muted" style="font-size:11px;margin-top:8px">Vos aspirations orientent vos recommandations et aident votre manager et la RH à préparer vos entretiens.</p></div>
       <div class="card p"><div class="sec-h"><h3>Souhaits d'évolution</h3></div><div class="stack" style="gap:9px">
         <div class="wish">${ic('route','s')} Horizon 1 an · Manager d'équipe Risques</div><div class="wish">${ic('pin','s')} Mobilité internationale (Paris / Londres)</div></div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-g btn-sm" style="flex:1" data-go="editProfil">Modifier</button><button class="btn btn-p btn-sm" style="flex:1" data-go="souhaitSuivi">Partager (manager &amp; RH)</button></div></div>
-      <div class="card p"><div class="sec-h"><h3>Avis des pairs</h3><button class="tog" aria-checked="true" data-tog><span class="on">Public</span><span class="tk"><span class="kn"></span></span></button></div>
-        <div class="rev"><div class="ava sm ph sk">SK</div><div><p>« Expert rigoureux, analyses précises et étayées. »</p><div class="who"><span class="stars">★★★★★</span> Sarah K. · Directrice</div></div></div>
-        <div class="rev"><div class="ava sm ph ahmed">AB</div><div><p>« Toujours prêt à aider sur Python. Un vrai pilier. »</p><div class="who"><span class="stars">★★★★★</span> Ahmed B. · Analyste</div></div></div></div>
+        <div style="margin-top:12px"><button class="btn btn-p btn-sm block" data-go="souhaitSuivi">${ic('route','s')} Gérer mes souhaits d'évolution</button></div>
+        <p class="muted" style="font-size:11px;margin-top:6px">Définissez, modifiez et poussez vos souhaits à votre manager depuis leur espace dédié.</p></div>
     </div></div>
   </div></div></div>`;
 
@@ -710,7 +702,7 @@ S.reco=()=>`<div class="fade app">${sidebar('collab','Recommandations')}<div cla
         <h2 class="disp" style="font-size:22px;margin:2px 0 4px">Manager de Pôle Entreprises</h2>
         <p class="muted" style="font-size:12.5px">Le matching classe les postes par compatibilité avec votre profil.</p></div>
       <div style="text-align:center"><b class="disp" style="font-size:38px;color:var(--green-deep);line-height:1">62%</b><div class="muted" style="font-size:11px">adéquation actuelle</div></div>
-      <button class="btn btn-ai btn-sm" data-go="entretien">${ic('spark','s')} Discuter avec le Coach</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-g btn-sm" data-go="posteDetail" data-poste="manager-pole">${ic('brief','s')} Détail du poste</button><button class="btn btn-ai btn-sm" data-go="coach">${ic('spark','s')} Discuter avec le Coach</button></div>
     </div></div>
     <div class="cols"><div class="stack">
       <div class="card p"><div class="sec-h"><h3>Compétences à développer</h3><span class="pill mut">écarts · 3 socles</span></div>
@@ -730,9 +722,9 @@ S.reco=()=>`<div class="fade app">${sidebar('collab','Recommandations')}<div cla
     </div><div class="stack">
       <div class="card p"><div class="sec-h"><h3>Passerelles métiers</h3><span class="pill ai">${ic('spark','s')} recherche sémantique</span></div>
         <div class="stack" style="gap:9px">
-          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Responsable commercial</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill new">78 % · Forte affinité</span><span class="chip">ESCO</span></span></div></div>
-          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Gestionnaire des crédits</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill ai">71 % · Bonne affinité</span><span class="chip">ESCO</span></span></div></div>
-          <div class="rec"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Financial Managers</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill mut">64 % · Affinité modérée</span><span class="chip">O*NET</span></span></div></div>
+          <div class="rec" data-go="posteDetail" data-poste="responsable-commercial" style="cursor:pointer"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Responsable commercial</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill new">78 % · Forte affinité</span><span class="chip">ESCO</span></span></div></div>
+          <div class="rec" data-go="posteDetail" data-poste="gestionnaire-credits" style="cursor:pointer"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Gestionnaire des crédits</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill ai">71 % · Bonne affinité</span><span class="chip">ESCO</span></span></div></div>
+          <div class="rec" data-go="posteDetail" data-poste="financial-managers" style="cursor:pointer"><div class="ri" style="background:var(--green)">${ic('brief','s')}</div><div style="flex:1;display:flex;justify-content:space-between;gap:8px"><h4>Financial Managers</h4><span style="display:flex;gap:6px;align-items:center"><span class="pill mut">64 % · Affinité modérée</span><span class="chip">O*NET</span></span></div></div>
         </div></div>
       <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>Plan de développement · Coach Carrière</h4>
         <p>Pour progresser vers Manager de Pôle : (1) <b>Diriger une équipe</b> · gestion d'équipe, communication et motivation ; (2) <b>Stratégies de vente</b> · techniques de vente et lecture du marché ; (3) <b>Conformité</b> · cadre réglementaire bancaire.</p>
@@ -740,11 +732,71 @@ S.reco=()=>`<div class="fade app">${sidebar('collab','Recommandations')}<div cla
     </div></div>
   </div></div></div>`;
 
+/* ==== RECOMMANDATIONS · détail des postes / passerelles (#10) ==== */
+const POSTES={
+ "manager-pole":{title:"Manager de Pôle Entreprises",aff:62,src:"SFIA · niveau 5",fam:"Management · Banque de détail",
+   desc:["Le Manager de Pôle Entreprises pilote une équipe de chargés d'affaires et de gestionnaires, porte les objectifs commerciaux du pôle et arbitre les dossiers sensibles (crédit, risque, relation grands comptes).","C'est un rôle charnière entre l'expertise métier et l'encadrement : vous fixez le cap, développez vos équipes et représentez le pôle auprès de la direction."],
+   prereq:["5 ans et plus d'expérience en analyse ou relation entreprises","Première expérience d'encadrement ou de mentorat","Maîtrise du risque de crédit et de la réglementation"],
+   comp:[["Diriger une équipe",false],["Stratégies de vente",false],["Se conformer aux réglementations",false],["Analyse financière",true],["Risque de crédit",true],["Relation grands comptes",true]],
+   evol:["Directeur de Pôle","Directeur Régional","Directeur Commercial Entreprises"]},
+ "responsable-commercial":{title:"Responsable commercial",aff:78,src:"ESCO",fam:"Commercial · Développement",
+   desc:["Le Responsable commercial conçoit et pilote l'action commerciale d'un périmètre : plan de développement, animation d'une équipe de vente et suivi de la performance."],
+   prereq:["Expérience commerciale confirmée","Culture du résultat et pilotage par les KPI","Leadership d'équipe"],
+   comp:[["Stratégies de vente",false],["Diriger une équipe",false],["Négociation",true],["Analyse financière",true],["Relation client",true]],
+   evol:["Directeur Commercial","Manager de Pôle Entreprises","Directeur d'Agence"]},
+ "gestionnaire-credits":{title:"Gestionnaire des crédits",aff:71,src:"ESCO",fam:"Risque · Crédit",
+   desc:["Le Gestionnaire des crédits instruit, décide et suit les dossiers de crédit, en veillant à la maîtrise du risque et au respect des normes réglementaires."],
+   prereq:["Solide culture du risque de crédit","Maîtrise de l'analyse financière","Rigueur et sens de la décision"],
+   comp:[["Risque de crédit",true],["Analyse financière",true],["Se conformer aux réglementations",false],["IFRS 9",true],["Structuration de crédit",false]],
+   evol:["Responsable Crédit","Manager Risques","Analyste Crédit Senior"]},
+ "financial-managers":{title:"Financial Manager",aff:64,src:"O*NET",fam:"Finance · Pilotage",
+   desc:["Le Financial Manager supervise la santé financière d'une entité : budgets, reporting, arbitrages d'investissement et pilotage de la marge."],
+   prereq:["Expertise en analyse et contrôle de gestion","Vision stratégique et budgétaire","Maîtrise des outils de reporting"],
+   comp:[["Finance stratégique",false],["Analyse financière",true],["Reporting",true],["Pilotage budgétaire",false],["Excel / SQL",true]],
+   evol:["Directeur Financier Adjoint","Contrôleur de Gestion Senior","Head of FP&A"]}
+};
+let curPoste='manager-pole';
+S.posteDetail=()=>{const p=POSTES[curPoste]||POSTES['manager-pole'];const gap=p.comp.filter(c=>!c[1]);return `<div class="fade app">${sidebar('collab','Recommandations')}<div class="main">${top('Détail du poste',p.fam,'collab')}
+  <div class="content">
+    ${crumb([['Recommandations','reco'],[p.title,null]])}
+    <div class="cols">
+      <div class="stack">
+        <div class="card p">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h2 class="disp" style="font-size:22px;flex:1;min-width:200px">${p.title}</h2><div style="text-align:center"><b class="disp" style="font-size:30px;color:var(--green-deep);line-height:1">${p.aff}%</b><div class="muted" style="font-size:10.5px">adéquation</div></div><span class="chip">${p.src}</span></div>
+          <div class="divider" style="margin:14px 0"></div>
+          <h3 class="disp" style="font-size:15px;margin-bottom:8px">Le poste</h3>
+          ${p.desc.map((d,i)=>`<p style="font-size:13.5px;color:var(--ink-2);line-height:1.6${i?';margin-top:10px':''}">${d}</p>`).join('')}
+          <div class="divider" style="margin:14px 0"></div>
+          <h3 class="disp" style="font-size:15px;margin-bottom:8px">Prérequis</h3>
+          <div class="stack" style="gap:7px">${p.prereq.map(r=>`<div class="wish">${ic('check','s')} ${r}</div>`).join('')}</div>
+          <div class="divider" style="margin:14px 0"></div>
+          <h3 class="disp" style="font-size:15px;margin-bottom:8px">Compétences clés</h3>
+          <p class="muted" style="font-size:11.5px;margin-bottom:8px">Vert = déjà acquise · ambre = à développer</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">${p.comp.map(c=>`<span class="chip ${c[1]?'g':'gap'}">${ic(c[1]?'check':'flag','s')} ${c[0]}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card p">
+          <div class="sec-h"><h3>Évolutions possibles</h3></div>
+          <p class="muted" style="font-size:11.5px;margin-bottom:8px">Postes accessibles depuis ce rôle</p>
+          <div class="stack" style="gap:7px">${p.evol.map(e=>`<div class="wish">${ic('route','s')} ${e}</div>`).join('')}</div>
+        </div>
+        <div class="card p">
+          <div class="sec-h"><h3>Passer à l'action</h3></div>
+          <button class="btn btn-p block" data-go="reco" style="margin-bottom:8px">${ic('book','s')} Voir les formations associées</button>
+          <button class="btn btn-g block" id="addWish">${ic('route','s')} Ajouter à mes souhaits</button>
+        </div>
+        ${gap.length?`<div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>${gap.length} compétence(s) à développer</h4><p>Combler ces écarts renforce votre adéquation à ce poste. Le Coach peut vous proposer un plan.</p></div></div>`:''}
+      </div>
+    </div>
+  </div>
+</div></div>`;};
+WIRE.posteDetail=function(){const a=$('#addWish');if(a)a.addEventListener('click',()=>toast('Poste ajouté à vos souhaits'));};
 S.entretien=()=>`<div class="fade app">${sidebar('collab','Entretiens')}<div class="main">${top('Simulation d\'entretien IA','Entretien annuel 2026 · entraînement','collab')}
   <div class="content" style="grid-template-columns:210px 1fr 250px;display:grid;align-items:start">
     <div class="card p"><div class="eyebrow" style="margin-bottom:10px">Étapes</div><div class="stack step-list" style="gap:4px">
-      ${[['Introduction',1],['Bilan des réussites',2],['Objectifs 2026',0],['Compétences & soft skills',0],['Souhaits de formation',0],['Synthèse finale',0]].map(s=>`<div class="nav-i ${s[1]===2?'on':''}">${s[1]===1?ic('check','s'):s[1]===2?ic('chat','s'):ic('clock','s')}<span>${s[0]}</span></div>`).join('')}</div>
-      <div class="ob-p" style="margin-top:14px"><span class="pt">25 %</span><div class="track"><i style="width:25%"></i></div></div></div>
+      ${[['Introduction',1],['Objectifs 2026',1],['Bilan des réussites',2],['Compétences & soft skills',0],['Souhaits de formation',0],['Synthèse finale',0]].map(s=>`<div class="nav-i ${s[1]===2?'on':''}">${s[1]===1?ic('check','s'):s[1]===2?ic('chat','s'):ic('clock','s')}<span>${s[0]}</span></div>`).join('')}</div>
+      <div class="ob-p" style="margin-top:14px"><span class="pt">40 %</span><div class="track"><i style="width:40%"></i></div></div></div>
     <div class="stack"><div class="card p"><div class="chat"><div class="bubble bot">Bonjour Marc 👋 Commençons par un bilan. <b>Quelles ont été vos trois principales réussites cette année ?</b> Soyez spécifique sur l'impact.</div>
       <div class="bubble me">La migration du portefeuille client X vers les nouveaux modèles de scoring…</div></div>
       <div class="inp" style="margin-top:12px"><span class="ic">${ic('mic','s')}</span><input placeholder="Décrivez votre réussite…"><button class="btn btn-p btn-sm">${ic('send','s')} Envoyer</button></div></div>
@@ -755,7 +807,7 @@ S.entretien=()=>`<div class="fade app">${sidebar('collab','Entretiens')}<div cla
       <div class="ctip"><div class="th">${ic('check','s')} Analyse de ton</div><p>Discours perçu comme <b>proactif</b> et orienté résultats.</p></div></div>
   </div></div></div>`;
 
-S.dashboard=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')}<div class="main">${top('Tableau de bord','Bonjour Jean-Marc · l\'essentiel de votre carrière aujourd\'hui','collab')}
+S.dashboard=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')}<div class="main">${top('Tableau de bord','Bonjour Marc · l\'essentiel de votre carrière aujourd\'hui','collab')}
   <div class="content">
     <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi"><div class="ki">${ic('user','s')}</div><b class="tnum">76 %</b><small>Profil complété</small><button class="link" data-go="editProfil" style="margin-top:2px">Compléter</button></div>
@@ -763,23 +815,43 @@ S.dashboard=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')}<di
       <div class="kpi"><div class="ki">${ic('brief','s')}</div><b class="tnum">2</b><small>Candidatures en cours</small><button class="link" data-go="mesCandidatures" style="margin-top:2px">Suivre</button></div>
       <div class="kpi"><div class="ki">${ic('book','s')}</div><b class="tnum">1</b><small>Formation en cours</small><button class="link" data-go="formation" style="margin-top:2px">Reprendre</button></div>
     </div>
-    <div class="cols"><div class="stack">
+    <div class="card p">
+      <div class="sec-h"><h3>Ma progression de carrière</h3><button class="link" data-go="collab">Voir mon profil</button></div>
+      <div class="parc">
+        <svg viewBox="0 0 920 210" preserveAspectRatio="none" aria-hidden="true" style="width:100%;height:auto">
+          <line x1="24" y1="186" x2="900" y2="186" stroke="var(--border)" stroke-width="1"/>
+          <path class="pt" d="M44,172 C190,168 250,120 380,104 C500,88 590,66 700,52"/>
+          <path class="pp" d="M44,172 C190,168 250,120 380,104 C500,88 590,66 700,52"/>
+          <path d="M700,52 C778,42 828,36 884,28" fill="none" stroke="var(--green)" stroke-width="3" stroke-dasharray="3 6" stroke-linecap="round" opacity=".5"/>
+          <circle class="nd" cx="44" cy="172" r="6"/><circle class="nd" cx="380" cy="104" r="6"/>
+          <circle class="nd now" cx="700" cy="52" r="8"/><circle class="nd goal" cx="884" cy="28" r="8"/>
+        </svg>
+        <div class="pstations" style="grid-template-columns:repeat(4,1fr)">
+          <div class="pstat"><div class="yr">2018 · 2020</div><h4>Graduate Program</h4><p>Rotation sur 4 métiers.</p></div>
+          <div class="pstat"><div class="yr">2020 · 2023</div><h4>Chargé de Clientèle</h4><p>50 PME · +15 % de PNB.</p></div>
+          <div class="pstat"><div class="yr">Aujourd'hui</div><h4>Analyste Risque Senior <span class="pill new" style="width:max-content">Vous</span></h4><p>Scoring IFRS 9.</p></div>
+          <div class="pstat goal"><div class="yr">Objectif</div><h4>Manager de Pôle</h4><p>62 % d'adéquation · 3 compétences à développer.</p></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3)"><i style="width:16px;height:3px;border-radius:2px;background:var(--green);display:inline-block"></i>Parcours accompli</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3)"><i style="width:16px;height:3px;border-radius:2px;background:var(--green);opacity:.5;display:inline-block"></i>Chemin vers l'objectif</span>
+          <span style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3)"><span style="width:9px;height:9px;border-radius:50%;background:var(--gold);display:inline-block"></span>Station visée</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;align-items:start">
       <div class="card p"><div class="sec-h"><h3>À faire</h3><span class="pill mut">3 actions</span></div><div class="stack" style="gap:10px">
         <div class="rec"><div class="ri" style="background:var(--green)">${ic('user','s')}</div><div style="flex:1"><h4>Compléter votre profil</h4><p style="font-size:12px;color:var(--ink-3)">Ajoutez 2 compétences pour atteindre 85 %.</p><button class="link" style="margin-top:6px" data-go="editProfil">Compléter mon profil</button></div></div>
         <div class="rec ai"><div class="ri">${ic('chat','s')}</div><div style="flex:1"><h4>Préparer l'entretien annuel 2026</h4><p style="font-size:12px;color:var(--ink-3)">Entraînez-vous avec l'assistant avant le 30 septembre.</p><button class="link" style="margin-top:6px" data-go="entretien">Démarrer la préparation</button></div></div>
         <div class="rec"><div class="ri" style="background:var(--green)">${ic('book','s')}</div><div style="flex:1"><h4>Formation prioritaire · Diriger une équipe</h4><p style="font-size:12px;color:var(--ink-3)">Recommandée pour votre poste visé.</p><button class="link" style="margin-top:6px" data-go="formation">Voir la formation</button></div></div>
       </div></div>
-      <div class="card p"><div class="sec-h"><h3>Ma progression</h3><button class="link" data-go="collab">Voir mon profil</button></div>
-        <div class="parc"><svg viewBox="0 0 700 120" preserveAspectRatio="none" aria-hidden="true"><path class="pt" d="M30,96 C170,94 210,72 300,62 C400,50 470,34 670,18"/><path class="pp" d="M30,96 C170,94 210,72 300,62 C400,50 470,34 670,18"/><circle class="nd now" cx="430" cy="47" r="8"/><circle class="nd goal" cx="670" cy="18" r="8"/></svg>
-        <p class="muted" style="font-size:12px">Prochaine station visée : <b>Manager de Pôle</b> · 3 compétences à développer.</p></div>
-    </div><div class="stack">
       <div class="card p"><div class="sec-h"><h3>Notifications</h3><button class="link" data-go="notifications">Tout voir</button></div><div class="stack" style="gap:9px">
-        <div class="wish">${ic('bell','s')} Votre manager a consulté vos souhaits d'évolution.</div>
-        <div class="wish">${ic('brief','s')} Nouvelle offre compatible : Analyste Crédit Senior (91 %).</div>
-        <div class="wish">${ic('check','s')} Évaluation 2025 validée par Sarah K.</div>
+        <div class="wish" data-go="souhaitSuivi" style="cursor:pointer">${ic('bell','s')} Votre manager a consulté vos souhaits d'évolution.</div>
+        <div class="wish" data-go="offreDetail" data-offer="analyste-credit" style="cursor:pointer">${ic('brief','s')} Nouvelle offre compatible : Analyste Crédit Senior (91 %).</div>
+        <div class="wish" data-go="collab" style="cursor:pointer">${ic('check','s')} Évaluation 2025 validée par Sarah K.</div>
       </div></div>
-      <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>Coach Carrière</h4><p>Une question sur votre évolution ? Votre assistant carrière est disponible en continu, en toute confidentialité.</p><button class="btn btn-ai btn-sm" style="margin-top:10px" data-go="coach">${ic('chat','s')} Discuter avec mon Coach</button></div></div>
-    </div></div>
+      <div class="callout" style="align-items:flex-start"><div class="ci">${ic('spark','s')}</div><div><h4>Coach Carrière</h4><p>Une question sur votre évolution ? Votre assistant carrière est disponible en continu, en toute confidentialité.</p><button class="btn btn-ai btn-sm" style="margin-top:10px" data-go="coach">${ic('chat','s')} Discuter avec mon Coach</button></div></div>
+    </div>
   </div></div></div>`;
 
 S.coach=()=>`<div class="fade app">${sidebar('collab','Coach Carrière')}<div class="main">${top('Coach Carrière','Votre assistant carrière personnel · 100 % confidentiel','collab')}
@@ -810,19 +882,26 @@ S.coach=()=>`<div class="fade app">${sidebar('collab','Coach Carrière')}<div cl
     </div>
   </div></div></div>`;
 
+/* ==== OFFRES · données pilotant liste + détail (#12/#13) ==== */
+const OFFERS=[
+ {key:"analyste-credit",type:"Poste",pc:"mut",pct:91,adq:"Très adapté",ligne:"Clientèle",title:"Analyste Crédit Senior · Corporate Banking",sub:"Analyse des dossiers de crédit, segment Grandes Entreprises.",meta:[["pin","Casablanca"],["brief","CDI"]],note0:"muted",cta:"Postuler",ctaDetail:"Postuler à ce poste",mgr:false,dsub:"Poste · Corporate Banking",ctx:"Direction Corporate Banking · Segment Grandes Entreprises",tpill:null,mtitle:"Le poste",mission:["En tant qu'Analyste Crédit Senior, vous instruisez les dossiers de crédit des grandes entreprises : analyse financière, évaluation du risque de contrepartie et rédaction des notes soumises au comité de crédit.","Vous êtes l'interlocuteur des chargés d'affaires sur la structuration des financements et contribuez à la maîtrise du coût du risque du portefeuille Corporate."],skills:["Analyse financière","Risque de contrepartie","IFRS 9","Structuration de crédit","Anglais financier"],infos:[["pin","Localisation · Casablanca, Siège"],["brief","Contrat · CDI"],["cal","Prise de poste · dès que possible"],["user","Référent · Direction des Risques"]],nI:"shield",nT:"Candidature confidentielle : pour un poste, votre manager n'est pas informé.",nOk:true,ch4:"91 % de compatibilité",cp:"Vos compétences en scoring IFRS 9 et analyse de risque sont directement transférables à ce poste."},
+ {key:"ambassadeur",type:"Mission transverse",pc:"ai",pct:88,adq:"Très adapté",ligne:"Digital & IT",title:"Ambassadeur Digital · Retail Banking",sub:"Déploiement des outils digitaux en agence (20 % sur 3 mois).",meta:[["pin","Hybride"],["cal","Dès octobre"]],note0:"wnote",noteI:"bell",noteT:"Votre manager sera informé si vous manifestez votre intérêt.",cta:"Postuler",ctaDetail:"Postuler à cette mission",mgr:true,mgrN:"Sarah Kabbaj",dsub:"Mission transverse · Retail Banking",ctx:"Direction de la Banque de Détail · Réseau d'agences du Grand Casablanca",tpill:"20 % de votre temps",mtitle:"La mission",mission:["En tant qu'Ambassadeur Digital, vous accompagnez le déploiement des nouveaux outils digitaux (application mobile, signature électronique, ouverture de compte à distance) auprès des conseillers en agence. Vous animez des ateliers de prise en main, remontez les irritants terrain aux équipes produit et suivez les indicateurs d'adoption sur un panel de 12 agences pilotes.","Cette mission de 3 mois, à hauteur de 20 % de votre temps, est un tremplin idéal pour développer votre leadership transverse et votre culture produit · deux compétences clés vers un poste de Manager de Pôle."],skills:["Pédagogie & animation","Culture digitale","Connaissance du réseau","Communication","Analyse d'usage"],infos:[["pin","Localisation · Hybride (agences + Siège)"],["clock","Durée · 3 mois, 20 % du temps"],["cal","Échéance de candidature · 30 septembre 2026"],["user","Référent · Nadia El Amrani"]],nI:"bell",nT:"En postulant, votre manager direct sera informé de votre candidature à cette mission transverse.",nOk:false,ch4:"+4 % de compatibilité",cp:"Cette mission renforce « Leadership transverse » · un levier direct vers votre objectif Manager de Pôle."},
+ {key:"mentorat-mgmt",type:"Mentorat",pc:"new",pct:84,adq:"Recommandé",ligne:"Risque",title:"Mentorat · Management d'équipe Risques",sub:"Accompagnement par un directeur de pôle pour préparer votre évolution.",meta:[["team","1:1"],["clock","6 mois"]],note0:"wnote",noteI:"shield",noteT:"Mise en relation confidentielle avec le mentor.",cta:"Demander un mentorat",ctaDetail:"Demander ce mentorat",mgr:false,dsub:"Mentorat · Management d'équipe",ctx:"Programme de mentorat interne · Direction des Risques",tpill:null,mtitle:"Le mentorat",mission:["Un directeur de pôle Risques vous accompagne pendant 6 mois pour préparer votre passage vers un rôle d'encadrement : posture managériale, conduite d'entretien, gestion des priorités d'équipe.","Les échanges sont mensuels et confidentiels. Le mentor vous aide à bâtir un plan de développement concret et à préparer votre prochaine évaluation."],skills:["Leadership","Conduite d'entretien","Gestion d'équipe","Prise de décision"],infos:[["team","Format · 1:1 mensuel"],["clock","Durée · 6 mois"],["shield","Confidentialité · échanges privés"],["user","Mentor · Directeur de Pôle Risques"]],nI:"shield",nT:"Mise en relation confidentielle : ni votre manager ni les autres collaborateurs ne sont informés.",nOk:true,ch4:"Levier direct",cp:"Le mentorat cible « Diriger une équipe », votre principal écart vers Manager de Pôle."},
+ {key:"taskforce-ia",type:"Projet innovation",pc:"new",pct:79,adq:"Adapté",ligne:"Digital & IT",title:"Task Force · IA Générative & Compliance",sub:"Cas d'usage IA pour la conformité bancaire.",meta:[["team","Cross-métiers"],["clock","6 mois"]],note0:"wnote",noteI:"bell",noteT:"Manager informé (mission ponctuelle).",cta:"Postuler",ctaDetail:"Rejoindre la task force",mgr:true,mgrN:"Sarah Kabbaj",dsub:"Projet innovation · Compliance",ctx:"Direction de la Conformité · Programme d'innovation Groupe",tpill:null,mtitle:"Le projet",mission:["La task force explore des cas d'usage d'IA générative appliqués à la conformité : synthèse réglementaire, détection d'anomalies et assistance aux contrôles. Vous contribuez à cadrer les cas d'usage et à évaluer leur valeur métier.","Projet cross-métiers réunissant Risques, Conformité et IT sur 6 mois, à temps partiel."],skills:["IA générative","Conformité","Analyse de données","Cadrage de cas d'usage","Esprit critique"],infos:[["team","Format · équipe cross-métiers"],["clock","Durée · 6 mois, temps partiel"],["cal","Démarrage · septembre 2026"],["user","Sponsor · Direction Conformité"]],nI:"bell",nT:"Mission ponctuelle : votre manager est informé de votre participation.",nOk:false,ch4:"Compétence rare",cp:"Vous développez une expertise IA + conformité très recherchée dans le Groupe."},
+ {key:"chef-projet-lean",type:"Poste",pc:"mut",pct:72,adq:"Adapté",ligne:"Finance",title:"Chef de Projet Lean Management",sub:"Excellence opérationnelle des processus Back-Office.",meta:[["pin","Siège"],["brief","CDI"]],note0:"muted",cta:"Postuler",ctaDetail:"Postuler à ce poste",mgr:false,dsub:"Poste · Excellence opérationnelle",ctx:"Direction des Opérations · Programme Lean & Excellence",tpill:null,mtitle:"Le poste",mission:["Vous pilotez des chantiers d'optimisation des processus Back-Office : cartographie des flux, identification des gaspillages et mise en œuvre de plans d'amélioration continue selon la méthode Lean.","Vous animez des ateliers avec les équipes métier et suivez les gains de productivité et de qualité."],skills:["Lean Management","Gestion de projet","Cartographie de processus","Animation d'atelier","Conduite du changement"],infos:[["pin","Localisation · Casablanca, Siège"],["brief","Contrat · CDI"],["cal","Prise de poste · T4 2026"],["user","Référent · Direction des Opérations"]],nI:"shield",nT:"Candidature confidentielle : pour un poste, votre manager n'est pas informé.",nOk:true,ch4:"72 % de compatibilité",cp:"Votre expérience de l'automatisation du reporting est un atout ; un module « Lean » renforcerait votre profil."},
+ {key:"esg-relecture",type:"Mission transverse",pc:"ai",pct:65,adq:"À explorer",ligne:"Finance",title:"Relecture Expertise · Rapport ESG 2026",sub:"Relecture du volet environnemental du rapport annuel.",meta:[["clock","8 h"],["book","Synthèse"]],note0:"wnote",noteI:"bell",noteT:"Manager informé (mission ponctuelle).",cta:"Postuler",ctaDetail:"Proposer mon expertise",mgr:true,mgrN:"Sarah Kabbaj",dsub:"Mission ponctuelle · Rapport ESG",ctx:"Direction Finance & RSE · Rapport annuel intégré 2026",tpill:"8 h",mtitle:"La mission",mission:["Vous relisez le volet environnemental du rapport ESG 2026 : cohérence des indicateurs, clarté des synthèses et alignement avec le cadre réglementaire. Une contribution courte (environ 8 h) mais visible au niveau Groupe."],skills:["Analyse ESG","Rédaction","Sens du détail","Culture réglementaire"],infos:[["clock","Charge · environ 8 h"],["book","Livrable · relecture annotée"],["cal","Échéance · 15 novembre 2026"],["user","Référent · Direction RSE"]],nI:"bell",nT:"Mission ponctuelle : votre manager est informé de votre participation.",nOk:false,ch4:"Visibilité Groupe",cp:"Une contribution courte qui met en valeur votre rigueur auprès de la Direction Finance."},
+ {key:"mentorat-data",type:"Mentorat",pc:"ai",pct:58,adq:"À explorer",ligne:"Digital & IT",title:"Mentorat inversé · Culture Data",sub:"Partagez votre expertise métier avec un talent data junior.",meta:[["spark","Réciproque"],["clock","3 mois"]],note0:"wnote",noteI:"shield",noteT:"Mise en relation confidentielle avec le mentor.",cta:"Devenir mentor",ctaDetail:"Devenir mentor",mgr:false,dsub:"Mentorat inversé · Culture Data",ctx:"Programme Reverse Mentoring · Culture Data Groupe",tpill:null,mtitle:"Le mentorat inversé",mission:["Dans ce mentorat inversé, vous transmettez votre expertise métier Risques à un talent data junior, qui en retour vous fait monter en culture data et outils analytiques. Un échange réciproque sur 3 mois."],skills:["Transmission","Culture data","Écoute","Vulgarisation métier"],infos:[["spark","Format · réciproque 1:1"],["clock","Durée · 3 mois"],["shield","Confidentialité · échanges privés"],["user","Binôme · talent Data junior"]],nI:"shield",nT:"Mise en relation confidentielle : ni votre manager ni les autres collaborateurs ne sont informés.",nOk:true,ch4:"Montée en culture data",cp:"Vous renforcez vos compétences analytiques tout en développant votre posture de transmission."}
+];
+function offerCard(o){const note=o.note0==='muted'?`<p class="muted" style="font-size:11px">Pour un poste, votre manager n'est pas informé.</p>`:`<div class="wnote">${ic(o.noteI,'s')} ${o.noteT}</div>`;
+  return `<div class="offer" data-go="offreDetail" data-offer="${o.key}" data-ligne="${o.ligne}" style="cursor:pointer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill ${o.pc}" style="width:max-content">${o.type}</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">${o.pct} %</b><div class="muted" style="font-size:10px">${o.adq}</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:${o.pct}%"></i></div><h4>${o.title}</h4><p class="od">${o.sub}</p><div class="om">${o.meta.map(m=>`<span>${ic(m[0],'s')} ${m[1]}</span>`).join('')}</div>${note}<button class="btn btn-p btn-sm" data-go="offreDetail" data-offer="${o.key}">${o.cta}</button></div>`;}
+let curOffer='ambassadeur';
+WIRE.offres=function(){const off=$('#off');if(!off)return;off.addEventListener('click',e=>{const c=e.target.closest('.fchip');if(!c)return;const val=c.dataset.ligne;let shown=0;$$('#ogrid .offer').forEach(card=>{const ok=val==='Tout'||card.dataset.ligne===val;card.style.display=ok?'':'none';if(ok)shown++;});const em=$('#offEmpty');if(em)em.hidden=shown>0;});};
 S.offres=()=>`<div class="fade app">${sidebar('collab','Offres internes')}<div class="main">${top('Offres internes & mobilité','Postes, missions et projets du Groupe','collab')}
   <div class="content"><div class="toolbar"><div class="search">${ic('search','s')}<input placeholder="Rechercher un métier, une compétence, une ville…"></div><button class="btn btn-g btn-sm">Tous types ▾</button><button class="btn btn-g btn-sm">Localisation ▾</button></div>
-  <div class="ofilters" id="off">${['Tout','Finance','Digital & IT','Risque','Clientèle','RH'].map((f,i)=>`<button class="fchip ${i===0?'on':''}">${f}</button>`).join('')}</div>
+  <div class="ofilters" id="off">${['Tout','Finance','Digital & IT','Risque','Clientèle','RH'].map((f,i)=>`<button class="fchip ${i===0?'on':''}" data-ligne="${f}">${f}</button>`).join('')}</div>
   <p class="muted" style="font-size:12px;margin:4px 0 10px">Offres classées par <b>adéquation</b> avec votre profil · baromètre vert à gauche de chaque carte.</p>
-  <div class="ogrid">
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill mut" style="width:max-content">Poste</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">91 %</b><div class="muted" style="font-size:10px">Très adapté</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:91%"></i></div><h4>Analyste Crédit Senior · Corporate Banking</h4><p class="od">Analyse des dossiers de crédit, segment Grandes Entreprises.</p><div class="om"><span>${ic('pin','s')} Casablanca</span><span>${ic('brief','s')} CDI</span></div><p class="muted" style="font-size:11px">Pour un poste, votre manager n'est pas informé.</p><button class="btn btn-p btn-sm" data-go="offreDetail">Postuler</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill ai" style="width:max-content">Mission transverse</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">88 %</b><div class="muted" style="font-size:10px">Très adapté</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:88%"></i></div><h4>Ambassadeur Digital · Retail Banking</h4><p class="od">Déploiement des outils digitaux en agence (20 % sur 3 mois).</p><div class="om"><span>${ic('pin','s')} Hybride</span><span>${ic('cal','s')} Dès octobre</span></div><div class="wnote">${ic('bell','s')} Votre manager sera informé si vous manifestez votre intérêt.</div><button class="btn btn-p btn-sm" data-go="offreDetail">Postuler</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill new" style="width:max-content">Mentorat</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">84 %</b><div class="muted" style="font-size:10px">Recommandé</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:84%"></i></div><h4>Mentorat · Management d'équipe Risques</h4><p class="od">Accompagnement par un directeur de pôle pour préparer votre évolution.</p><div class="om"><span>${ic('team','s')} 1:1</span><span>${ic('clock','s')} 6 mois</span></div><div class="wnote">${ic('shield','s')} Mise en relation confidentielle avec le mentor.</div><button class="btn btn-p btn-sm" data-go="offreDetail">Demander un mentorat</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill new" style="width:max-content">Projet innovation</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">79 %</b><div class="muted" style="font-size:10px">Adapté</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:79%"></i></div><h4>Task Force · IA Générative & Compliance</h4><p class="od">Cas d'usage IA pour la conformité bancaire.</p><div class="om"><span>${ic('team','s')} Cross-métiers</span><span>${ic('clock','s')} 6 mois</span></div><div class="wnote">${ic('bell','s')} Manager informé (mission ponctuelle).</div><button class="btn btn-p btn-sm" data-go="offreDetail">Postuler</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill mut" style="width:max-content">Poste</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">72 %</b><div class="muted" style="font-size:10px">Adapté</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:72%"></i></div><h4>Chef de Projet Lean Management</h4><p class="od">Excellence opérationnelle des processus Back-Office.</p><div class="om"><span>${ic('pin','s')} Siège</span><span>${ic('brief','s')} CDI</span></div><p class="muted" style="font-size:11px">Pour un poste, votre manager n'est pas informé.</p><button class="btn btn-p btn-sm" data-go="offreDetail">Postuler</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill ai" style="width:max-content">Mission transverse</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">65 %</b><div class="muted" style="font-size:10px">À explorer</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:65%"></i></div><h4>Relecture Expertise · Rapport ESG 2026</h4><p class="od">Relecture du volet environnemental du rapport annuel.</p><div class="om"><span>${ic('clock','s')} 8 h</span><span>${ic('book','s')} Synthèse</span></div><div class="wnote">${ic('bell','s')} Manager informé (mission ponctuelle).</div><button class="btn btn-p btn-sm" data-go="offreDetail">Postuler</button></div>
-    <div class="offer"><div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill ai" style="width:max-content">Mentorat</span><span style="text-align:right"><b class="disp" style="font-size:15px;color:var(--green-deep)">58 %</b><div class="muted" style="font-size:10px">À explorer</div></span></div><div class="bar-tr" style="height:6px;margin:8px 0"><i style="width:58%"></i></div><h4>Mentorat inversé · Culture Data</h4><p class="od">Partagez votre expertise métier avec un talent data junior.</p><div class="om"><span>${ic('spark','s')} Réciproque</span><span>${ic('clock','s')} 3 mois</span></div><div class="wnote">${ic('shield','s')} Mise en relation confidentielle avec le mentor.</div><button class="btn btn-p btn-sm" data-go="offreDetail">Devenir mentor</button></div>
-  </div><div style="text-align:center"><button class="btn btn-g">Voir plus d'offres · 42 disponibles</button></div>
+  <div class="ogrid" id="ogrid">${OFFERS.map(offerCard).join('')}</div>
+  <p class="muted" id="offEmpty" hidden style="text-align:center;padding:20px">Aucune offre pour ce filtre pour le moment.</p><div style="text-align:center"><button class="btn btn-g">Voir plus d'offres · 42 disponibles</button></div>
   </div></div></div>`;
 
 /* ---------- ROUTER ---------- */
@@ -855,18 +934,45 @@ S.editProfil=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div cl
   <div class="content">
     ${crumb([['Mon profil','collab'],['Éditer',null]])}
     <div class="cols">
+      <div class="stack">
       <div class="card p">
         <div class="sec-h"><h3>Informations générales</h3></div>
         <div class="phead" style="margin-bottom:20px">
-          <div class="ava xl ph jm">JM</div>
+          <div class="ava xl ph jm">MB</div>
           <div class="pinfo">
             <button class="btn btn-g btn-sm" id="changePhoto">${ic('user','s')} Changer la photo</button>
             <p class="muted" style="font-size:11.5px;margin-top:9px">JPG ou PNG · 2 Mo maximum · visible selon vos réglages de confidentialité.</p>
           </div>
         </div>
-        <div class="formrow"><label>Nom d'affichage</label><input class="ctrl" value="Jean-Marc Dupont" placeholder="Prénom Nom"></div>
+        <div class="formrow"><label>Nom d'affichage</label><input class="ctrl" value="Marc Bennani" placeholder="Prénom Nom"></div>
         <div class="formrow"><label>Description</label><textarea class="ta" placeholder="Décrivez votre parcours en quelques lignes…">Analyste Risque Senior à la Direction de l'Audit. Spécialiste du scoring IFRS 9 et de l'automatisation du reporting réglementaire. J'accompagne les juniors sur Python et l'analyse de données.</textarea></div>
         <button class="btn btn-p" id="saveProfil" style="margin-top:4px">${ic('check','s')} Enregistrer</button>
+      </div>
+      <div class="card p">
+        <div class="sec-h"><h3>Aspirations &amp; poste visé</h3></div>
+        <p class="muted" style="font-size:12px;margin-bottom:10px">Définissez clairement vos ambitions : elles orientent vos recommandations et préparent vos entretiens.</p>
+        <div class="formrow"><label>Poste visé</label><input class="ctrl" id="aspPoste" value="Manager d'équipe Risques" placeholder="Ex : Manager de Pôle, Expert IFRS 9…"></div>
+        <div class="formrow"><label>Horizon</label><div class="seg" id="aspHorizon">${['6 mois','1 an','2-3 ans'].map((h,i)=>`<button class="${i===1?'on':''}">${h}</button>`).join('')}</div></div>
+        <div class="formrow"><label>Type d'évolution souhaitée</label><div style="display:flex;flex-wrap:wrap;gap:7px">${['Management','Expertise','Mobilité géographique','Mission transverse'].map((t,i)=>`<button class="chip ${i===0?'g':''}" data-asp>${t}</button>`).join('')}</div></div>
+        <div class="formrow"><label>Zones géographiques</label><input class="ctrl" value="Casablanca · Paris · Londres" placeholder="Villes ou pays"></div>
+        <div class="formrow"><label>Disponibilité</label><input class="ctrl" value="6 à 12 mois" placeholder="Ex : immédiate, 6-12 mois…"></div>
+        <div class="formrow"><label>Mes ambitions (texte libre)</label><textarea class="ta" placeholder="Décrivez ce que vous visez et pourquoi…">À horizon 1 an, je souhaite encadrer une équipe Risques et monter en expertise réglementaire (Bâle III). À moyen terme, viser un poste de Manager de Pôle avec une dimension internationale.</textarea></div>
+        <button class="btn btn-p" id="saveAsp" style="margin-top:4px">${ic('check','s')} Enregistrer mes aspirations</button>
+      </div>
+      <div class="card p">
+        <div class="sec-h"><h3>Mon CV à jour</h3></div>
+        <p class="muted" style="font-size:12px;margin-bottom:10px">Un CV à jour améliore l'analyse de vos compétences et la préparation de vos entretiens.</p>
+        <div style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+          <div class="ki" style="width:40px;height:40px;background:var(--green-soft);color:var(--green-deep);border-radius:11px;display:grid;place-items:center">${ic('book')}</div>
+          <div style="flex:1;min-width:0"><b style="font-size:13.5px">CV_Marc_Bennani_2026.pdf</b><div class="muted" style="font-size:11.5px">PDF · 320 Ko · mis à jour le 3 juin 2026</div></div>
+          <button class="btn btn-g btn-sm" id="cvView">Voir</button>
+        </div>
+        <div id="cvDrop" style="border:1.5px dashed var(--green-line);border-radius:12px;padding:22px;text-align:center;background:var(--green-ghost);cursor:pointer">
+          <div style="display:grid;place-items:center;margin-bottom:8px;color:var(--green-deep)">${ic('send')}</div>
+          <b style="font-size:13px">Glissez un nouveau CV ici</b>
+          <p class="muted" style="font-size:11.5px;margin-top:4px">ou <button class="link" id="cvBrowse">parcourez vos fichiers</button> · PDF ou Word · 5 Mo max</p>
+        </div>
+      </div>
       </div>
       <div class="stack">
         <div class="card p">
@@ -884,8 +990,33 @@ S.editProfil=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div cl
 WIRE.editProfil=function(){
   const p=$('#changePhoto'); if(p) p.addEventListener('click',()=>toast('Ouvrez votre galerie pour changer la photo','info'));
   const save=$('#saveProfil'); if(save) save.addEventListener('click',()=>{ toast('Profil mis à jour'); go('collab'); });
+  const sa=$('#saveAsp'); if(sa) sa.addEventListener('click',()=>{ toast('Aspirations enregistrées'); });
+  const cvB=$('#cvBrowse'); if(cvB) cvB.addEventListener('click',()=>toast('Sélectionnez votre CV (PDF ou Word)','info'));
+  const cvD=$('#cvDrop'); if(cvD) cvD.addEventListener('click',()=>toast('Sélectionnez votre CV (PDF ou Word)','info'));
+  const cvV=$('#cvView'); if(cvV) cvV.addEventListener('click',()=>toast('Ouverture du CV…','info'));
+  $$('#aspHorizon button').forEach(b=>b.addEventListener('click',()=>{ $$('#aspHorizon button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); }));
+  $$('[data-asp]').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('g')));
 };
 
+/* ==== FORMATIONS · catalogue piloté par données (#14/#15) ==== */
+const FORMATIONS=[
+ {key:"mgmt-equipe",title:"Management d'équipe & feedback",dom:"Management",reco:true,badge:{t:"Certifiante",c:"ai"},duree:"12 h",niveau:"Intermédiaire",format:"Présentiel + e-learning",desc:"Conduire des entretiens, donner un feedback constructif et animer un collectif au quotidien.",obj:["Structurer un entretien de feedback","Fixer des objectifs clairs et mobilisateurs","Gérer les situations difficiles avec assertivité"],prog:["Les fondamentaux du management de proximité","La méthode du feedback (SBI)","Atelier : mener un entretien annuel","Cas pratiques et mises en situation"]},
+ {key:"finance-strat",title:"Finance stratégique pour managers",dom:"Finance",reco:true,badge:{t:"Populaire",c:"new"},duree:"18 h",niveau:"Avancé",format:"Présentiel",desc:"Piloter un centre de profit : budget, marge et arbitrages d'investissement.",obj:["Lire et challenger un compte de résultat","Construire et défendre un budget","Arbitrer un investissement (ROI, VAN)"],prog:["Lecture des états financiers","Construction budgétaire","Analyse d'investissement","Pilotage de la marge"]},
+ {key:"prise-parole",title:"Prise de parole & influence",dom:"Communication",reco:true,badge:{t:"Nouveau",c:"new"},duree:"8 h",niveau:"Tous niveaux",format:"Atelier",desc:"Convaincre en comité, structurer un message et gagner en impact à l'oral.",obj:["Structurer un pitch percutant","Gérer le trac et la posture","Répondre aux objections en réunion"],prog:["Structurer son message","Voix, posture et regard","Atelier filmé et feedback"]},
+ {key:"ifrs9",title:"IFRS 9 : approfondissement du scoring",dom:"Risque & Expertise",reco:true,badge:{t:"Expertise",c:"mut"},duree:"14 h",niveau:"Avancé",format:"E-learning",desc:"Modélisation avancée du risque de crédit et provisionnement réglementaire.",obj:["Maîtriser les 3 buckets IFRS 9","Modéliser la PD / LGD / EAD","Documenter un modèle de provisionnement"],prog:["Cadre réglementaire IFRS 9","Modélisation du risque de crédit","Backtesting et gouvernance des modèles"]},
+ {key:"conduite-changement",title:"Conduite du changement",dom:"Management",reco:false,badge:{t:"Certifiante",c:"ai"},duree:"10 h",niveau:"Intermédiaire",format:"Présentiel",desc:"Embarquer une équipe dans une transformation et lever les résistances.",obj:["Diagnostiquer les résistances","Construire un plan de communication","Ancrer durablement le changement"],prog:["Modèles du changement","Cartographie des parties prenantes","Plan d'accompagnement"]},
+ {key:"python-data",title:"Python pour l'analyse de données",dom:"Data",reco:false,badge:{t:"Populaire",c:"new"},duree:"16 h",niveau:"Intermédiaire",format:"E-learning",desc:"Manipuler, analyser et visualiser des données avec Python (pandas, matplotlib).",obj:["Manipuler des données avec pandas","Automatiser des traitements récurrents","Produire des visualisations claires"],prog:["Bases de Python","Manipulation de données (pandas)","Visualisation","Projet fil rouge"]},
+ {key:"negociation",title:"Négociation commerciale",dom:"Communication",reco:false,badge:{t:"Certifiante",c:"ai"},duree:"9 h",niveau:"Intermédiaire",format:"Présentiel",desc:"Préparer, mener et conclure une négociation en préservant la relation.",obj:["Préparer une négociation (BATNA)","Créer de la valeur pour les deux parties","Conclure et sécuriser l'accord"],prog:["Préparation et objectifs","Techniques de négociation","Gestion des objections"]},
+ {key:"data-storytelling",title:"Data storytelling",dom:"Data",reco:false,badge:{t:"Nouveau",c:"new"},duree:"6 h",niveau:"Tous niveaux",format:"Atelier",desc:"Transformer des chiffres en récit clair et convaincant pour décider.",obj:["Choisir le bon graphique","Construire un récit à partir des données","Concevoir un dashboard lisible"],prog:["Principes de dataviz","Construire un récit","Atelier dashboard"]}
+];
+function formCard(f){return `<div class="card p formcard" data-formation="${f.key}" data-dom="${f.dom}" style="display:flex;flex-direction:column;gap:8px;cursor:pointer">
+  <div style="display:flex;justify-content:space-between;align-items:start;gap:8px"><span class="pill ${f.badge.c}" style="width:max-content">${f.badge.t}</span>${f.reco?`<span class="pill ai" style="width:max-content">${ic('spark','s')} Recommandée</span>`:''}</div>
+  <h4 style="font-size:14.5px;font-weight:720;line-height:1.3">${f.title}</h4>
+  <p class="muted" style="font-size:12.5px;line-height:1.5">${f.desc}</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-3)"><span>${ic('clock','s')} ${f.duree}</span><span>${ic('award','s')} ${f.niveau}</span><span>${ic('grid','s')} ${f.dom}</span></div>
+  <div style="display:flex;gap:8px;margin-top:auto;padding-top:4px"><button class="btn btn-g btn-sm" data-fdetail="${f.key}">Voir le détail</button><button class="btn btn-p btn-sm" data-enroll data-fkey="${f.key}">S'inscrire</button></div>
+</div>`;}
+function formSorted(dom){return FORMATIONS.filter(f=>dom==='Tout'||f.dom===dom).slice().sort((a,b)=>(b.reco?1:0)-(a.reco?1:0));}
 S.formation=()=>`<div class="fade app">${sidebar('collab','Formations')}<div class="main">${top('Formations','Développez les compétences de votre prochaine station','collab')}
   <div class="content">
     <div class="card p">
@@ -902,102 +1033,90 @@ S.formation=()=>`<div class="fade app">${sidebar('collab','Formations')}<div cla
       </div>
     </div>
 
-    <div class="toolbar"><span class="eyebrow" style="flex:1">Catalogue · 4 formations recommandées pour vous</span><button class="btn btn-g btn-sm">${ic('filter','s')} Filtrer</button></div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">
-      <div class="card p" style="display:flex;flex-direction:column;gap:8px">
-        <span class="pill ai" style="width:max-content">Certifiante</span>
-        <h4 style="font-size:14.5px;font-weight:720;line-height:1.3">Management d'équipe & feedback</h4>
-        <p class="muted" style="font-size:12.5px;line-height:1.5">Conduire des entretiens, donner un feedback constructif et animer un collectif.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-3)"><span>${ic('clock','s')} 12 h</span><span>${ic('award','s')} Intermédiaire</span></div>
-        <button class="btn btn-p btn-sm" data-enroll style="margin-top:2px;width:max-content">S'inscrire</button>
-      </div>
-      <div class="card p" style="display:flex;flex-direction:column;gap:8px">
-        <span class="pill new" style="width:max-content">Populaire</span>
-        <h4 style="font-size:14.5px;font-weight:720;line-height:1.3">Finance stratégique pour managers</h4>
-        <p class="muted" style="font-size:12.5px;line-height:1.5">Piloter un centre de profit : budget, marge et arbitrages d'investissement.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-3)"><span>${ic('clock','s')} 18 h</span><span>${ic('award','s')} Avancé</span></div>
-        <button class="btn btn-p btn-sm" data-enroll style="margin-top:2px;width:max-content">S'inscrire</button>
-      </div>
-      <div class="card p" style="display:flex;flex-direction:column;gap:8px">
-        <span class="pill new" style="width:max-content">Nouveau</span>
-        <h4 style="font-size:14.5px;font-weight:720;line-height:1.3">Prise de parole & influence</h4>
-        <p class="muted" style="font-size:12.5px;line-height:1.5">Convaincre en comité, structurer un message et gagner en impact oral.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-3)"><span>${ic('clock','s')} 8 h</span><span>${ic('award','s')} Tous niveaux</span></div>
-        <button class="btn btn-p btn-sm" data-enroll style="margin-top:2px;width:max-content">S'inscrire</button>
-      </div>
-      <div class="card p" style="display:flex;flex-direction:column;gap:8px">
-        <span class="pill mut" style="width:max-content">Expertise</span>
-        <h4 style="font-size:14.5px;font-weight:720;line-height:1.3">IFRS 9 : approfondissement du scoring</h4>
-        <p class="muted" style="font-size:12.5px;line-height:1.5">Modélisation avancée du risque de crédit et provisionnement réglementaire.</p>
-        <div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:11.5px;color:var(--ink-3)"><span>${ic('clock','s')} 14 h</span><span>${ic('award','s')} Avancé</span></div>
-        <button class="btn btn-p btn-sm" data-enroll style="margin-top:2px;width:max-content">S'inscrire</button>
-      </div>
-    </div>
+    <div class="toolbar"><span class="eyebrow" style="flex:1">Catalogue · formations classées par pertinence</span></div>
+    <div class="ofilters" id="fdomains">${['Tout','Management','Finance','Communication','Risque & Expertise','Data'].map((d,i)=>`<button class="fchip ${i===0?'on':''}" data-dom="${d}">${d}</button>`).join('')}</div>
+    <p class="muted" style="font-size:12px;margin:4px 0 10px">Les formations <b>recommandées pour vous</b> apparaissent en premier ${ic('spark','s')}.</p>
+    <div id="fgrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px">${formSorted('Tout').map(formCard).join('')}</div>
+    <p class="muted" id="fEmpty" hidden style="text-align:center;padding:20px">Aucune formation dans ce domaine pour le moment.</p>
   </div>
 </div></div>`;
 WIRE.formation=function(){
-  $$('[data-enroll]').forEach(function(b){ b.addEventListener('click',function(){ toast('Inscription confirmée'); }); });
+  const grid=$('#fgrid'); if(!grid) return;
+  function openFormation(key){
+    const f=FORMATIONS.find(x=>x.key===key); if(!f)return;
+    const m=openModal('<div class="mhead"><div><h3>'+f.title+'</h3><p class="muted" style="font-size:12px;margin-top:3px">'+f.dom+' · '+f.niveau+'</p></div><button class="xbtn" data-mclose>✕</button></div><div id="mbody">'
+      +'<div style="display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--ink-3);margin-bottom:12px"><span>'+ic('clock','s')+' '+f.duree+'</span><span>'+ic('award','s')+' '+f.niveau+'</span><span>'+ic('book','s')+' '+f.format+'</span>'+(f.reco?'<span class="pill ai" style="width:max-content">'+ic('spark','s')+' Recommandée</span>':'')+'</div>'
+      +'<p style="font-size:13.5px;color:var(--ink-2);line-height:1.6">'+f.desc+'</p>'
+      +'<h4 class="disp" style="font-size:14px;margin:14px 0 6px">Objectifs</h4><div class="stack" style="gap:6px">'+f.obj.map(function(o){return '<div class="wish">'+ic('check','s')+' '+o+'</div>';}).join('')+'</div>'
+      +'<h4 class="disp" style="font-size:14px;margin:14px 0 6px">Programme</h4><div class="stack" style="gap:6px">'+f.prog.map(function(p,i){return '<div class="wish">'+(i+1)+'. '+p+'</div>';}).join('')+'</div>'
+      +'<div class="mfoot"><button class="btn btn-g btn-sm" data-mclose>Fermer</button><button class="btn btn-p btn-sm" id="fEnroll">'+ic('check','s')+" S'inscrire</button></div></div>");
+    const en=m.querySelector('#fEnroll'); if(en) en.addEventListener('click',function(){ closeModal(); toast('Inscription confirmée'); });
+  }
+  function bindCards(){
+    $$('#fgrid .formcard').forEach(function(c){ c.addEventListener('click',function(e){ if(e.target.closest('[data-enroll]'))return; openFormation(c.dataset.formation); }); });
+    $$('#fgrid [data-enroll]').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation(); toast('Inscription confirmée'); }); });
+  }
+  const dom=$('#fdomains');
+  if(dom) dom.addEventListener('click',function(e){ const c=e.target.closest('.fchip'); if(!c)return; const list=formSorted(c.dataset.dom); grid.innerHTML=list.map(formCard).join(''); const em=$('#fEmpty'); if(em)em.hidden=list.length>0; bindCards(); });
+  bindCards();
 };
 
-S.offreDetail=()=>`<div class="fade app">${sidebar('collab','Offres internes')}<div class="main">${top('Détail de l\'offre','Mission transverse · Retail Banking','collab')}
+S.offreDetail=()=>{const o=OFFERS.find(x=>x.key===curOffer)||OFFERS[0];return `<div class="fade app">${sidebar('collab','Offres internes')}<div class="main">${top('Détail de l\'offre',o.dsub,'collab')}
   <div class="content">
-    ${crumb([['Offres internes','offres'],['Détail',null]])}
+    ${crumb([['Offres internes','offres'],[o.title,null]])}
     <div class="cols">
       <div class="stack">
         <div class="card p">
-          <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap"><span class="pill ai" style="width:max-content">Mission transverse</span><span class="pill new" style="width:max-content">20 % de votre temps</span></div>
-          <h2 class="disp" style="font-size:22px;margin:12px 0 6px">Ambassadeur Digital · Retail Banking</h2>
-          <p class="muted" style="font-size:13px">Direction de la Banque de Détail · Réseau d'agences du Grand Casablanca</p>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="pill ${o.pc}" style="width:max-content">${o.type}</span>${o.tpill?`<span class="pill new" style="width:max-content">${o.tpill}</span>`:''}<span class="pill mut" style="width:max-content;margin-left:auto">${o.pct} % · ${o.adq}</span></div>
+          <h2 class="disp" style="font-size:22px;margin:12px 0 6px">${o.title}</h2>
+          <p class="muted" style="font-size:13px">${o.ctx}</p>
           <div class="divider" style="margin:16px 0"></div>
-          <h3 class="disp" style="font-size:15px;margin-bottom:8px">La mission</h3>
-          <p style="font-size:13.5px;color:var(--ink-2);line-height:1.6">En tant qu'Ambassadeur Digital, vous accompagnez le déploiement des nouveaux outils digitaux (application mobile, signature électronique, ouverture de compte à distance) auprès des conseillers en agence. Vous animez des ateliers de prise en main, remontez les irritants terrain aux équipes produit et suivez les indicateurs d'adoption sur un panel de 12 agences pilotes.</p>
-          <p style="font-size:13.5px;color:var(--ink-2);line-height:1.6;margin-top:10px">Cette mission de 3 mois, à hauteur de 20 % de votre temps, est un tremplin idéal pour développer votre leadership transverse et votre culture produit · deux compétences clés vers un poste de Manager de Pôle.</p>
+          <h3 class="disp" style="font-size:15px;margin-bottom:8px">${o.mtitle}</h3>
+          ${o.mission.map((p,i)=>`<p style="font-size:13.5px;color:var(--ink-2);line-height:1.6${i?';margin-top:10px':''}">${p}</p>`).join('')}
           <div class="divider" style="margin:16px 0"></div>
           <h3 class="disp" style="font-size:15px;margin-bottom:10px">Compétences requises</h3>
-          <div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip">Pédagogie & animation</span><span class="chip">Culture digitale</span><span class="chip">Connaissance du réseau</span><span class="chip">Communication</span><span class="chip">Analyse d'usage</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">${o.skills.map(s=>`<span class="chip">${s}</span>`).join('')}</div>
         </div>
       </div>
       <div class="stack">
         <div class="card p">
           <div class="sec-h"><h3>Informations</h3></div>
-          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">
-            <span style="display:inline-flex;align-items:center;gap:9px;color:var(--ink-2)">${ic('pin','s')} Localisation · Hybride (agences + Siège)</span>
-            <span style="display:inline-flex;align-items:center;gap:9px;color:var(--ink-2)">${ic('clock','s')} Durée · 3 mois, 20 % du temps</span>
-            <span style="display:inline-flex;align-items:center;gap:9px;color:var(--ink-2)">${ic('cal','s')} Échéance de candidature · 30 septembre 2026</span>
-            <span style="display:inline-flex;align-items:center;gap:9px;color:var(--ink-2)">${ic('user','s')} Référent · Nadia El Amrani</span>
-          </div>
-          <div class="wnote" style="margin-top:14px">${ic('bell','s')} En postulant, votre manager direct sera informé de votre candidature à cette mission transverse.</div>
-          <button class="btn btn-p block" id="postuler" style="margin-top:14px">${ic('send','s')} Postuler à cette mission</button>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px">${o.infos.map(f=>`<span style="display:inline-flex;align-items:center;gap:9px;color:var(--ink-2)">${ic(f[0],'s')} ${f[1]}</span>`).join('')}</div>
+          <div class="wnote${o.nOk?' ok':''}" style="margin-top:14px">${ic(o.nI,'s')} ${o.nT}</div>
+          <button class="btn btn-p block" id="postuler" style="margin-top:14px">${ic('send','s')} ${o.ctaDetail}</button>
         </div>
-        <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>+4 % de compatibilité</h4><p>Cette mission renforce « Leadership transverse » · un levier direct vers votre objectif Manager de Pôle.</p></div></div>
+        <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>${o.ch4}</h4><p>${o.cp}</p></div></div>
       </div>
     </div>
   </div>
-</div></div>`;
+</div></div>`;};
 WIRE.offreDetail=function(){
+  const o=OFFERS.find(x=>x.key===curOffer)||OFFERS[0];
   const b=$('#postuler'); if(!b) return;
   b.addEventListener('click',function(){
-    const m=openModal('<div class="mhead"><div><h3>Postuler à la mission</h3><p class="muted" style="font-size:12px;margin-top:3px">Ambassadeur Digital · Retail Banking</p></div><button class="xbtn" data-mclose>✕</button></div><div id="mbody"></div>');
+    const m=openModal('<div class="mhead"><div><h3>'+o.ctaDetail+'</h3><p class="muted" style="font-size:12px;margin-top:3px">'+o.title+'</p></div><button class="xbtn" data-mclose>✕</button></div><div id="mbody"></div>');
+    const consent=o.mgr;const total=consent?3:2;
     const state={motiv:'',consent:false};
     let step=0;
-    const bar=a=>`<div class="ministep"><span class="s ${a>0?'done':'on'}">1</span><span class="ln ${a>0?'on':''}"></span><span class="s ${a>1?'done':a===1?'on':''}">2</span><span class="ln ${a>1?'on':''}"></span><span class="s ${a===2?'on':''}">3</span></div>`;
+    function bar(a){let h='';for(let i=0;i<total;i++){h+='<span class="s '+(i<a?'done':i===a?'on':'')+'">'+(i+1)+'</span>'+(i<total-1?'<span class="ln '+(i<a?'on':'')+'"></span>':'');}return '<div class="ministep">'+h+'</div>';}
     function draw(){
       const body=m.querySelector('#mbody');
       if(step===0){
-        body.innerHTML=bar(0)+`<div class="formrow"><label>Votre motivation</label><textarea class="ta" id="mMotiv" placeholder="En quoi cette mission correspond-elle à votre projet…">${state.motiv}</textarea></div>
-          <div class="wnote ok">${ic('spark','s')} Astuce : reliez la mission à une compétence à développer (ex. digitalisation du réseau).</div>
+        body.innerHTML=bar(0)+`<div class="formrow"><label>Votre motivation</label><textarea class="ta" id="mMotiv" placeholder="En quoi cette opportunité correspond-elle à votre projet…">${state.motiv}</textarea></div>
+          <div class="wnote ok">${ic('spark','s')} Astuce : reliez cette opportunité à une compétence à développer.</div>
           <div class="mfoot"><button class="btn btn-g btn-sm" data-mclose>Annuler</button><button class="btn btn-p btn-sm" id="mNext">Suivant →</button></div>`;
-      }else if(step===1){
-        body.innerHTML=bar(1)+`<label class="chk"><input type="checkbox" id="mConsent" ${state.consent?'checked':''}><span>J'accepte que mon manager direct (Sarah Kabbaj) soit informé de ma candidature à cette mission transverse.</span></label>
-          <div class="wnote">${ic('bell','s')} Conformément à la politique de mobilité BMCI, votre manager reçoit une notification dès qu'un collaborateur postule à une mission transverse.</div>
+      }else if(consent&&step===1){
+        body.innerHTML=bar(1)+`<label class="chk"><input type="checkbox" id="mConsent" ${state.consent?'checked':''}><span>J'accepte que mon manager direct (${o.mgrN||'votre manager'}) soit informé de ma candidature.</span></label>
+          <div class="wnote">${ic('bell','s')} Conformément à la politique de mobilité BMCI, votre manager reçoit une notification dès qu'un collaborateur postule à une mission ou un projet.</div>
           <div class="mfoot"><button class="btn btn-g btn-sm" id="mPrev">← Précédent</button><button class="btn btn-p btn-sm" id="mNext" ${state.consent?'':'disabled'}>Suivant →</button></div>`;
       }else{
         const mot=state.motiv?state.motiv:'<i class="muted">Non renseignée</i>';
-        body.innerHTML=bar(2)+`<div class="rcap">
-            <div class="rrow"><span class="muted">Mission</span><b style="text-align:right">Ambassadeur Digital · Retail Banking</b></div>
-            <div class="rrow"><span class="muted">Candidat</span><b>Jean-Marc Dupont</b></div>
+        const mgr=consent?`<div class="rrow"><span class="muted">Manager informé</span><b style="color:var(--green-deep)">Oui · ${o.mgrN||'votre manager'}</b></div>`:`<div class="rrow"><span class="muted">Manager informé</span><b>Non · candidature confidentielle</b></div>`;
+        body.innerHTML=bar(total-1)+`<div class="rcap">
+            <div class="rrow"><span class="muted">Opportunité</span><b style="text-align:right">${o.title}</b></div>
+            <div class="rrow"><span class="muted">Candidat</span><b>Marc Bennani</b></div>
             <div class="rrow"><span class="muted">Motivation</span><span style="text-align:right;max-width:60%">${mot}</span></div>
-            <div class="rrow"><span class="muted">Manager informé</span><b style="color:var(--green-deep)">Oui · Sarah Kabbaj</b></div>
+            ${mgr}
           </div>
           <div class="mfoot"><button class="btn btn-g btn-sm" id="mPrev">← Précédent</button><button class="btn btn-p btn-sm" id="mSend">${ic('send','s')} Envoyer ma candidature</button></div>`;
       }
@@ -1006,7 +1125,7 @@ WIRE.offreDetail=function(){
     function hook(){
       const t=m.querySelector('#mMotiv'); if(t) t.addEventListener('input',()=>state.motiv=t.value);
       const c=m.querySelector('#mConsent'); if(c) c.addEventListener('change',function(){ state.consent=c.checked; const n=m.querySelector('#mNext'); if(n) n.disabled=!c.checked; });
-      const nx=m.querySelector('#mNext'); if(nx) nx.addEventListener('click',function(){ if(step===1&&!state.consent) return; step++; draw(); });
+      const nx=m.querySelector('#mNext'); if(nx) nx.addEventListener('click',function(){ if(consent&&step===1&&!state.consent) return; step++; draw(); });
       const pv=m.querySelector('#mPrev'); if(pv) pv.addEventListener('click',function(){ step--; draw(); });
       const sd=m.querySelector('#mSend'); if(sd) sd.addEventListener('click',function(){ toast('Candidature envoyée'); closeModal(); go('mesCandidatures'); });
     }
@@ -1040,8 +1159,14 @@ S.mesCandidatures=()=>`<div class="fade app">${sidebar('collab','Offres internes
 S.souhaitSuivi=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div class="main">${top('Mes souhaits d\'évolution','Vos aspirations transmises à votre manager','collab')}
   <div class="content">
     ${crumb([['Mon profil','collab'],['Souhaits d\'évolution',null]])}
-    <div class="callout"><div class="ci">${ic('route','s')}</div><div style="flex:1"><h4>Vos souhaits guident vos recommandations</h4><p>Les souhaits que vous poussez sont transmis à votre manager et alimentent le moteur de recommandations du Groupe.</p></div><button class="btn btn-g btn-sm" style="align-self:center" data-go="collab">Gérer sur mon profil</button></div>
+    <div class="callout"><div class="ci">${ic('route','s')}</div><div style="flex:1"><h4>Vos souhaits guident vos recommandations</h4><p>Les souhaits que vous poussez sont transmis à votre manager et alimentent le moteur de recommandations du Groupe.</p></div><button class="btn btn-p btn-sm" style="align-self:center" id="newSouhait">${ic('route','s')} Nouveau souhait</button></div>
     <div class="stack">
+      <div class="card p" id="wDraft">
+        <div class="sec-h"><h3 style="font-size:15px">Expert Data &amp; Risque</h3><span class="pill mut" style="width:max-content">Brouillon · non poussé</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--ink-3)"><span>${ic('route','s')} Horizon 2 ans</span><span>${ic('spark','s')} Expertise data appliquée au risque</span></div>
+        <p class="muted" style="font-size:11.5px;margin-top:8px">Ce souhait n'est visible que par vous tant que vous ne l'avez pas poussé à votre manager.</p>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-g btn-sm" data-editwish="Expert Data &amp; Risque">${ic('user','s')} Modifier</button><button class="btn btn-p btn-sm" id="pushDraft">${ic('send','s')} Pousser à mon manager</button></div>
+      </div>
       <div class="card p">
         <div class="sec-h"><h3 style="font-size:15px">Manager d'équipe Risques</h3><span class="pill new" style="width:max-content">Appuyé par le manager</span></div>
         <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12px;color:var(--ink-3)"><span>${ic('route','s')} Horizon 1 an</span><span>${ic('cal','s')} Poussé le 3 juin 2026</span><span>${ic('user','s')} Manager : Sarah Kabbaj</span></div>
@@ -1050,6 +1175,7 @@ S.souhaitSuivi=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div 
           <div class="jalon done"><div class="jn">${ic('check','s')}</div><h5>Transmis au manager</h5><small>Notifié le 4 juin</small></div>
           <div class="jalon active"><div class="jn">${ic('check','s')}</div><h5>Appuyé par le manager</h5><small>Recommandé aux RH</small></div>
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-g btn-sm" data-editwish="Manager d'équipe Risques">${ic('user','s')} Modifier</button></div>
       </div>
 
       <div class="card p">
@@ -1060,6 +1186,7 @@ S.souhaitSuivi=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div 
           <div class="jalon active"><div class="jn">2</div><h5>Transmis au manager</h5><small>En cours d'examen</small></div>
           <div class="jalon"><div class="jn">3</div><h5>Appui du manager</h5><small>En attente</small></div>
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-g btn-sm" data-editwish="Mobilité internationale (Paris / Londres)">${ic('user','s')} Modifier</button></div>
       </div>
 
       <div class="card p">
@@ -1070,10 +1197,26 @@ S.souhaitSuivi=()=>`<div class="fade app">${sidebar('collab','Mon profil')}<div 
           <div class="jalon"><div class="jn">2</div><h5>Transmis au manager</h5><small>En file d'attente</small></div>
           <div class="jalon"><div class="jn">3</div><h5>Appui du manager</h5><small>En attente</small></div>
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-g btn-sm" data-editwish="Certification Risk Management (GARP)">${ic('user','s')} Modifier</button></div>
       </div>
     </div>
   </div>
 </div></div>`;
+WIRE.souhaitSuivi=function(){
+  function wishModal(titre,poste,horizon,push){
+    const m=openModal('<div class="mhead"><div><h3>'+titre+'</h3></div><button class="xbtn" data-mclose>✕</button></div><div id="mbody">'
+      +'<div class="formrow"><label>Poste ou évolution visée</label><input class="ctrl" id="wPoste" value="'+(poste||'')+'" placeholder="Ex : Manager d\'équipe Risques"></div>'
+      +'<div class="formrow"><label>Horizon</label><div class="seg" id="wHor">'+['6 mois','1 an','2-3 ans'].map(function(h){return '<button class="'+(h===horizon?'on':'')+'">'+h+'</button>';}).join('')+'</div></div>'
+      +'<div class="formrow"><label>Motivation</label><textarea class="ta" placeholder="Pourquoi ce souhait, et ce qu\'il vous apporterait…"></textarea></div>'
+      +'<div class="wnote">'+ic('shield','s')+' Un souhait poussé est transmis à votre manager et alimente vos recommandations. Vous gardez la main : vous pouvez le modifier ou le retirer.</div>'
+      +'<div class="mfoot"><button class="btn btn-g btn-sm" data-mclose>Annuler</button><button class="btn btn-p btn-sm" id="wSave">'+ic(push?'send':'check','s')+' '+(push?'Pousser à mon manager':'Enregistrer')+'</button></div></div>');
+    m.querySelectorAll('#wHor button').forEach(function(b){b.addEventListener('click',function(){m.querySelectorAll('#wHor button').forEach(function(x){x.classList.remove('on');});b.classList.add('on');});});
+    m.querySelector('#wSave').addEventListener('click',function(){ closeModal(); toast(push?'Souhait poussé à votre manager':'Souhait mis à jour'); });
+  }
+  const nw=$('#newSouhait'); if(nw) nw.addEventListener('click',function(){ wishModal("Nouveau souhait d'évolution",'','1 an',true); });
+  $$('[data-editwish]').forEach(function(b){ b.addEventListener('click',function(){ wishModal('Modifier le souhait',b.dataset.editwish,'1 an',false); }); });
+  const pd=$('#pushDraft'); if(pd) pd.addEventListener('click',function(){ toast('Souhait poussé à votre manager'); const c=$('#wDraft'); if(c){const badge=c.querySelector('.pill'); if(badge){badge.textContent='Transmis au manager'; badge.className='pill ai';} pd.remove();} });
+};
 
 /* ===== mod_manager.js ===== */
 /* ===== Profils compatibles · apres publication d'une offre (Manager) / d'un poste (RH) ===== */
@@ -1213,7 +1356,7 @@ S.onboardingErreur=()=>`<div class="fade auth"><div class="acard" style="max-wid
   <h1 style="font-size:21px;margin-top:16px">Vérifions vos informations</h1>
   <p class="sub" style="margin:6px 0 16px">Voici ce que vous avez saisi. Corrigez l'étape concernée pour poursuivre la configuration.</p>
   <div class="recap">
-    <div class="recap-row"><span class="rk">${ic('mail','s')} E-mail</span><span class="rv">jm.dupont@bnpparibas.com</span></div>
+    <div class="recap-row"><span class="rk">${ic('mail','s')} E-mail</span><span class="rv">marc.bennani@bnpparibas.com</span></div>
     <div class="recap-row"><span class="rk">${ic('grid','s')} Entité déclarée</span><span class="rv">IT &amp; Digital <span class="pill warn">à vérifier</span></span></div>
     <div class="recap-row"><span class="rk">${ic('brief','s')} Poste déclaré</span><span class="rv">Chef de projet <span class="pill warn">à vérifier</span></span></div>
   </div>
@@ -1228,6 +1371,37 @@ WIRE.onboardingErreur=function(){
 };
 
 /* ============ 3) NOTIFICATIONS · centre de notifications ============ */
+/* ==== RECHERCHE · annuaire des collègues (#16) ==== */
+const PEOPLE=[
+ ["AB","Aya Bennani","Chargée d'Affaires Entreprises","Corporate Banking",["Analyse crédit","Anglais financier","Négociation"]],
+ ["KI","Karim Idrissi","Analyste Risque","Pôle Risques",["Scoring","IFRS 9","Modélisation"]],
+ ["NE","Nadia El Amrani","Chargée de Clientèle Pro","Banque de Détail",["Relation client","Négociation","Analyse financière"]],
+ ["YA","Youssef Amrani","Contrôleur de Gestion","Finance",["Reporting","Excel / SQL","Budget"]],
+ ["SH","Sofia Haddad","Analyste Middle Office","Corporate Banking",["Middle office","Conformité","Rigueur"]],
+ ["MC","Mehdi Chraibi","Trésorier Adjoint","Finance & ALM",["ALM","Marchés","Liquidité"]],
+ ["SK","Sarah Kabbaj","Directrice de Pôle","Direction des Risques",["Leadership","Stratégie","Audit"]],
+ ["LT","Leïla Tazi","Data Analyst","IT & Digital",["Python","Data viz","SQL"]],
+ ["OM","Omar Mansouri","Chef de Projet Digital","IT & Digital",["Gestion de projet","Agile","Culture produit"]]
+];
+function peopleCard(p){return `<div class="offer pcard" data-person="${p[0]}" style="cursor:pointer"><div style="display:flex;align-items:center;gap:11px"><div class="ava md">${p[0]}</div><div style="flex:1;min-width:0"><h4>${p[1]}</h4><p class="od">${p[2]} · ${p[3]}</p></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 12px">${p[4].map(s=>`<span class="chip">${s}</span>`).join('')}</div><button class="btn btn-g btn-sm" data-person="${p[0]}">${ic('user','s')} Voir le profil</button></div>`;}
+S.recherche=()=>`<div class="fade app">${sidebar('collab','Rechercher')}<div class="main">${top('Rechercher des collègues','Trouvez et découvrez les profils du Groupe','collab')}
+  <div class="content">
+    <div class="toolbar"><div class="search">${ic('search','s')}<input id="peopleSearch" placeholder="Rechercher par nom, métier, entité, compétence…"></div></div>
+    <p class="muted" id="pCount" style="font-size:12px;margin:4px 0 10px">${PEOPLE.length} collègues · seules les informations publiques sont visibles.</p>
+    <div class="ogrid" id="pgrid">${PEOPLE.map(peopleCard).join('')}</div>
+    <p class="muted" id="pEmpty" hidden style="text-align:center;padding:20px">Aucun collègue ne correspond à votre recherche.</p>
+  </div>
+</div></div>`;
+WIRE.recherche=function(){
+  const inp=$('#peopleSearch'), grid=$('#pgrid'); if(!grid) return;
+  function personModal(id){const p=PEOPLE.find(x=>x[0]===id);if(!p)return;
+    openModal('<div class="mhead"><div style="display:flex;align-items:center;gap:11px"><div class="ava md">'+p[0]+'</div><div><h3>'+p[1]+'</h3><p class="muted" style="font-size:12px;margin-top:2px">'+p[2]+' · '+p[3]+'</p></div></div><button class="xbtn" data-mclose>✕</button></div><div id="mbody"><p class="muted" style="font-size:12px;margin-bottom:10px">'+ic('shield','s')+' Vous consultez les informations publiques de ce profil.</p><h4 class="disp" style="font-size:14px;margin-bottom:8px">Compétences</h4><div style="display:flex;flex-wrap:wrap;gap:8px">'+p[4].map(function(s){return '<span class="chip g">'+s+'</span>';}).join('')+'</div><div class="mfoot"><button class="btn btn-g btn-sm" data-mclose>Fermer</button><button class="btn btn-p btn-sm" id="pContact">'+ic('mail','s')+' Contacter</button></div></div>');
+    const c=$('#pContact'); if(c) c.addEventListener('click',function(){ closeModal(); toast('Message envoyé à '+p[1].split(' ')[0]); });
+  }
+  function filter(){const q=(inp.value||'').toLowerCase().trim();let shown=0;$$('#pgrid .pcard').forEach(function(card){const p=PEOPLE.find(x=>x[0]===card.dataset.person);const hay=(p[1]+' '+p[2]+' '+p[3]+' '+p[4].join(' ')).toLowerCase();const ok=!q||hay.indexOf(q)>=0;card.style.display=ok?'':'none';if(ok)shown++;});const em=$('#pEmpty');if(em)em.hidden=shown>0;const cnt=$('#pCount');if(cnt)cnt.textContent=shown+' collègue(s) · seules les informations publiques sont visibles.';}
+  if(inp) inp.addEventListener('input',filter);
+  grid.addEventListener('click',function(e){const t=e.target.closest('[data-person]');if(t)personModal(t.dataset.person);});
+};
 S.notifications=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')}<div class="main">${top('Notifications','Ce qui a bougé sur votre carrière','collab')}
   <div class="content">
     ${crumb([['Tableau de bord','collab'],['Notifications',null]])}
@@ -1236,13 +1410,13 @@ S.notifications=()=>`<div class="fade app">${sidebar('collab','Tableau de bord')
         <button class="btn btn-g btn-sm" id="markAll">${ic('check','s')} Tout marquer comme lu</button></div>
       <div class="nlist" id="nlist">
         ${[
-          ['award','var(--gold-soft)','var(--gold)','Nouvelle évaluation reçue','Sarah Kettani a finalisé votre évaluation annuelle 2025 · appréciation « Dépasse les attentes ».','Il y a 2 h',1],
-          ['brief','','','Candidature passée en revue','Votre candidature au poste « Analyste Crédit Senior » est en cours d\'examen par la Direction des Risques.','Il y a 5 h',1],
-          ['book','','','Formation assignée par votre manager','Jean-Marc Dupont vous a inscrit au parcours « Leadership Excellence @BNP ». Début le 21 juillet.','Hier',1],
-          ['route','','','Votre souhait d\'évolution a été appuyé','Votre manager a soutenu le souhait « Manager d\'équipe Risques » auprès des RH.','Il y a 2 j',0],
-          ['spark','','','Nouvelle offre correspondant à votre profil','« Chef de Projet Lean Management » · 88 % de compatibilité avec vos compétences.','Il y a 3 j',0],
-          ['cal','','','Entretien annuel planifié','Rendez-vous confirmé avec Sarah Kettani le 18 juillet à 14 h 00, salle Atlas.','Il y a 4 j',0]
-        ].map(n=>`<div class="notif ${n[6]?'unread':''}"><div class="ni"${n[1]?` style="background:${n[1]};color:${n[2]}"`:''}>${ic(n[0],'s')}</div>
+          ['award','var(--gold-soft)','var(--gold)','Nouvelle évaluation reçue','Sarah Kettani a finalisé votre évaluation annuelle 2025 · appréciation « Dépasse les attentes ».','Il y a 2 h',1,'collab'],
+          ['brief','','','Candidature passée en revue','Votre candidature au poste « Analyste Crédit Senior » est en cours d\'examen par la Direction des Risques.','Il y a 5 h',1,'mesCandidatures'],
+          ['book','','','Formation assignée par votre manager','Jean-Marc Dupont vous a inscrit au parcours « Leadership Excellence @BNP ». Début le 21 juillet.','Hier',1,'formation'],
+          ['route','','','Votre souhait d\'évolution a été appuyé','Votre manager a soutenu le souhait « Manager d\'équipe Risques » auprès des RH.','Il y a 2 j',0,'souhaitSuivi'],
+          ['spark','','','Nouvelle offre correspondant à votre profil','« Chef de Projet Lean Management » · 88 % de compatibilité avec vos compétences.','Il y a 3 j',0,'offreDetail','chef-projet-lean'],
+          ['cal','','','Entretien annuel planifié','Rendez-vous confirmé avec Sarah Kettani le 18 juillet à 14 h 00, salle Atlas.','Il y a 4 j',0,'entretien']
+        ].map(n=>`<div class="notif ${n[6]?'unread':''}" data-go="${n[7]}"${n[8]?` data-offer="${n[8]}"`:''} style="cursor:pointer"><div class="ni"${n[1]?` style="background:${n[1]};color:${n[2]}"`:''}>${ic(n[0],'s')}</div>
           <div class="nb"><h4>${n[3]}${n[6]?' <span class="pill new">Non lu</span>':''}</h4><p>${n[4]}</p></div>
           <span class="nt">${n[5]}</span></div>`).join('')}
       </div>
@@ -1263,9 +1437,8 @@ WIRE.notifications=function(){
 
 /* ============ 4) CONFIDENTIALITÉ · visibilité par élément ============ */
 let cur='portail';
-(function(){const g={};ORDER.forEach(([id,t,,gr],i)=>{(g[gr]=g[gr]||[]).push([id,t,i+1]);});
-  $('#railNav').innerHTML=Object.entries(g).map(([gr,it])=>`<div class="rgrp"><h5>${gr}</h5>${it.map(([id,t,n])=>`<button class="ritem" data-screen="${id}"><span class="n">${n}</span><span>${t}</span></button>`).join('')}</div>`).join('');})();
-function render(id){cur=id;const m=ORDER.find(o=>o[0]===id);if(m){$('#scT').textContent=m[1];$('#scP').textContent=m[2];}$('#vp').innerHTML=S[id]();
+
+function render(id){cur=id;$('#vp').innerHTML=S[id]();
   $$('.ritem').forEach(b=>b.classList.toggle('on',b.dataset.screen===id));$('.sscroll').scrollTop=0;window.scrollTo(0,0);wire(id);}
 function go(id){if(S[id])render(id);}
 const modalRoot=document.createElement('div');modalRoot.id='modalRoot';document.body.appendChild(modalRoot);
@@ -1276,12 +1449,11 @@ function emptyState(icon,title,text,cta){return '<div class="empty"><div class="
 function crumb(items){return '<nav class="crumb">'+items.map(function(it,i){return (i?'<span class="sep">/</span>':'')+(it[1]?'<button class="cb" data-go="'+it[1]+'">'+it[0]+'</button>':'<span class="cc">'+it[0]+'</span>');}).join('')+'</nav>';}
 
 document.addEventListener('click',e=>{const r=e.target.closest('[data-screen]');if(r)return go(r.dataset.screen);
-  const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);
+  const g=e.target.closest('[data-go]');if(g){if(g.dataset.offer)curOffer=g.dataset.offer;if(g.dataset.poste)curPoste=g.dataset.poste;return go(g.dataset.go);}
   const t=e.target.closest('[data-tog]');if(t){const on=t.getAttribute('aria-checked')==='true';t.setAttribute('aria-checked',!on);const s=t.querySelector('.on');if(s)s.textContent=on?'Privé':'Public';return;}
   if(e.target.closest('[data-mclose]')||e.target.hasAttribute('data-ovclose'))return closeModal();
   const f=e.target.closest('.fchip');if(f){f.parentElement.querySelectorAll('.fchip').forEach(x=>x.classList.remove('on'));f.classList.add('on');}});
-$('#prev').addEventListener('click',()=>{const i=ORDER.findIndex(o=>o[0]===cur);if(i>0)go(ORDER[i-1][0]);});
-$('#next').addEventListener('click',()=>{const i=ORDER.findIndex(o=>o[0]===cur);if(i<ORDER.length-1)go(ORDER[i+1][0]);});
+/* barre proto prev/suivant retirée — rendu écran réel */
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 
@@ -1310,9 +1482,9 @@ function wireReg(){const name=$('#rname'),email=$('#remail'),pass=$('#rpass'),bt
   function rf(){btn.disabled=!(ep()&&ee()&&name.value.trim().length>1);}
   [name,email,pass].forEach(el=>el.addEventListener('input',rf));
   $('#tpass').addEventListener('click',()=>{const t=pass.type==='password';pass.type=t?'text':'password';$('#tpass').innerHTML=ic(t?'eyeoff':'eye','s');$('#tpass').setAttribute('aria-label',t?'Masquer le mot de passe':'Afficher le mot de passe');});
-  btn.addEventListener('click',()=>go('otp'));rf();}
+  btn.addEventListener('click',()=>{toast('Compte créé · confirmez votre e-mail','info');go('otp');});rf();}
 function wireOtp(){const inp=$$('#otp input');inp.forEach((x,i)=>{x.addEventListener('input',()=>{x.value=x.value.replace(/\D/g,'').slice(0,1);if(x.value&&i<5)inp[i+1].focus();const full=inp.every(y=>y.value);const hn=$('#ohint');hn.hidden=!full;if(full){hn.className='fhint ok';hn.innerHTML=ic('check','s')+' Code complet · validation…';setTimeout(()=>go('onboarding'),650);}});
-  x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&i>0)inp[i-1].focus();});});inp[0].focus();
+  x.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!x.value&&i>0)inp[i-1].focus();});});inp[0].focus();const rs=$('#otpResend');if(rs)rs.addEventListener('click',()=>toast('Nouveau code envoyé','info'));
   $('#oval').addEventListener('click',()=>{if(inp.every(y=>y.value)){go('onboarding');}else{const hn=$('#ohint');hn.hidden=false;hn.className='fhint err';hn.innerHTML=ic('lock','s')+' Saisissez les 6 chiffres du code.';(inp.find(y=>!y.value)||inp[0]).focus();}});}
 function wireOb(){const chat=$('#obChat'),zone=$('#obZone'),bar=$('#obBar'),lbl=$('#obStep');
   const ent=['Banque de Détail','Corporate & Investment','Risques','IT & Digital','Finance','Ressources Humaines','Audit & Conformité'];
@@ -1321,7 +1493,7 @@ function wireOb(){const chat=$('#obChat'),zone=$('#obZone'),bar=$('#obBar'),lbl=
   const bot=h=>chat.insertAdjacentHTML('beforeend',`<div class="bubble bot">${h}</div>`),me=t=>chat.insertAdjacentHTML('beforeend',`<div class="bubble me">${t}</div>`);
   const prog=()=>{bar.style.width=(step/3*100)+'%';lbl.textContent='Étape '+Math.min(step+1,3)+' sur 3';};
   function q1(){bot('Bienvenue dans votre espace carrière ! Pour commencer, <b>comment souhaitez-vous que je vous appelle ?</b>');bot('<span class="muted" style="font-size:12px">Ce nom ne sera visible que par vous et votre Assistant Coach Carrière. Les autres collaborateurs vous identifieront par votre e-mail professionnel.</span>');
-    zone.innerHTML=`<div class="inp"><span class="ic">${ic('user','s')}</span><input id="obName" placeholder="Ex : Marc, M. Dupont…"><button class="btn btn-p btn-sm" id="ob1">Continuer →</button></div>`;$('#obName').focus();
+    zone.innerHTML=`<div class="inp"><span class="ic">${ic('user','s')}</span><input id="obName" placeholder="Ex : Marc, M. Bennani…"><button class="btn btn-p btn-sm" id="ob1">Continuer →</button></div>`;$('#obName').focus();
     $('#ob1').addEventListener('click',()=>{const v=$('#obName').value.trim()||'Marc';st.name=v;me(v);step=1;prog();q2();});}
   function q2(){bot('Enchanté, <b>'+st.name+'</b> ! <b>Quelle est votre entité ?</b> Sélectionnez la ou les entités qui vous concernent.');
     zone.innerHTML=`<div class="tags" id="obE">${ent.map(e=>`<button class="tag" data-e="${e}">${e}</button>`).join('')}</div><button class="btn btn-p btn-sm" id="ob2" disabled>Continuer →</button>`;
