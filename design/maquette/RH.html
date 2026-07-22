@@ -448,6 +448,10 @@ button{font-family:inherit}
 /* Aucun style additionnel : réutilise intégralement le design system existant. */
 /* mod_rh.js */
 .heat.c4{grid-template-columns:150px repeat(4,1fr);min-width:440px}
+.heat.big{grid-template-columns:200px repeat(6,1fr);gap:8px;min-width:860px}
+.heat.big .cell{font-size:18px;border-radius:10px}
+.heat.big .rl{font-size:13.5px}
+.heat.big .hd{font-size:12.5px}
 .succ{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--panel)}
 .succ b{font-size:13px;font-weight:700}
 .succ small{font-size:11.5px;line-height:1.4;display:block;margin-top:2px}
@@ -575,7 +579,7 @@ function sidebar(role,active){
 }
 function top(t,s,role){const b=role==='manager'?'<span class="badge b-role">Manager</span>':role==='rh'?'<span class="badge b-role">RH</span>':'<span class="badge b-mut">Collaborateur</span>';
   return `<div class="top"><div><div class="tt">${t}</div><div class="ts">${s}</div></div><div class="sp"></div>${b}
-   <button class="ib2" data-go="notifications" title="Notifications">${ic('bell','s')}</button><div class="ava md ph jm">JM</div></div>`;}
+   <button class="ib2" data-go="notifications" title="Notifications">${ic('bell','s')}</button><div class="ava md">NA</div></div>`;}
 function stepper(a){return `<div class="stepper">${['Compte','Vérification','Profil'].map((s,i)=>{const c=i<a?'done':i===a?'active':'';return `<div class="st ${c}"><span class="dot">${i<a?'✓':i+1}</span><span class="lbl">${s}</span></div>${i<2?'<span class="bar"></span>':''}`;}).join('')}</div>`;}
 
 const S={};
@@ -761,7 +765,7 @@ S.rhSupervision=()=>`<div class="fade app">${sidebar('rh','Supervision')}<div cl
 
 S.rh=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main">${top('Espace RH','Vue consolidée du capital humain','rh')}
   <div class="content"><div class="toolbar"><span class="eyebrow" style="flex:1">Pilotage des talents · Groupe BMCI</span><button class="btn btn-g btn-sm" data-go="posterPoste">${ic('brief','s')} Publier une offre</button><button class="btn btn-g btn-sm" data-go="campagneEval">${ic('check','s')} Campagne d'évaluation</button></div>
-  <div class="cols"><div class="card p"><div class="sec-h"><h3>Cartographie des compétences par pôle</h3><span class="pill mut">5 pôles</span></div>
+  <div class="cols"><div class="card p"><div class="sec-h"><h3>Cartographie des compétences par pôle</h3><button class="btn btn-g btn-sm" data-go="cartoPlein">${ic('grid','s')} Voir en grand</button></div>
     <p class="muted" style="font-size:12px;margin:-2px 0 10px">Lignes = pôles · colonnes = familles de compétences · le chiffre indique le niveau moyen (1 à 5). Cliquez un pôle pour le détail.</p>
     <div class="heatw"><div class="heat" id="heat"></div></div>
     <div class="hleg"><span><i style="background:var(--heat-0)"></i>Aucune donnée</span><span><i style="background:var(--heat-1)"></i>Émergent (1·2)</span><span><i style="background:var(--heat-2)"></i>Avancé (3)</span><span><i style="background:var(--heat-3)"></i>Confirmé (4)</span><span><i style="background:var(--heat-4)"></i>Expert (5)</span></div>
@@ -777,6 +781,19 @@ S.rh=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main"
     <div class="kpi"><div class="ki">${ic('spark','s')}</div><b class="tnum">7,8/10</b><small>Engagement</small></div>
     <div class="kpi"><div class="ki">${ic('pin','s')}</div><b class="disp">Siège</b><small>Périmètre · Casablanca</small><button class="link" style="margin-top:2px">Changer d'entité</button></div></div>
   </div></div></div>`;
+
+S.cartoPlein=()=>`<div class="fade app">${sidebar('rh','Cartographie')}<div class="main">${top('Cartographie des compétences','Vue plein écran · niveau moyen par pôle et famille de compétences','rh')}
+  <div class="content">
+    ${crumb([['Cartographie','rh'],['Vue plein écran',null]])}
+    <div class="card p">
+      <div class="sec-h"><h3>Cartographie des compétences par pôle</h3><button class="btn btn-g btn-sm" data-go="rh">${ic('grid','s')} Vue synthétique</button></div>
+      <p class="muted" style="font-size:12px;margin:-2px 0 14px">Lignes = pôles · colonnes = familles de compétences · le chiffre indique le niveau moyen (1 à 5). Cliquez un pôle pour ouvrir son analyse détaillée.</p>
+      <div class="heatw"><div class="heat big" id="heatFull"></div></div>
+      <div class="hleg" style="margin-top:16px"><span><i style="background:var(--heat-0)"></i>Aucune donnée</span><span><i style="background:var(--heat-1)"></i>Émergent (1·2)</span><span><i style="background:var(--heat-2)"></i>Avancé (3)</span><span><i style="background:var(--heat-3)"></i>Confirmé (4)</span><span><i style="background:var(--heat-4)"></i>Expert (5)</span></div>
+      <p class="muted" style="font-size:11px;margin-top:10px">Le niveau est indiqué en chiffre dans chaque case · l'information ne repose pas que sur la couleur (accessibilité WCAG).</p>
+    </div>
+  </div>
+</div></div>`;
 
 S.coach=()=>`<div class="fade app">${sidebar('rh','Coach Carrière')}<div class="main">${top('Coach Carrière','Votre assistant carrière personnel · 100 % confidentiel','rh')}
   <div class="content" style="grid-template-columns:1fr 280px;display:grid;align-items:start;gap:18px">
@@ -808,11 +825,9 @@ S.coach=()=>`<div class="fade app">${sidebar('rh','Coach Carrière')}<div class=
 
 /* ---------- ROUTER ---------- */
 const ORDER=[['portail','Portail d\'entrée','Accès · non authentifié','Accès'],['inscription','Inscription','Accès · validation temps réel','Accès'],['otp','Vérification OTP','Accès · confirmation e-mail','Accès'],['connexion','Connexion','Accès · retour utilisateur','Accès'],['onboarding','Configuration du profil','Onboarding · conversationnel','Onboarding'],['onboardingErreur','Onboarding · cas d\'incohérence','Onboarding · annuaire','Onboarding'],['bienvenue','Bienvenue','Onboarding · terminé','Onboarding'],['rhDash','Tableau de bord RH','Espace RH','Espace RH'],['rhReco','Alertes & actions','Espace RH · IA','Espace RH'],['rh','Cartographie des compétences','Espace RH','Espace RH'],['rhVeille','Entretiens · vue de veille','Espace RH','Espace RH'],['rhBilan','Préparer un entretien','Espace RH','Espace RH'],['rhRecherche','Annuaire des collaborateurs','Espace RH','Espace RH'],['ficheCollabRh','Base de connaissance collaborateur','Espace RH','Espace RH'],['rhOffres','Offres internes','Espace RH','Espace RH'],['rhPerso','Mon espace','Espace RH','Espace RH'],['rhSupervision','Supervision plateforme','Espace RH','Espace RH'],['coach','Coach Carrière','Module IA','Modules IA']];
-ORDER.push(["rhRetention","Analyse du risque de départ","Espace RH","Espace RH"]);
+ORDER.push(["rhRetention","Analyse du risque de départ","Espace RH","Espace RH"],["cartoPlein","Cartographie · plein écran","Espace RH","Espace RH"]);
 /* ==== ÉCRANS SUPPLÉMENTAIRES (modules) ==== */
-ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détaillé","Collaborateur"],
-["recoDetail","Parcours : Manager de Pôle","Collaborateur · parcours détaillé","Collaborateur"],
-["formation","Formations","Collaborateur · parcours détaillé","Collaborateur"],
+ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détaillé","Collaborateur"],["formation","Formations","Collaborateur · parcours détaillé","Collaborateur"],
 ["offreDetail","Détail de l'offre","Collaborateur · parcours détaillé","Collaborateur"],
 ["mesCandidatures","Mes candidatures","Collaborateur · parcours détaillé","Collaborateur"],
 ["souhaitSuivi","Mes souhaits d'évolution","Collaborateur · parcours détaillé","Collaborateur"],
@@ -836,10 +851,6 @@ ORDER.push(["editProfil","Éditer mon profil","Collaborateur · parcours détail
 WIRE.editProfil=function(){
   const p=$('#changePhoto'); if(p) p.addEventListener('click',()=>toast('Ouvrez votre galerie pour changer la photo','info'));
   const save=$('#saveProfil'); if(save) save.addEventListener('click',()=>{ toast('Profil mis à jour'); go('collab'); });
-};
-
-WIRE.recoDetail=function(){
-  $$('[data-launch]').forEach(function(b){ b.addEventListener('click',function(){ toast('Formation ajoutée à votre suivi'); go('formation'); }); });
 };
 
 WIRE.formation=function(){
@@ -1557,13 +1568,13 @@ S.notifications=()=>`<div class="fade app">${sidebar('rh','Tableau de bord')}<di
         <button class="btn btn-g btn-sm" id="markAll">${ic('check','s')} Tout marquer comme lu</button></div>
       <div class="nlist" id="nlist">
         ${[
-          ['flag','var(--warning-soft)','var(--warning)','Entretien RH en retard','Aya Bennani n\'a pas eu d\'entretien RH depuis 14 mois · à planifier.','Il y a 1 h',1],
-          ['route','','','Nouveau souhait d\'évolution déclaré','Marc Vasseur souhaite rejoindre une mission transverse (transformation digitale des agences).','Il y a 3 h',1],
-          ['spark','var(--gold-soft)','var(--gold)','Haut potentiel détecté','Le moteur IA a identifié Sofia Haddad (score 92) · apte au management de transition.','Il y a 5 h',1],
-          ['clock','','','Campagne d\'évaluation','62 % complétée · 3 pôles en retard : IT & Digital, International, Finance.','Hier',0],
-          ['check','','','Revue automatique terminée','La revue nocturne a corrigé 3 anomalies (fiches sans compétence ancrée).','Hier',0],
-          ['flag','','','Poste critique sans successeur','Directeur Asset Management · lancer un vivier de succession.','Il y a 2 j',0]
-        ].map(n=>`<div class="notif ${n[6]?'unread':''}"><div class="ni"${n[1]?` style="background:${n[1]};color:${n[2]}"`:''}>${ic(n[0],'s')}</div>
+          ['flag','var(--warning-soft)','var(--warning)','Entretien RH en retard','Aya Bennani n\'a pas eu d\'entretien RH depuis 14 mois · à planifier.','Il y a 1 h',1,'rhBilan','aya'],
+          ['route','','','Nouveau souhait d\'évolution déclaré','Marc Vasseur souhaite rejoindre une mission transverse (transformation digitale des agences).','Il y a 3 h',1,'ficheCollabRh','marc'],
+          ['spark','var(--gold-soft)','var(--gold)','Haut potentiel détecté','Le moteur IA a identifié Sofia Haddad (score 92) · apte au management de transition.','Il y a 5 h',1,'hautsPotentiels'],
+          ['clock','','','Campagne d\'évaluation','62 % complétée · 3 pôles en retard : IT & Digital, International, Finance.','Hier',0,'campagneEval'],
+          ['check','','','Revue automatique terminée','La revue nocturne a corrigé 3 anomalies (fiches sans compétence ancrée).','Hier',0,'rhSupervision'],
+          ['flag','','','Poste critique sans successeur','Directeur Asset Management · lancer un vivier de succession.','Il y a 2 j',0,'hautsPotentiels']
+        ].map(n=>`<div class="notif ${n[6]?'unread':''}" data-go="${n[7]}"${n[8]?` data-person="${n[8]}"`:''} style="cursor:pointer"><div class="ni"${n[1]?` style="background:${n[1]};color:${n[2]}"`:''}>${ic(n[0],'s')}</div>
           <div class="nb"><h4>${n[3]}${n[6]?' <span class="pill new">Non lu</span>':''}</h4><p>${n[4]}</p></div>
           <span class="nt">${n[5]}</span></div>`).join('')}
       </div>
@@ -1632,6 +1643,7 @@ function wire(id){
   if(id==='rhEntretiens')wireRhEnt();
   if(id==='collab')drawCollab();
   if(id==='rh'){buildHeat();wireRh();}
+  if(id==='cartoPlein')buildHeat('heatFull');
   if(WIRE[id])WIRE[id]();
 }
 function wireReg(){const name=$('#rname'),email=$('#remail'),pass=$('#rpass'),btn=$('#reg');
@@ -1693,11 +1705,11 @@ function drawCollab(){const r=$('#ringP');if(r){const R=32,C=2*Math.PI*R,p=76;r.
   const sk=[['Analyse fin.',88],['Gestion risque',75],['Leadership',62]];
   $('#gauges').innerHTML=sk.map((s,i)=>`<div class="gauge"><div class="gv"><svg width="66" height="40" viewBox="0 0 66 40"><path class="gt" d="M6,38 A27,27 0 0 1 60,38"/><path class="gp" id="g${i}" d="M6,38 A27,27 0 0 1 60,38"/></svg><div class="gnum tnum">${s[1]}%</div></div><div class="glab">${s[0]}</div></div>`).join('');
   sk.forEach((s,i)=>{const p=$('#g'+i);const L=p.getTotalLength();p.style.strokeDasharray=L;const off=L*(1-s[1]/100);p.style.strokeDashoffset=reduce?off:L;if(!reduce){p.getBoundingClientRect();requestAnimationFrame(()=>p.style.strokeDashoffset=off);}});}
-function buildHeat(){const sv=['Analyse','Risque','Digital','Compliance','Leadership','Data'],rw=['Corporate','Retail','Risques','IT & Digital','Finance','Conformité','International','Opérations','Ressources Humaines'],
+function buildHeat(t){const sv=['Analyse','Risque','Digital','Compliance','Leadership','Data'],rw=['Corporate','Retail','Risques','IT & Digital','Finance','Conformité','International','Opérations','Ressources Humaines'],
   d=[[5,4,2,3,4,2],[3,3,4,2,3,1],[4,5,1,4,3,2],[2,1,5,2,2,5],[4,3,3,5,4,3],[3,4,2,5,3,2],[4,3,3,3,3,2],[3,2,4,3,3,3],[3,2,3,4,4,3]];
   let h='<div class="hd"></div>'+sv.map(s=>`<div class="hd">${s}</div>`).join('');
   rw.forEach((r,i)=>{h+=`<div class="rl"><button class="link" data-pole="${r}" data-go="cartoDetail">${r}</button></div>`+d[i].map(v=>{const l=v===0?0:v<=2?1:v===3?2:v===4?3:4;return `<div class="cell l${l}" title="${r} · ${v}/5">${v||'·'}</div>`;}).join('');});
-  $('#heat').innerHTML=h;}
+  $('#'+(t||'heat')).innerHTML=h;}
 function wireRh(){const v=$('#rhV');if(!v)return;v.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;v.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');if(b.dataset.v==='perso')go('rhPerso');});}
 
 render('portail');
