@@ -1,0 +1,191 @@
+#!/usr/bin/env python3
+"""
+services/offre_service.py — Logique métier d'une Offre (CRUD + dérivation Fiche).
+
+RÔLE
+    Crée, lit, met à jour et liste les offres (offre de poste / mission / projet /
+    gig) et leurs ATTENDUS overridables (`OffreCompetence`). À la création avec une
+    `fiche_id`, copie les compétences de la Fiche de référence en attendus
+    (`source="fiche"`, importance par défaut « essentielle », niveau à préciser),
+    SANS jamais modifier la Fiche. Les attendus sont ensuite éditables au niveau
+    de l'offre (ajout, override, retrait).
+
+    Renvoie toujours des schémas Pydantic (jamais d'ORM nu), comme profil_service.
+
+EMPLACEMENT MVC
+    Couche "services" : règles métier, transactions. Reçoit `db` en paramètre.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.fiche import FicheCompetence
+from app.models.fiche import Fiche
+from app.models.offre import Offre, OffreCompetence, OffreStatut
+from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
+                               OffreCompetenceIn, OffreCompetenceOut,
+                               OffreCompetenceUpdate)
+
+# Statuts qui, à l'entrée, posent automatiquement une date si elle manque.
+_STATUTS_OUVERTURE = {OffreStatut.OUVERTE}
+_STATUTS_CLOTURE = {OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE}
+
+
+def _to_out(db: Session, o: Offre) -> OffreOut:
+    """Assemble un OffreOut : l'offre + ses attendus (requête explicite)."""
+    comps = db.scalars(
+        select(OffreCompetence)
+        .where(OffreCompetence.offre_id == o.id)
+        .order_by(OffreCompetence.id)
+    ).all()
+    out = OffreOut.model_validate(o)
+    out.competences = [OffreCompetenceOut.model_validate(c) for c in comps]
+    return out
+
+
+def _add_competences(db: Session, offre_id: int, comps: list[OffreCompetenceIn]) -> None:
+    for c in comps:
+        db.add(OffreCompetence(
+            offre_id=offre_id, libelle=c.libelle, categorie=c.categorie,
+            skill_id=c.skill_id, skill_label_fr=c.skill_label_fr,
+            importance=c.importance, niveau_requis=c.niveau_requis, source=c.source,
+        ))
+
+
+def _heriter_de_fiche(db: Session, offre_id: int, fiche_id: int) -> None:
+    """Copie les compétences de la Fiche de référence en attendus overridables.
+    La Fiche n'est PAS modifiée ; importance/niveau prennent des défauts éditables."""
+    fcomps = db.scalars(
+        select(FicheCompetence)
+        .where(FicheCompetence.fiche_id == fiche_id)
+        .order_by(FicheCompetence.id)
+    ).all()
+    for fc in fcomps:
+        db.add(OffreCompetence(
+            offre_id=offre_id, libelle=fc.libelle, categorie=fc.categorie,
+            skill_id=fc.skill_id, skill_label_fr=fc.skill_label_fr,
+            rerank_score=fc.rerank_score,
+            importance="essentielle", niveau_requis=None, source="fiche",
+        ))
+
+
+def create_offre(db: Session, data: OffreCreate) -> OffreOut:
+    """Crée une offre. Si `fiche_id` est fourni, la Fiche doit exister ; ses
+    compétences sont héritées comme attendus (si `heriter_competences`). Lève
+    ValueError si la Fiche référencée est introuvable."""
+    if data.fiche_id is not None and db.get(Fiche, data.fiche_id) is None:
+        raise ValueError(f"Fiche de référence {data.fiche_id} introuvable.")
+
+    o = Offre(
+        fiche_id=data.fiche_id, type=data.type, titre=data.titre,
+        description=data.description, perimetre_bmci=data.perimetre_bmci,
+        departement_key=data.departement_key, statut=data.statut,
+        created_by=data.created_by, manager_id=data.manager_id,
+        date_ouverture=data.date_ouverture, date_cloture=data.date_cloture,
+        synthetique=data.synthetique,
+    )
+    # Dates cohérentes avec le statut initial.
+    _appliquer_dates_statut(o, data.statut)
+    db.add(o)
+    db.flush()  # -> o.id
+
+    if data.fiche_id is not None and data.heriter_competences:
+        _heriter_de_fiche(db, o.id, data.fiche_id)
+    _add_competences(db, o.id, data.competences)
+
+    db.commit()
+    db.refresh(o)
+    return _to_out(db, o)
+
+
+def get_offre(db: Session, offre_id: int) -> OffreOut | None:
+    o = db.get(Offre, offre_id)
+    return _to_out(db, o) if o else None
+
+
+def list_offres(db: Session, *, statut: str | None = None, type: str | None = None,
+                departement_key: str | None = None, fiche_id: int | None = None,
+                synthetique: bool | None = None, limit: int = 50,
+                offset: int = 0) -> list[OffreOut]:
+    """Liste paginée, filtrable (statut, type, département, fiche, nature)."""
+    stmt = select(Offre).order_by(Offre.id.desc())
+    if statut is not None:
+        stmt = stmt.where(Offre.statut == statut)
+    if type is not None:
+        stmt = stmt.where(Offre.type == type)
+    if departement_key is not None:
+        stmt = stmt.where(Offre.departement_key == departement_key)
+    if fiche_id is not None:
+        stmt = stmt.where(Offre.fiche_id == fiche_id)
+    if synthetique is not None:
+        stmt = stmt.where(Offre.synthetique == synthetique)
+    stmt = stmt.limit(min(max(limit, 1), 200)).offset(max(offset, 0))
+    return [_to_out(db, o) for o in db.scalars(stmt).all()]
+
+
+def _appliquer_dates_statut(o: Offre, statut: str | None) -> None:
+    """Pose date_ouverture/date_cloture selon le statut, sans écraser l'existant."""
+    if statut in _STATUTS_OUVERTURE and o.date_ouverture is None:
+        o.date_ouverture = datetime.now(timezone.utc)
+    if statut in _STATUTS_CLOTURE and o.date_cloture is None:
+        o.date_cloture = datetime.now(timezone.utc)
+
+
+def update_offre(db: Session, offre_id: int, data: OffreUpdate) -> OffreOut | None:
+    """Mise à jour partielle de l'offre (jamais la Fiche). None si introuvable.
+    Une transition de statut pose automatiquement la date correspondante."""
+    o = db.get(Offre, offre_id)
+    if not o:
+        return None
+    changes = data.model_dump(exclude_unset=True)
+    for field, value in changes.items():
+        setattr(o, field, value)
+    if "statut" in changes:
+        _appliquer_dates_statut(o, changes["statut"])
+    db.commit()
+    db.refresh(o)
+    return _to_out(db, o)
+
+
+def add_competences(db: Session, offre_id: int,
+                    comps: list[OffreCompetenceIn]) -> OffreOut | None:
+    """Ajoute des attendus à une offre existante. None si introuvable."""
+    o = db.get(Offre, offre_id)
+    if not o:
+        return None
+    _add_competences(db, offre_id, comps)
+    db.commit()
+    return _to_out(db, o)
+
+
+def update_competence(db: Session, offre_id: int, comp_id: int,
+                      data: OffreCompetenceUpdate) -> OffreOut | None:
+    """Override un attendu au niveau de l'offre (importance, niveau, libellé…).
+    None si l'offre ou l'attendu (rattaché à cette offre) est introuvable."""
+    o = db.get(Offre, offre_id)
+    if not o:
+        return None
+    comp = db.get(OffreCompetence, comp_id)
+    if comp is None or comp.offre_id != offre_id:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(comp, field, value)
+    db.commit()
+    return _to_out(db, o)
+
+
+def delete_competence(db: Session, offre_id: int, comp_id: int) -> OffreOut | None:
+    """Retire un attendu de l'offre. None si offre/attendu introuvable."""
+    o = db.get(Offre, offre_id)
+    if not o:
+        return None
+    comp = db.get(OffreCompetence, comp_id)
+    if comp is None or comp.offre_id != offre_id:
+        return None
+    db.delete(comp)
+    db.commit()
+    return _to_out(db, o)

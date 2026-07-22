@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.controllers import (skill_extraction_controller, skill_matching_controller,
                              recommendation_controller, fiche_controller, auth_controller,
-                             profil_controller)
+                             profil_controller, offre_controller, candidature_controller)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -45,6 +45,8 @@ app.include_router(skill_matching_controller.router)
 app.include_router(recommendation_controller.router)
 app.include_router(fiche_controller.router)
 app.include_router(profil_controller.router)
+app.include_router(offre_controller.router)
+app.include_router(candidature_controller.router)
 
 
 @app.get("/sante", tags=["Système"], summary="Vérifier que l'API répond")
