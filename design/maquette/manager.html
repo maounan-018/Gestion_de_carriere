@@ -846,7 +846,7 @@ S.coach=()=>`<div class="fade app">${sidebar('manager','Coach Carrière')}<div c
 
 WIRE.offres=function(){const off=$('#off');if(!off)return;off.addEventListener('click',function(e){const c=e.target.closest('.fchip');if(!c)return;off.querySelectorAll('.fchip').forEach(function(x){x.classList.remove('on');});c.classList.add('on');const val=c.dataset.ligne;let shown=0;$$('#ogrid .offer').forEach(function(card){const ok=val==='Tout'||card.dataset.ligne===val;card.style.display=ok?'':'none';if(ok)shown++;});const em=$('#offEmpty');if(em)em.hidden=shown>0;});};
 S.offres=()=>`<div class="fade app">${sidebar('manager','Offres internes')}<div class="main">${top('Offres internes & mobilité','Postes, missions et projets du Groupe','manager')}
-  <div class="content"><div class="toolbar"><div class="search">${ic('search','s')}<input placeholder="Rechercher un métier, une compétence, une ville…"></div><button class="btn btn-g btn-sm">Tous types ▾</button><button class="btn btn-g btn-sm">Localisation ▾</button></div>
+  <div class="content"><div class="toolbar"><div class="search">${ic('search','s')}<input placeholder="Rechercher un métier, une compétence, une ville…"></div><button class="btn btn-g btn-sm">Tous types ▾</button><button class="btn btn-g btn-sm">Localisation ▾</button><span style="flex:1"></span><button class="btn btn-p btn-sm" data-go="posterOffre">${ic('brief','s')} Publier une offre</button></div>
   <div class="ofilters" id="off">${['Tout','Finance','Digital & IT','Risque','Clientèle','RH'].map((f,i)=>`<button class="fchip ${i===0?'on':''}" data-ligne="${f}">${f}</button>`).join('')}</div>
   <p class="muted" style="font-size:12px;margin:4px 0 10px">Opportunités classées par <b>adéquation</b> avec votre profil de dirigeant · baromètre vert à gauche de chaque carte.</p>
   <div class="ogrid" id="ogrid">${OFFERS.filter(o=>o.scope==='moi').map(offerCard).join('')}</div>
@@ -1173,6 +1173,27 @@ S.souhaitsRecus=()=>`<div class="fade app">${sidebar('manager','Mon équipe')}<d
     </div>
   </div></div></div>`;
 
+S.simEntretien=()=>`<div class="fade app">${sidebar('manager','Entretiens')}<div class="main">${top('Entretien annuel · '+mgrC().n,'Simulation contextualisée · conduite par vous','manager')}
+  <div class="content">
+    ${crumb([['Entretiens','entretien'],[mgrC().n,'prepEntretien'],['Simulation',null]])}
+    <div class="callout" style="margin-bottom:14px"><div class="ci">${ic('spark','s')}</div><div><h4>Entretien contextualisé avec ${mgrC().n}</h4><p>La simulation s'appuie sur son profil, ses évaluations (${mgrC().s} %) et ses souhaits. Vous conduisez l'entretien ; le Coach vous assiste en temps réel.</p></div></div>
+    <div style="grid-template-columns:210px 1fr 250px;display:grid;align-items:start;gap:14px">
+      <div class="card p"><div class="eyebrow" style="margin-bottom:10px">Déroulé de l'entretien</div><div class="stack step-list" style="gap:4px">
+        ${[['Accueil & cadrage',2],['Bilan de l\'année',1],['Compétences & évaluation',0],['Souhaits & mobilité',0],['Objectifs 2026',0],['Synthèse & engagements',0]].map(s=>`<div class="nav-i ${s[1]===2?'on':''}">${s[1]===1?ic('chat','s'):s[1]===2?ic('check','s'):ic('clock','s')}<span>${s[0]}</span></div>`).join('')}</div>
+        <div class="ob-p" style="margin-top:14px"><span class="pt">20 %</span><div class="track"><i style="width:20%"></i></div></div></div>
+      <div class="stack"><div class="card p"><div class="phead" style="align-items:center;margin-bottom:12px"><div class="ava md">${mgrC().i}</div><div class="pinfo"><h4 style="font-size:14px">${mgrC().n}</h4><div class="muted" style="font-size:11.5px">${mgrC().r} · Pôle Risques</div></div></div>
+        <div class="chat"><div class="bubble bot">Vous ouvrez l'entretien de <b>${mgrC().n}</b>. Accroche suggérée : « Merci d'être là. Commençons par ton bilan : quelles réussites retiens-tu cette année ? »</div>
+          <div class="bubble me">Bonjour ${mgrC().n.split(' ')[0]}, merci d'être là. Parle-moi de tes principales réussites cette année.</div>
+          <div class="bubble bot" style="opacity:.9">${mgrC().n.split(' ')[0]} (simulé) répond en s'appuyant sur son dossier — le Coach analyse et vous suggère les relances.</div></div>
+        <div class="inp" style="margin-top:12px"><span class="ic">${ic('chat','s')}</span><input placeholder="Votre question à ${mgrC().n.split(' ')[0]}…"><button class="btn btn-p btn-sm">${ic('send','s')} Envoyer</button></div></div>
+        <p class="muted" style="font-size:11.5px;text-align:center">${ic('check','s')} Sauvegarde auto · <button class="link" data-go="prepEntretien">Revoir le briefing</button> · <button class="link" data-go="entretien">Quitter la simulation</button></p></div>
+      <div class="coach"><span class="pill ai" style="width:max-content">${ic('spark','s')} Coach en ligne</span>
+        <div class="ctip"><div class="th">${ic('route','s')} Contexte du collaborateur</div><p>${mgrC().co}</p></div>
+        <div class="ctip"><div class="th">${ic('spark','s')} À ne pas oublier</div><p>Aborder les souhaits déclarés et l'écart clé « ${mgrC().c[mgrC().c.length-1][0]} ».</p></div>
+        <div class="ctip"><div class="th">${ic('check','s')} Posture</div><p>Écoute active, questions ouvertes, engagements concrets et datés.</p></div></div>
+    </div>
+  </div></div></div>`;
+ORDER.push(["simEntretien","Entretien · simulation contextualisée","Manager · parcours détaillé","Manager"]);
 S.prepEntretien=()=>`<div class="fade app">${sidebar('manager','Entretiens')}<div class="main">${top('Préparer un entretien','Briefing contextualisé du collaborateur','manager')}
   <div class="content">
     ${crumb([['Entretiens','entretien'],[mgrC().n,null]])}
@@ -1190,7 +1211,7 @@ S.prepEntretien=()=>`<div class="fade app">${sidebar('manager','Entretiens')}<di
       <div class="card p"><div class="sec-h"><h3>Dernières évaluations</h3></div>
         ${mgrC().ev.map(v=>`<div class="rev"><div class="ava sm">${v[0]}</div><div><p>« ${v[1]} »</p><div class="who"><span class="stars">${v[2]}</span> ${v[3]}</div></div></div>`).join('')}</div>
       <div class="callout"><div class="ci">${ic('spark','s')}</div><div><h4>Points à aborder · Coach Carrière</h4><p>${mgrC().co}</p></div></div>
-      <button class="btn btn-p block" data-go="entretien">${ic('spark','s')} Lancer la simulation contextualisée</button>
+      <button class="btn btn-p block" data-go="simEntretien">${ic('spark','s')} Lancer la simulation contextualisée</button>
     </div></div>
   </div></div></div>`;
 
