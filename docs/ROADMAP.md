@@ -1,7 +1,11 @@
 # Feuille de route — BMCI Gestion des Carrières
 
-Liste **factuelle et exhaustive** des briques. Légende : ✅ fait · ⏳ en cours · ⬜ à faire · 🅿️ différé/hors scope.
-Mise à jour : session de développement en cours.
+Liste **factuelle et exhaustive** des briques. Légende : ✅ fait · ⏳ en cours / partiel · ⬜ à faire · 🅿️ différé/hors scope.
+**Mise à jour : 2026-07-21** — statuts réconciliés avec le code (`backend/app/…`) et la base
+(`bmci_carrieres.db`). Preuves relevées : 164 fiches + 2 939 compétences persistées ;
+tables `offres`/`candidatures`/`profils` créées via `create_all` (baseline Alembic = stamp vide) ;
+guards RBAC branchés (`Depends` dans tous les controllers) mais `users=0`/`audit_logs=0` ;
+SAML = placeholder documenté seulement.
 
 > ### 🎯 Cadrage retenu (décisions utilisateur)
 > - **🔒 La SÉCURITÉ est la priorité CENTRALE** — à traiter tôt, en première classe.
@@ -33,6 +37,7 @@ Mise à jour : session de développement en cours.
 - ✅ Embeddings **bge-m3** par lots (`/api/embed`) + garde-fou bissection
 - ✅ Reranker **bge-reranker-v2-m3** (CPU, offline)
 - ✅ Optimisation **num_ctx** (indispensable 8 Go VRAM)
+- ✅ Résilience : repli automatique sur modèle fallback en cas d'erreur d'infra ; batch résilient par fiche
 - ⬜ Brancher les **modèles en réserve** : `llama3.1:8b` (normalisation), `qwen3:8b` (agent),
   `qwen3.6` (raisonnement lourd batch)
 - ⬜ **Modelfiles spécialisés** (lc-extracteur, lc-conseiller…) — optimisation
@@ -43,11 +48,13 @@ Mise à jour : session de développement en cours.
 - ✅ Entité **`Fiche`** (référence) + **`FicheCompetence`** (attendus typés + ancrés)
 - ✅ Cartographie **33 départements → 164 métiers** (éditable)
 - ✅ **Gabarit de fiche** éditable (`config/fiche_schema.yaml`)
-- ⏳ **Génération + persistance de ~164 fiches** (batch mistral-nemo en cours)
-- ⬜ Entité **`Offre`** (dérive d'une Fiche ; attendus *overridables* au niveau offre ;
-  types offre/mission/projet/gig ; statut/dates ; poussée par RH/manager) + CRUD
-- ⬜ Entité **`Candidature`** (profil ↔ offre → score + écarts + statut) + CRUD
-- ⬜ Entité **`Collaborateur / Profil`** (compétences détenues, niveau, historique, aspirations)
+- ✅ **Génération + persistance de 164 fiches** — **TERMINÉ** (164 fiches, 2 939 `fiche_competences` en base)
+- ✅ Entité **`Collaborateur / Profil`** + **CRUD** (compétences détenues, aspirations) — controller/service branchés
+- ⏳ Entité **`Offre`** — **modèle + table `offres`/`offre_competences` créés ; CRUD (controller/service/schémas) À FAIRE**
+  (dérive d'une Fiche ; attendus *overridables* ; types offre/mission/projet/gig ; statut/dates ; poussée RH/manager)
+- ⏳ Entité **`Candidature`** — **modèle + table `candidatures` créés ; CRUD (controller/service/schémas) À FAIRE**
+  (profil ↔ offre → score + écarts + statut)
+- ⬜ **Niveau de maîtrise & historique** sur les compétences de profil (aujourd'hui présence binaire) — cf. I
 - ⬜ **Persistance des résultats** de matching/reco (traçabilité)
 
 ## IV. Fonctionnalités métier (IA + graphe)
@@ -67,14 +74,18 @@ Mise à jour : session de développement en cours.
   compétences de la banque, couverture, tensions, hauts potentiels) — demandé explicitement
 - 🅿️ **Mini-jeux** de détection de compétences par thème (plus tard, recherches approfondies)
 
-## V. Authentification, identité & sécurité (à porter de smart-objective)
-- ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev)
-- ⬜ **Auth locale** de secours + sessions (cookies HttpOnly/Secure/SameSite + CSRF)
-- ⬜ **RBAC** (COLLAB / MANAGER / RH / ADMIN / SERVICE) + guards sur toutes les routes
-- ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo)
-- ⬜ **Audit trail** (accès profils, matching, exports, éditions gabarit)
+## V. Authentification, identité & sécurité (priorité centrale)
+- ⏳ **Auth locale** + sessions — **code posé** (`auth_service`, `core/security`, tables `users`/`user_sessions`) ;
+  reste : **seed des comptes/personas, tests, durcissement** (`users=0` aujourd'hui)
+- ⏳ **RBAC** (COLLAB / MANAGER / RH / ADMIN / SERVICE) — **guards branchés** sur les routes
+  (`Depends` présents dans tous les controllers) ; reste : **valider la couverture route par route + tests**
+- ⏳ **Audit trail** — **code posé** (`audit_service`, table `audit_logs`) ; reste : **brancher sur toutes les
+  actions sensibles + vérifier** (`audit_logs=0` aujourd'hui)
+- ⬜ **CSRF** — à confirmer branché de bout en bout (cookies HttpOnly/Secure/SameSite)
+- ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
+- ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
 - ⬜ **Sécurité applicative** : rate-limit IA, taille requête, en-têtes sécu, CORS strict,
-  PBKDF2, anti-brute-force
+  PBKDF2, anti-brute-force — à auditer/compléter (primitives partielles dans `core/security.py`)
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
 - ⬜ **Édition gabarit + cartographie via UI protégée RBAC** (aujourd'hui = fichiers YAML)
 
@@ -97,10 +108,14 @@ Mise à jour : session de développement en cours.
 - ⬜ **Mentions légales & crédits** (attributions ESCO/O*NET/SFIA — obligation légale)
 - ⬜ **Photos réelles** (4 portraits déjà intégrés dans la maquette) + **blanc/vert, jamais de sombre**
 
+> Note : les **3 maquettes HTML par rôle** (collab / manager / RH) existent dans `design/` — base de l'implémentation.
+
 ## VIII. Qualité, tests & lancement
-- ⬜ Suite **pytest** (sécurité, RBAC, matching, extraction) — **gardé** (appli sensible)
-- ⬜ Migrations **Alembic** — **RETENU** : faire évoluer le schéma (Offre/Candidature/Profil)
-  **sans recréer la base ni perdre les fiches persistées** (à mettre en place bientôt)
+- ⏳ Suite **pytest** — **échafaudage posé** (`app/tests/conftest.py`, `test_profil.py`) ;
+  reste : **couvrir sécurité, RBAC, matching, extraction** (appli sensible)
+- ⏳ Migrations **Alembic** — **baseline `895f8467eae9` = stamp vide** du `create_all` ;
+  reste : **éprouver le workflow de migration incrémentale** (faire évoluer Offre/Candidature/niveau
+  **sans recréer la base ni perdre les 164 fiches**)
 - ⬜ **Scripts de lancement** dev (`LANCER_APP.bat` / `start_app.sh` / `VERIFIER.*`)
 - 🅿️ **CI** (GitHub Actions) · **PostgreSQL + pgvector** · **Docker** — optionnels (surtout prod → hors scope)
 - 🅿️ **Mise en production banque** (HTTPS, multi-worker, supervision, DSI) — **pas nous**

@@ -21,17 +21,23 @@ maquette UI/UX initiale (voir `design/`).
 
 ---
 
-## Où en est-on ?
+## Où en est-on ? *(màj 2026-07-21)*
 
 | Volet | État |
 |---|---|
 | Cartographie des parcours & maquette UI/UX (34 écrans, 3 rôles) | ✅ fait — dans `design/` |
-| Fondation du dépôt (structure, docs d'architecture) | ✅ en cours (ce commit) |
+| Fondation du dépôt (structure, docs d'architecture) | ✅ fait |
 | Recherche modèles IA locaux + référentiels | ✅ documentée (`docs/`) |
-| Ingestion des référentiels (ESCO/O*NET/SFIA) | ⏳ à construire |
-| Backend FastAPI (auth, RBAC, services IA) | ⏳ à construire |
-| Frontend Vue (implémentation des écrans maquettés) | ⏳ à construire |
-| SSO SAML + provisioning | ⏳ à porter depuis smart-objective |
+| Ingestion des référentiels (ESCO/O*NET/SFIA) | ✅ fait — 14 173 compétences, 4 059 métiers vectorisés + crosswalk |
+| Moteur IA (ai_router, embeddings bge-m3, reranker) | ✅ fait |
+| Fonctions métier IA (extraction, matching, reco, génération de fiches) | ✅ 5 fonctions livrées |
+| Modèle métier (Fiche + 164 fiches persistées, Profil CRUD) | ✅ fait — Offre/Candidature : modèles posés, **CRUD à faire** |
+| Sécurité (auth locale, sessions, RBAC, audit) | ⏳ code posé & guards branchés — à seeder / tester / durcir |
+| Backend FastAPI — reste | ⏳ CRUD Offre/Candidature, matching sur entités, dashboards RH |
+| Frontend Vue (implémentation des écrans maquettés) | ⬜ à construire (maquettes HTML prêtes dans `design/`) |
+| SSO SAML + provisioning | ⬜ placeholder documenté — à porter depuis smart-objective |
+
+> Détail exhaustif et priorisé dans [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
