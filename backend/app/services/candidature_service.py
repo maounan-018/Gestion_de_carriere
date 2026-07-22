@@ -197,6 +197,7 @@ def reevaluer_candidature(db: Session, candidature_id: int) -> CandidatureOut | 
     evaluation = evaluer(db, c.offre_id, c.profil_id)
     c.score = evaluation.score
     c.evaluation_json = evaluation.model_dump_json()
+    c.reevaluated_at = datetime.now(timezone.utc)  # trace QUAND le score a été recalculé
     db.commit()
     db.refresh(c)
     return _to_out(c)

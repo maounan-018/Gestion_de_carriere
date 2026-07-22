@@ -66,6 +66,7 @@ class CandidatureOut(BaseModel):
     score: float | None
     motivation: str | None
     created_at: datetime
+    reevaluated_at: datetime | None = None  # dernière réévaluation (None si jamais réévaluée)
     decided_at: datetime | None
     decided_by: int | None
     evaluation: EvaluationOut | None = Field(
