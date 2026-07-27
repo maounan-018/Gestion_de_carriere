@@ -25,7 +25,7 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
-                               OffreCompetenceIn, OffreCompetenceUpdate)
+                               OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut)
 from app.services import offre_service
 
 router = APIRouter(prefix="/api/offres", tags=["Offres"])
@@ -72,6 +72,13 @@ def lister_offres(
     return offre_service.list_offres(
         db, statut=statut, type=type, departement_key=departement_key,
         fiche_id=fiche_id, synthetique=synthetique, limit=limit, offset=offset)
+
+
+@router.get("/compatibles", response_model=list[OffreCompatOut],
+            summary="Offres + % de compatibilité pour le profil du compte connecté")
+def offres_compatibles(user: User = Depends(get_current_user),
+                       db: Session = Depends(get_db)) -> list[OffreCompatOut]:
+    return offre_service.list_compatibles_for_user(db, user.id)
 
 
 @router.get("/{offre_id}", response_model=OffreOut,

@@ -25,9 +25,10 @@ import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
+  mapOffre,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
-  type ProfilCarriereOut, type ProfilOut, type AnnuaireOut,
+  type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
 } from './mappers'
 
 /**
@@ -45,12 +46,20 @@ const currentRole = (): Role => useSessionStore().role ?? 'collab'
 
 export const apiService = {
   async getOffers(): Promise<Offer[]> {
-    await delay()
-    return OFFERS
+    if (MODE === 'mock') {
+      await delay()
+      return OFFERS
+    }
+    const rows = await apiFetch<OffreCompatOut[]>('/offres/compatibles')
+    return rows.map(mapOffre)
   },
   async getOffer(key: string): Promise<Offer | undefined> {
-    await delay(160)
-    return OFFERS.find((o) => o.key === key)
+    if (MODE === 'mock') {
+      await delay(160)
+      return OFFERS.find((o) => o.key === key)
+    }
+    const rows = await apiFetch<OffreCompatOut[]>('/offres/compatibles')
+    return rows.map(mapOffre).find((o) => o.key === key)
   },
   async getCandidatures(): Promise<Candidature[]> {
     await delay()

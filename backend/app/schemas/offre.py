@@ -103,3 +103,20 @@ class OffreOut(BaseModel):
     synthetique: bool
     created_at: datetime
     competences: list[OffreCompetenceOut] = Field(default_factory=list)
+
+
+class OffreCompatOut(BaseModel):
+    """Offre + compatibilité calculée POUR UN PROFIL donné (écran offres du
+    collaborateur). `score_compat` = score d'évaluation (0-100) du profil vs les
+    attendus ; `couvertes`/`ecarts` = compte des compétences. Compétences = libellés."""
+    id: int
+    type: str
+    titre: str
+    description: str | None
+    perimetre_bmci: str | None
+    departement_key: str | None
+    statut: str
+    competences: list[str] = Field(default_factory=list)
+    score_compat: int | None = None
+    couvertes: int = 0
+    ecarts: int = 0
