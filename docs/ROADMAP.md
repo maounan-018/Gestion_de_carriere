@@ -1,11 +1,12 @@
 # Feuille de route — BMCI Gestion des Carrières
 
 Liste **factuelle et exhaustive** des briques. Légende : ✅ fait · ⏳ en cours / partiel · ⬜ à faire · 🅿️ différé/hors scope.
-**Mise à jour : 2026-07-21** — statuts réconciliés avec le code (`backend/app/…`) et la base
-(`bmci_carrieres.db`). Preuves relevées : 164 fiches + 2 939 compétences persistées ;
-tables `offres`/`candidatures`/`profils` créées via `create_all` (baseline Alembic = stamp vide) ;
-guards RBAC branchés (`Depends` dans tous les controllers) mais `users=0`/`audit_logs=0` ;
-SAML = placeholder documenté seulement.
+**Mise à jour : 2026-07-27** — backend fortement avancé. Depuis le 2026-07-22 :
+**CRUD Offre/Candidature** livré ; **14 endpoints applicatifs** ajoutés (notifications, souhaits,
+formations, dashboards RH/manager, cartographie, hauts-potentiels, profil carrière, veille, alertes) ;
+**auth locale + RBAC + audit OPÉRATIONNELS** (4 comptes seedés + personas) ; **5 migrations Alembic**
+incrémentales ; **pytest 46 verts** ; **42 endpoints** exposés ; **frontend Vue mock-first** complet +
+auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées à chaque migration/seed).
 
 > ### 🎯 Cadrage retenu (décisions utilisateur)
 > - **🔒 La SÉCURITÉ est la priorité CENTRALE** — à traiter tôt, en première classe.
@@ -50,12 +51,14 @@ SAML = placeholder documenté seulement.
 - ✅ **Gabarit de fiche** éditable (`config/fiche_schema.yaml`)
 - ✅ **Génération + persistance de 164 fiches** — **TERMINÉ** (164 fiches, 2 939 `fiche_competences` en base)
 - ✅ Entité **`Collaborateur / Profil`** + **CRUD** (compétences détenues, aspirations) — controller/service branchés
-- ⏳ Entité **`Offre`** — **modèle + table `offres`/`offre_competences` créés ; CRUD (controller/service/schémas) À FAIRE**
-  (dérive d'une Fiche ; attendus *overridables* ; types offre/mission/projet/gig ; statut/dates ; poussée RH/manager)
-- ⏳ Entité **`Candidature`** — **modèle + table `candidatures` créés ; CRUD (controller/service/schémas) À FAIRE**
-  (profil ↔ offre → score + écarts + statut)
-- ⬜ **Niveau de maîtrise & historique** sur les compétences de profil (aujourd'hui présence binaire) — cf. I
-- ⬜ **Persistance des résultats** de matching/reco (traçabilité)
+- ✅ Entité **`Offre`** + **CRUD complet** (`/api/offres`) — dérive d'une Fiche, attendus *overridables*,
+  types offre/mission/projet/gig, statut/dates auto, poussée RH/manager
+- ✅ Entité **`Candidature`** + **CRUD** (`/api/candidatures`) — profil ↔ offre → score `entites_v1`
+  + snapshot des écarts persisté + **décision humaine** (< 100 % retenable) + réévaluation tracée (`reevaluated_at`)
+- ✅ Entités applicatives : **`Notification`**, **`Souhait`** (+ `/recus`), **`Formation`** (catalogue),
+  **`ProfilStation`/`PeerReview`** (carrière), **`Entretien`** (veille) — endpoints livrés (cf. IV bis)
+- ⏳ **Niveau de maîtrise** (1-5) présent (profils/attendus/évaluation) ; **historique dans le temps** ⬜
+- ⏳ **Persistance des résultats** : la candidature persiste son snapshot ✅ ; endpoints matching/reco autonomes ⬜
 
 ## IV. Fonctionnalités métier (IA + graphe)
 - ✅ **Extraction de compétences** d'un descriptif de poste (hermes3)
@@ -67,21 +70,34 @@ SAML = placeholder documenté seulement.
 - ⬜ **Matching candidat ↔ offre** (sur entités persistées) + pondération essentiel/souhaité
   + prise en compte du **niveau** + logique « < 100 % peut être retenu »
 - ⬜ **Recommandation de candidats internes** pour une offre (sens inverse du matching)
-- ⬜ **Succession planning / hauts potentiels** (viviers, cartographie RH)
+- ⏳ **Succession / hauts potentiels** — endpoint `/api/dashboards/hauts-potentiels` livré (proxy = niveau
+  moyen de compétences) ; viviers/plan de succession dédiés ⬜
 - ⬜ **Passerelles de mobilité** intégrées au profil (déjà ébauché via vec_occupations)
 - ⬜ Extraction depuis **évaluations de mission (managers)** et **évaluations de performance**
-- ⬜ **Dashboards RH — cartographie des compétences EN DIRECT + PONCTUELLE** (vue globale des
-  compétences de la banque, couverture, tensions, hauts potentiels) — demandé explicitement
+- ✅ **Dashboards RH — cartographie des compétences** (`/api/dashboards/cartographie` : effectif, niveau
+  moyen, compétences phares par département) + **KPIs** RH/manager + **veille entretiens** + **alertes RH**
+  dérivées de signaux réels — endpoints livrés
+- ⬜ Enrichir la cartographie (familles de compétences, couverture/tensions par famille) au-delà de l'agrégation par département
 - 🅿️ **Mini-jeux** de détection de compétences par thème (plus tard, recherches approfondies)
 
+## IV bis. API applicative (endpoints alimentant le front) — 42 endpoints exposés
+- ✅ **Notifications** : `GET /api/notifications`, `PATCH /{id}/lu`, `POST /lues` (filtré par utilisateur)
+- ✅ **Souhaits d'évolution** : `GET/POST/PATCH /api/souhaits` (ownership) + `GET /api/souhaits/recus` (manager)
+- ✅ **Formations** : `GET /api/formations` (catalogue synthétique filtrable domaine/texte)
+- ✅ **Dashboards** : `GET /api/dashboards/{kpis?scope=rh|manager, cartographie, hauts-potentiels}`
+- ✅ **RH analytics** : `GET /api/rh/veille`, `GET /api/rh/alertes`
+- ✅ **Profil carrière** : `GET /api/profils/{id}/carriere` (stations + avis pairs + compétences) + filtre `manager_id` (équipe)
+- ⬜ **Décision de souhait côté RH**, notifications émises par évènements métier (aujourd'hui : seed), reco/formations reliées au matching
+
 ## V. Authentification, identité & sécurité (priorité centrale)
-- ⏳ **Auth locale** + sessions — **code posé** (`auth_service`, `core/security`, tables `users`/`user_sessions`) ;
-  reste : **seed des comptes/personas, tests, durcissement** (`users=0` aujourd'hui)
-- ⏳ **RBAC** (COLLAB / MANAGER / RH / ADMIN / SERVICE) — **guards branchés** sur les routes
-  (`Depends` présents dans tous les controllers) ; reste : **valider la couverture route par route + tests**
-- ⏳ **Audit trail** — **code posé** (`audit_service`, table `audit_logs`) ; reste : **brancher sur toutes les
-  actions sensibles + vérifier** (`audit_logs=0` aujourd'hui)
-- ⬜ **CSRF** — à confirmer branché de bout en bout (cookies HttpOnly/Secure/SameSite)
+- ✅ **Auth locale** + sessions — **opérationnelle** : `seed.py` provisionne 4 comptes (ADMIN/RH/MANAGER/COLLAB)
+  + personas ; login/logout/me (`/api/auth/*`), sessions hachées, anti-brute-force ; **couverte par pytest**
+- ✅ **RBAC** (COLLAB / MANAGER / RH / ADMIN) — **guards `require_roles` sur toutes les routes métier** +
+  **ownership** (souhaits/notifications filtrés par utilisateur) ; **testé** (403/401 vérifiés)
+- ✅ **Audit trail** — écrit (créations de comptes, accès refusés) ; **émis après commit** (verrou SQLite un seul writer)
+- ✅ **CSRF** double-submit (cookie non-HttpOnly ↔ en-tête `X-CSRF-Token`) branché sur les méthodes mutantes
+- ⏳ **B2 — row-level ownership généralisé** : COLLAB à SON profil / MANAGER à SON équipe (`manager_id`) —
+  fait pour souhaits/notifications ; à généraliser à profils/candidatures
 - ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
 - ⬜ **Sécurité applicative** : rate-limit IA, taille requête, en-têtes sécu, CORS strict,
@@ -92,18 +108,20 @@ SAML = placeholder documenté seulement.
 ## VI. Intégrations
 - 🅿️ Connecteurs **SIRH HCM** (Workday / SAP…) : différés — **prévoir un point d'intégration/
   adaptateur propre** pour faciliter le branchement futur, mais **ne pas construire les connecteurs**
-- ⬜ **Catalogue de cours SYNTHÉTIQUE** (à la place du LMS réel) : recherche internet de cours par
-  métier → **génération de propositions/maquettes de cours** pour démontrer la reco. Suivi/avancement
-  des cours = **optionnel** (les LMS le gèrent en interne — à trancher)
+- ⏳ **Catalogue de cours SYNTHÉTIQUE** (à la place du LMS réel) : **table `Formation` + `GET /api/formations`
+  + 10 formations seedées** ✅ ; reste ⬜ : **recherche internet par métier + génération** de nouvelles
+  fiches de cours (aujourd'hui catalogue statique). Suivi/avancement = optionnel
 - ⬜ **Import Excel** (fiches, profils réels traités localement) — pattern smart-objective
 - 🅿️ Comptes de **service** + tokens : différés (partent avec les connecteurs)
 
 ## VII. Frontend (Vue 3, haut de gamme)
-- ⬜ **Scaffolding** Vue 3 / Vite / Tailwind / Pinia / vue-router (depuis la maquette)
-- ⬜ Implémentation des **34 écrans**, 3 rôles (Collaborateur / Manager / RH) + Accès/transversal
-- ⬜ **Câblage aux API** (apiService, authService, guards RBAC)
-- ⬜ Composants transversaux : **modale, toast, états vides, fil d'ariane**
-- ⬜ **Dashboards analytiques** RH (cartographie compétences, couverture, hauts potentiels)
+- ✅ **Scaffolding** Vue 3 / Vite / TS / Tailwind / Pinia / vue-router — app **mock-first complète** (`frontend/`)
+- ✅ Implémentation des écrans, **3 rôles** (Collaborateur / Manager / RH) + Accès/transversal (mock-first)
+- ⏳ **Câblage aux API** — `authService` **réel branché** (login/CSRF/guards) ✅ ; `apiService` encore **mock**
+  → reste : **mappers** (`mapOffre/mapProfil/mapCandidature…`) + bascule **mock→live** domaine par domaine
+  (tous les endpoints back existent désormais, cf. IV bis)
+- ⏳ Composants transversaux : présents en mock ; **gestion d'erreurs HTTP** (401→connexion, 403→accès refusé, 429→lockout) à finaliser
+- ⬜ **Dashboards analytiques** RH branchés sur `/api/dashboards/*` + `/api/rh/*` (endpoints prêts)
 - ⬜ Écran **édition gabarit / cartographie** (accès autorisé)
 - ⬜ **Mentions légales & crédits** (attributions ESCO/O*NET/SFIA — obligation légale)
 - ⬜ **Photos réelles** (4 portraits déjà intégrés dans la maquette) + **blanc/vert, jamais de sombre**
@@ -111,13 +129,12 @@ SAML = placeholder documenté seulement.
 > Note : les **3 maquettes HTML par rôle** (collab / manager / RH) existent dans `design/` — base de l'implémentation.
 
 ## VIII. Qualité, tests & lancement
-- ⏳ Suite **pytest** — **échafaudage posé** (`app/tests/conftest.py`, `test_profil.py`) ;
-  reste : **couvrir sécurité, RBAC, matching, extraction** (appli sensible)
-- ✅ Migrations **Alembic** — **workflow incrémental ÉPROUVÉ** (2026-07-22) : révision
-  `66913f77409f` (`candidatures.reevaluated_at`) autogénérée, cycle upgrade/downgrade/upgrade
-  validé sur copie puis appliquée à la vraie base — **164 fiches préservées**.
-  Point ouvert : baseline `895f8467eae9` à `upgrade()` vide → sur base NEUVE, `upgrade head`
-  ne crée rien (bootstrap = `create_all`) ; à trancher si besoin d'une baseline reproductible
+- ⏳ Suite **pytest** — **46 tests verts** (auth, RBAC, ownership, notifications, souhaits, formations,
+  dashboards, cartographie, hauts-potentiels, carrière, veille, alertes) ; reste ⬜ : matching/extraction, ownership B2
+- ✅ Migrations **Alembic** — **workflow incrémental éprouvé** (chaque migration validée sur COPIE avant la
+  vraie base). Révisions : `66913f77409f` (reevaluated_at) → `13cd08085178` (notifications/souhaits/formations)
+  → `6e077337b0c7` (profil_stations/peer_reviews) → `3871a47d3323` (entretiens). **164 fiches préservées** partout.
+  Point ouvert : baseline `895f8467eae9` à `upgrade()` vide → sur base NEUVE, bootstrap = `create_all`
 - ⬜ **Scripts de lancement** dev (`LANCER_APP.bat` / `start_app.sh` / `VERIFIER.*`)
 - 🅿️ **CI** (GitHub Actions) · **PostgreSQL + pgvector** · **Docker** — optionnels (surtout prod → hors scope)
 - 🅿️ **Mise en production banque** (HTTPS, multi-worker, supervision, DSI) — **pas nous**
