@@ -26,7 +26,7 @@ from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut)
+                               OffreCandidatOut, RhOffreOut, VacancyOut)
 from app.services import offre_service
 
 router = APIRouter(prefix="/api/offres", tags=["Offres"])
@@ -87,6 +87,13 @@ def offres_compatibles(user: User = Depends(get_current_user),
             summary="Offres côté RH avec statistiques de candidatures (liste + revue)")
 def offres_rh(db: Session = Depends(get_db)) -> list[RhOffreOut]:
     return offre_service.rh_offres(db)
+
+
+@router.get("/vacances", response_model=list[VacancyOut],
+            summary="Postes de l'équipe du manager + profils internes recommandés (matching inverse)")
+def offres_vacances(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN)),
+                    db: Session = Depends(get_db)) -> list[VacancyOut]:
+    return offre_service.vacancies_for_manager(db, user.id)
 
 
 @router.get("/{offre_id}/candidats", response_model=list[OffreCandidatOut],

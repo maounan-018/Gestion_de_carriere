@@ -28,11 +28,13 @@ from app.models.fiche import FicheCompetence
 from app.models.fiche import Fiche
 from app.models.offre import Offre, OffreCompetence, OffreStatut
 from app.models.profil import Profil
+from app.models.user import User
 from app.models.candidature import Candidature, CandidatureStatut
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceOut,
                                OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut)
+                               OffreCandidatOut, RhOffreOut,
+                               VacancyOut, VacancyRecoOut)
 from app.services import candidature_service
 
 # Seuil de compatibilité (%) au-delà duquel un candidat est compté « compatible ».
@@ -110,6 +112,39 @@ def rh_offres(db: Session) -> list[RhOffreOut]:
             candidats_compatibles=sum(1 for s, *_ in cands if (s or 0) >= _SEUIL_COMPAT),
             retenu_nom=retenu,
         ))
+    return out
+
+
+def vacancies_for_manager(db: Session, manager_user_id: int, *, top: int = 6) -> list[VacancyOut]:
+    """Postes à pourvoir de l'équipe d'un manager (offres qu'il a poussées) +
+    profils internes recommandés (MATCHING INVERSE). Pour chaque poste, on évalue
+    chaque membre de l'équipe (profils rattachés à `manager_user_id`, cohérent avec
+    l'écran Équipe) contre les attendus de l'offre, via le même évaluateur que les
+    candidatures, et on classe par score décroissant."""
+    # Rattachement par Profil.manager_id (les profils candidats n'ont pas de compte,
+    # donc un join via User.manager_id les exclurait — cf. écran Équipe / getTeam).
+    team = db.scalars(
+        select(Profil).where(Profil.manager_id == manager_user_id)
+    ).all()
+    offres = db.scalars(
+        select(Offre).where(Offre.created_by == manager_user_id).order_by(Offre.id.desc())
+    ).all()
+
+    out: list[VacancyOut] = []
+    for o in offres:
+        recos: list[VacancyRecoOut] = []
+        for p in team:
+            ev = candidature_service.evaluer(db, o.id, p.id)
+            recos.append(VacancyRecoOut(
+                profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
+                score=ev.score,
+                matched=[c.competence for c in ev.couvertes],
+                gaps=[e.competence for e in ev.ecarts]))
+        recos.sort(key=lambda r: r.score, reverse=True)
+        out.append(VacancyOut(
+            id=o.id, titre=o.titre, type=o.type, departement_key=o.departement_key,
+            perimetre_bmci=o.perimetre_bmci, description=o.description, statut=o.statut,
+            created_at=o.created_at, recos=recos[:top]))
     return out
 
 
