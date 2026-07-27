@@ -50,6 +50,7 @@ from app.models.candidature import Candidature
 from app.models.notification import Notification
 from app.models.souhait import Souhait, SouhaitStatut
 from app.models.formation import Formation
+from app.models.carriere import ProfilStation, PeerReview, StationEtat
 from app.models.audit_log import AuditEventType
 from app.schemas.offre import OffreCreate
 from app.schemas.candidature import CandidatureCreate
@@ -413,6 +414,63 @@ def _seed_souhaits(db: Session, marc_profil: Profil | None) -> int:
     return created
 
 
+# --- Carrière enrichie des personas (stations + avis des pairs) ---------------
+# email -> (stations [(periode, titre, desc, etat, ordre)], avis [(auteur, role, initiales, texte, etoiles)])
+_P, _A, _O = StationEtat.PASSE, StationEtat.ACTUEL, StationEtat.OBJECTIF
+_CARRIERE = {
+    "marc.bennani@bmci.local": (
+        [("2019", "Conseiller clientèle particuliers", "Intégration au réseau BMCI.", _P, 0),
+         ("2022", "Conseiller confirmé", "Montée en compétence crédit & épargne.", _P, 1),
+         ("Aujourd'hui", "Conseiller clientèle particuliers", "Poste actuel.", _A, 2),
+         ("Objectif", "Chargé d'affaires professionnels", "Évolution visée (1-2 ans).", _O, 3)],
+        [("Jean-Marc Dupont", "Directeur d'agence", "JD",
+          "Très fiable, excellent relationnel client. Prêt pour plus de responsabilités.", 5),
+         ("Salma Idrissi", "Collègue", "SI",
+          "Toujours prêt à aider l'équipe, rigoureux sur la conformité.", 4)],
+    ),
+    "jeanmarc.dupont@bmci.local": (
+        [("2016", "Conseiller professionnels", "Portefeuille PME.", _P, 0),
+         ("2020", "Directeur adjoint", "Pilotage d'équipe commerciale.", _P, 1),
+         ("Aujourd'hui", "Directeur d'agence", "Poste actuel.", _A, 2),
+         ("Objectif", "Directeur Exécutif du réseau", "Trajectoire dirigeant.", _O, 3)],
+        [("Nadia Alami", "Responsable RH", "NA",
+          "Manager engagé, développe très bien ses collaborateurs.", 5)],
+    ),
+    "nadia.alami@bmci.local": (
+        [("2018", "Chargée RH", "Gestion des carrières du pôle.", _P, 0),
+         ("Aujourd'hui", "Responsable RH", "Poste actuel.", _A, 1),
+         ("Objectif", "Directrice des Talents", "Cartographie Groupe.", _O, 2)],
+        [("Direction Générale", "Comité de direction", "DG",
+          "Vision stratégique des talents, moteur de la transformation RH.", 5)],
+    ),
+}
+
+
+def _seed_carriere(db: Session, users_by_email: dict[str, User]) -> int:
+    """Stations de progression + avis des pairs pour les personas. Idempotent :
+    on ne (re)sème stations/avis d'un profil que s'il n'en a pas encore."""
+    n = 0
+    for email, (stations, avis) in _CARRIERE.items():
+        u = users_by_email.get(email)
+        if not u:
+            continue
+        p = db.scalar(select(Profil).where(Profil.user_id == u.id))
+        if not p:
+            continue
+        if not db.scalar(select(ProfilStation.id).where(ProfilStation.profil_id == p.id)):
+            for periode, titre, desc, etat, ordre in stations:
+                db.add(ProfilStation(profil_id=p.id, periode=periode, titre=titre,
+                                     description=desc, etat=etat, ordre=ordre))
+                n += 1
+        if not db.scalar(select(PeerReview.id).where(PeerReview.profil_id == p.id)):
+            for auteur, role, ini, texte, etoiles in avis:
+                db.add(PeerReview(profil_id=p.id, auteur_nom=auteur, auteur_role=role,
+                                  initiales=ini, texte=texte, etoiles=etoiles))
+                n += 1
+    db.commit()
+    return n
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
              password: str, synthetic_offers: bool = True) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
@@ -422,7 +480,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
                "offres_created": [], "offres_existing": [],
                "candidats_created": [], "candidats_existing": [],
                "candidatures_created": 0, "candidatures_existing": 0,
-               "formations_created": [], "notifications_created": 0, "souhaits_created": 0}
+               "formations_created": [], "notifications_created": 0, "souhaits_created": 0,
+               "carriere_created": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -492,6 +551,7 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["formations_created"] = _seed_formations(db)
         summary["notifications_created"] = _seed_notifications(db, users_by_email)
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
+        summary["carriere_created"] = _seed_carriere(db, users_by_email)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
 
@@ -524,6 +584,7 @@ def main() -> None:
     print("Formations      :", len(summary["formations_created"]), "créées")
     print("Notifications   :", summary["notifications_created"], "créées")
     print("Souhaits        :", summary["souhaits_created"], "créés")
+    print("Carrière        :", summary["carriere_created"], "éléments (stations + avis)")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")

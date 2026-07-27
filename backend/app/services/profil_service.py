@@ -19,8 +19,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.profil import Profil, ProfilCompetence
+from app.models.user import User
+from app.models.carriere import ProfilStation, PeerReview
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
                                  ProfilCompetenceIn, ProfilCompetenceOut)
+from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
+                                  SkillNiveauOut)
 
 
 def _to_out(db: Session, p: Profil) -> ProfilOut:
@@ -67,16 +71,43 @@ def get_profil(db: Session, profil_id: int) -> ProfilOut | None:
 
 
 def list_profils(db: Session, *, departement_key: str | None = None,
-                 synthetique: bool | None = None, limit: int = 50,
-                 offset: int = 0) -> list[ProfilOut]:
-    """Liste paginée, filtrable par département et par nature (persona vs réel)."""
+                 synthetique: bool | None = None, manager_id: int | None = None,
+                 limit: int = 50, offset: int = 0) -> list[ProfilOut]:
+    """Liste paginée, filtrable par département, par nature (persona vs réel) et
+    par manager (l'ÉQUIPE d'un manager = profils dont le compte a ce manager)."""
     stmt = select(Profil).order_by(Profil.id)
     if departement_key is not None:
         stmt = stmt.where(Profil.departement_key == departement_key)
     if synthetique is not None:
         stmt = stmt.where(Profil.synthetique == synthetique)
+    if manager_id is not None:
+        stmt = stmt.join(User, User.id == Profil.user_id).where(User.manager_id == manager_id)
     stmt = stmt.limit(min(max(limit, 1), 200)).offset(max(offset, 0))
     return [_to_out(db, p) for p in db.scalars(stmt).all()]
+
+
+def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
+    """Vue « carrière » enrichie : identité, aspirations, compétences (niveau),
+    jalons de progression et avis des pairs. None si le profil n'existe pas."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        return None
+    comps = db.scalars(
+        select(ProfilCompetence).where(ProfilCompetence.profil_id == profil_id)
+        .order_by(ProfilCompetence.id)).all()
+    stations = db.scalars(
+        select(ProfilStation).where(ProfilStation.profil_id == profil_id)
+        .order_by(ProfilStation.ordre, ProfilStation.id)).all()
+    avis = db.scalars(
+        select(PeerReview).where(PeerReview.profil_id == profil_id)
+        .order_by(PeerReview.id)).all()
+    return ProfilCarriereOut(
+        profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
+        departement_key=p.departement_key, aspirations=p.aspirations,
+        competences=[SkillNiveauOut.model_validate(c) for c in comps],
+        stations=[StationOut.model_validate(s) for s in stations],
+        avis_pairs=[PeerReviewOut.model_validate(a) for a in avis],
+    )
 
 
 def update_profil(db: Session, profil_id: int, data: ProfilUpdate) -> ProfilOut | None:
