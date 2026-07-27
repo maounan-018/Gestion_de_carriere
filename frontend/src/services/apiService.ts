@@ -23,8 +23,11 @@ import type {
 import { apiFetch } from './http'
 import { useSessionStore } from '@/stores/session'
 import {
-  mapNotification, mapFormation,
-  type NotificationOut, type FormationOut,
+  mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
+  mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil,
+  type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
+  type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
+  type ProfilCarriereOut, type ProfilOut,
 } from './mappers'
 
 /**
@@ -63,12 +66,19 @@ export const apiService = {
     return rows.map((n) => mapNotification(n, role))
   },
   async getCollabProfile(): Promise<CollabProfile> {
-    await delay()
-    return COLLAB_PROFILE
+    if (MODE === 'mock') {
+      await delay()
+      return COLLAB_PROFILE
+    }
+    return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
   },
   async getSouhaits(): Promise<Souhait[]> {
-    await delay()
-    return SOUHAITS
+    if (MODE === 'mock') {
+      await delay()
+      return SOUHAITS
+    }
+    const rows = await apiFetch<SouhaitOut[]>('/souhaits')
+    return rows.map(mapSouhait)
   },
   async getReco(): Promise<RecoData> {
     await delay()
@@ -101,8 +111,11 @@ export const apiService = {
     return TEAM.find((m) => m.id === id)
   },
   async getManagerProfile(): Promise<CollabProfile> {
-    await delay()
-    return MANAGER_PROFILE
+    if (MODE === 'mock') {
+      await delay()
+      return MANAGER_PROFILE
+    }
+    return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
   },
   async getManagerReco(): Promise<RecoData> {
     await delay()
@@ -125,8 +138,12 @@ export const apiService = {
     return VACANCIES.find((v) => v.key === key)
   },
   async getSouhaitsRecus(): Promise<SouhaitRecu[]> {
-    await delay()
-    return SOUHAITS_RECUS
+    if (MODE === 'mock') {
+      await delay()
+      return SOUHAITS_RECUS
+    }
+    const rows = await apiFetch<SouhaitRecuOut[]>('/souhaits/recus')
+    return rows.map(mapSouhaitRecu)
   },
   async getManagerNotifications(): Promise<NotificationItem[]> {
     if (MODE === 'mock') {
@@ -138,18 +155,33 @@ export const apiService = {
     return rows.map((n) => mapNotification(n, role))
   },
   async getManagerKpis(): Promise<KpiCard[]> {
-    await delay(120)
-    return MANAGER_KPIS
+    if (MODE === 'mock') {
+      await delay(120)
+      return MANAGER_KPIS
+    }
+    const res = await apiFetch<{ scope: string; kpis: KpiItemOut[] }>('/dashboards/kpis?scope=manager')
+    return res.kpis.map(mapKpiCard)
   },
 
   // -------------------------------------------------------------------- RH
   async getRhPeople(): Promise<RhPerson[]> {
-    await delay()
-    return RH_PEOPLE
+    if (MODE === 'mock') {
+      await delay()
+      return RH_PEOPLE
+    }
+    const rows = await apiFetch<ProfilOut[]>('/profils?limit=200')
+    return rows.map(mapProfil)
   },
   async getRhPerson(id: string): Promise<RhPerson | undefined> {
-    await delay(160)
-    return RH_PEOPLE.find((p) => p.id === id)
+    if (MODE === 'mock') {
+      await delay(160)
+      return RH_PEOPLE.find((p) => p.id === id)
+    }
+    try {
+      return mapProfil(await apiFetch<ProfilOut>(`/profils/${id}`))
+    } catch {
+      return undefined
+    }
   },
   async getCarto(): Promise<CartoPole[]> {
     await delay()
@@ -160,20 +192,36 @@ export const apiService = {
     return CARTO_POLES.find((p) => p.name === name)
   },
   async getRhKpis(): Promise<RhKpi[]> {
-    await delay(120)
-    return RH_KPIS
+    if (MODE === 'mock') {
+      await delay(120)
+      return RH_KPIS
+    }
+    const res = await apiFetch<{ scope: string; kpis: KpiItemOut[] }>('/dashboards/kpis?scope=rh')
+    return res.kpis.map(mapKpi)
   },
   async getRhAlerts(): Promise<RhAlert[]> {
-    await delay()
-    return RH_ALERTS
+    if (MODE === 'mock') {
+      await delay()
+      return RH_ALERTS
+    }
+    const rows = await apiFetch<AlerteOut[]>('/rh/alertes')
+    return rows.map(mapAlerte)
   },
   async getHautsPotentiels(): Promise<HautPotentiel[]> {
-    await delay()
-    return HAUTS_POTENTIELS
+    if (MODE === 'mock') {
+      await delay()
+      return HAUTS_POTENTIELS
+    }
+    const rows = await apiFetch<HautPotentielOut[]>('/dashboards/hauts-potentiels')
+    return rows.map(mapHautPotentiel)
   },
   async getVeille(): Promise<VeilleType[]> {
-    await delay()
-    return VEILLE
+    if (MODE === 'mock') {
+      await delay()
+      return VEILLE
+    }
+    const rows = await apiFetch<VeilleOut[]>('/rh/veille')
+    return rows.map(mapVeille)
   },
   async getRhOffers(): Promise<RhOffer[]> {
     await delay()
@@ -193,7 +241,10 @@ export const apiService = {
     return rows.map((n) => mapNotification(n, role))
   },
   async getRhProfile(): Promise<CollabProfile> {
-    await delay()
-    return NADIA_PROFILE
+    if (MODE === 'mock') {
+      await delay()
+      return NADIA_PROFILE
+    }
+    return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
   },
 }
