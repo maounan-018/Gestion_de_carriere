@@ -10,7 +10,7 @@ import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview,
 } from '@/types/domain'
-import type { SouhaitRecu, KpiCard, TeamSkill } from '@/types/manager'
+import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
 
 /* ------------------------------------------------------------------ Backend */
@@ -351,6 +351,33 @@ export function mapProfil(p: ProfilOut): RhPerson {
     skills,
     strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
     gaps: [],
+    flag: null,
+  }
+}
+
+/** Mappe un profil backend vers un `TeamMember` (équipe du manager). Les champs
+ *  d'évaluation (séniorité, note, dernier entretien, evals) prennent un repli
+ *  neutre — pas encore portés par le backend. */
+export function mapTeamMember(p: ProfilOut): TeamMember {
+  const name = `${p.prenom ?? ''} ${p.nom}`.trim()
+  const comps = p.competences ?? []
+  const niveaux = comps.map((c) => c.niveau).filter((n): n is number => n != null)
+  const moy = niveaux.length ? niveaux.reduce((a, b) => a + b, 0) / niveaux.length : 3
+  return {
+    id: String(p.id),
+    initials: initialsOf(name),
+    name,
+    role: p.poste_actuel ?? '—',
+    seniority: '—',
+    ring: Math.round(moy * 20),
+    evalScore: '—',
+    lastEntretien: '—',
+    skills: comps.slice(0, 6).map((c) => ({ label: c.skill_label_fr || c.libelle, pct: Math.min(100, (c.niveau ?? 3) * 20) })),
+    strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
+    gaps: [],
+    aspiration: p.aspirations ?? '',
+    aspirationHorizon: '',
+    evals: [],
     flag: null,
   }
 }

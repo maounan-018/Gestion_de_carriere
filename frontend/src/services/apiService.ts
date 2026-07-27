@@ -24,7 +24,7 @@ import { apiFetch } from './http'
 import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
-  mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil,
+  mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut,
@@ -103,12 +103,26 @@ export const apiService = {
 
   // ---------------------------------------------------------------- Manager
   async getTeam(): Promise<TeamMember[]> {
-    await delay()
-    return TEAM
+    if (MODE === 'mock') {
+      await delay()
+      return TEAM
+    }
+    // Équipe = profils dont le manager est l'utilisateur connecté (id backend).
+    const meId = useSessionStore().user?.id
+    const rows = await apiFetch<ProfilOut[]>('/profils?limit=200')
+    const mine = meId != null ? rows.filter((p) => String(p.manager_id) === String(meId)) : rows
+    return mine.map(mapTeamMember)
   },
   async getTeamMember(id: string): Promise<TeamMember | undefined> {
-    await delay(160)
-    return TEAM.find((m) => m.id === id)
+    if (MODE === 'mock') {
+      await delay(160)
+      return TEAM.find((m) => m.id === id)
+    }
+    try {
+      return mapTeamMember(await apiFetch<ProfilOut>(`/profils/${id}`))
+    } catch {
+      return undefined
+    }
   },
   async getManagerProfile(): Promise<CollabProfile> {
     if (MODE === 'mock') {

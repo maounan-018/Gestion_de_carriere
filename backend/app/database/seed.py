@@ -229,9 +229,11 @@ def _seed_offres(db: Session, fiches: list[Fiche],
     return offre_ids, res
 
 
-def _seed_candidate_profils(db: Session, fiches: list[Fiche]) -> tuple[list[tuple[Profil, int]], dict]:
+def _seed_candidate_profils(db: Session, fiches: list[Fiche],
+                            manager_id: int | None = None) -> tuple[list[tuple[Profil, int]], dict]:
     """Crée les profils candidats synthétiques (sans compte), compétences reprises
-    partiellement de leur fiche cible. Idempotent par matricule. Renvoie
+    partiellement de leur fiche cible. Rattachés au manager `manager_id` (alimente
+    l'écran « équipe »). Idempotent par matricule. Renvoie
     ([(profil, index_fiche_cible)], résumé)."""
     res = {"candidats_created": [], "candidats_existing": []}
     out: list[tuple[Profil, int]] = []
@@ -241,6 +243,8 @@ def _seed_candidate_profils(db: Session, fiches: list[Fiche]) -> tuple[list[tupl
         fiche = fiches[cible_idx]
         existing = db.scalar(select(Profil).where(Profil.matricule == matricule))
         if existing:
+            if manager_id and existing.manager_id is None:
+                existing.manager_id = manager_id  # backfill du lien manager
             out.append((existing, cible_idx))
             res["candidats_existing"].append(nom_complet)
             continue
@@ -248,6 +252,7 @@ def _seed_candidate_profils(db: Session, fiches: list[Fiche]) -> tuple[list[tupl
         p = Profil(
             user_id=None, nom=nom_val or nom_complet, prenom=prenom_val, matricule=matricule,
             poste_actuel=fiche.intitule_poste, departement_key=fiche.departement_key,
+            manager_id=manager_id,
             synthetique=True,  # ⚠️ candidat de démonstration (donnée fabriquée)
         )
         db.add(p)
@@ -556,11 +561,16 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         marc_profil = (db.scalar(select(Profil).where(Profil.user_id == marc_user.id))
                        if marc_user else None)
         fiches = _pick_offre_fiches(db, n=len(_OFFRE_PLAN))
+        # Manager de l'équipe de démo (Jean-Marc) : rattache Marc + les candidats.
+        jm_user = users_by_email.get("jeanmarc.dupont@bmci.local")
+        jm_id = jm_user.id if jm_user else None
+        if marc_profil is not None and jm_id and marc_profil.manager_id is None:
+            marc_profil.manager_id = jm_id  # le collaborateur reporte au manager
         if fiches:
             offre_ids, ores = _seed_offres(db, fiches, users_by_email)
             summary["offres_created"] = ores["offres_created"]
             summary["offres_existing"] = ores["offres_existing"]
-            candidate_profils, cres = _seed_candidate_profils(db, fiches)
+            candidate_profils, cres = _seed_candidate_profils(db, fiches, manager_id=jm_id)
             summary["candidats_created"] = cres["candidats_created"]
             summary["candidats_existing"] = cres["candidats_existing"]
             cand_res = _seed_candidatures(db, offre_ids, candidate_profils, marc_profil)
