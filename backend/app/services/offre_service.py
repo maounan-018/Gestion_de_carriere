@@ -18,6 +18,7 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -27,10 +28,15 @@ from app.models.fiche import FicheCompetence
 from app.models.fiche import Fiche
 from app.models.offre import Offre, OffreCompetence, OffreStatut
 from app.models.profil import Profil
+from app.models.candidature import Candidature, CandidatureStatut
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceOut,
-                               OffreCompetenceUpdate, OffreCompatOut)
+                               OffreCompetenceUpdate, OffreCompatOut,
+                               OffreCandidatOut, RhOffreOut)
 from app.services import candidature_service
+
+# Seuil de compatibilité (%) au-delà duquel un candidat est compté « compatible ».
+_SEUIL_COMPAT = 50
 
 # Statuts qui, à l'entrée, posent automatiquement une date si elle manque.
 _STATUTS_OUVERTURE = {OffreStatut.OUVERTE}
@@ -46,6 +52,64 @@ def _to_out(db: Session, o: Offre) -> OffreOut:
     ).all()
     out = OffreOut.model_validate(o)
     out.competences = [OffreCompetenceOut.model_validate(c) for c in comps]
+    return out
+
+
+def _libelles(evaluation_json: str | None, cle: str) -> list[str]:
+    """Extrait les libellés de compétences (`couvertes` ou `ecarts`) du snapshot
+    d'évaluation persisté sur la candidature. Tolérant : [] si illisible."""
+    if not evaluation_json:
+        return []
+    try:
+        data = json.loads(evaluation_json)
+        return [x.get("competence") for x in data.get(cle, []) if x.get("competence")]
+    except Exception:  # noqa: BLE001 — snapshot corrompu : on renvoie une liste vide
+        return []
+
+
+def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
+    """Candidats d'une offre (écran RH revue) : jointure candidature ↔ profil,
+    triés par score décroissant ; couvertes/écarts issus du snapshot d'évaluation."""
+    rows = db.execute(
+        select(Candidature, Profil)
+        .join(Profil, Profil.id == Candidature.profil_id)
+        .where(Candidature.offre_id == offre_id)
+        .order_by(Candidature.score.desc().nulls_last(), Candidature.id)
+    ).all()
+    return [
+        OffreCandidatOut(
+            profil_id=p.id, candidature_id=c.id, nom=p.nom, prenom=p.prenom,
+            poste_actuel=p.poste_actuel, departement_key=p.departement_key,
+            score=c.score, statut=c.statut,
+            couvertes=_libelles(c.evaluation_json, "couvertes"),
+            ecarts=_libelles(c.evaluation_json, "ecarts"),
+        )
+        for c, p in rows
+    ]
+
+
+def rh_offres(db: Session) -> list[RhOffreOut]:
+    """Liste des offres côté RH avec statistiques de candidatures (total,
+    compatibles au-dessus du seuil, candidat retenu)."""
+    offres = db.scalars(select(Offre).order_by(Offre.id.desc())).all()
+    out: list[RhOffreOut] = []
+    for o in offres:
+        cands = db.execute(
+            select(Candidature.score, Candidature.statut, Profil.nom, Profil.prenom)
+            .join(Profil, Profil.id == Candidature.profil_id)
+            .where(Candidature.offre_id == o.id)
+        ).all()
+        retenu = next(
+            (f"{prenom or ''} {nom}".strip()
+             for score, statut, nom, prenom in cands if statut == CandidatureStatut.RETENUE),
+            None)
+        out.append(RhOffreOut(
+            id=o.id, titre=o.titre, type=o.type, departement_key=o.departement_key,
+            perimetre_bmci=o.perimetre_bmci, statut=o.statut,
+            candidats_total=len(cands),
+            candidats_compatibles=sum(1 for s, *_ in cands if (s or 0) >= _SEUIL_COMPAT),
+            retenu_nom=retenu,
+        ))
     return out
 
 

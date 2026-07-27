@@ -25,11 +25,11 @@ import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
-  mapOffre, mapCandidature,
+  mapOffre, mapCandidature, mapRhOffre, mapRhCandidate,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
-  type CandidatureMineOut,
+  type CandidatureMineOut, type RhOffreOut, type OffreCandidatOut,
 } from './mappers'
 
 /**
@@ -158,12 +158,20 @@ export const apiService = {
     return MANAGER_RECO
   },
   async getManagerOffers(): Promise<Offer[]> {
-    await delay()
-    return MANAGER_OFFERS
+    if (MODE === 'mock') {
+      await delay()
+      return MANAGER_OFFERS
+    }
+    const rows = await apiFetch<OffreCompatOut[]>('/offres/compatibles')
+    return rows.map(mapOffre)
   },
   async getManagerOffer(key: string): Promise<Offer | undefined> {
-    await delay(160)
-    return MANAGER_OFFERS.find((o) => o.key === key)
+    if (MODE === 'mock') {
+      await delay(160)
+      return MANAGER_OFFERS.find((o) => o.key === key)
+    }
+    const rows = await apiFetch<OffreCompatOut[]>('/offres/compatibles')
+    return rows.map(mapOffre).find((o) => o.key === key)
   },
   async getVacancies(): Promise<Vacancy[]> {
     await delay()
@@ -260,12 +268,25 @@ export const apiService = {
     return rows.map(mapVeille)
   },
   async getRhOffers(): Promise<RhOffer[]> {
-    await delay()
-    return RH_OFFERS
+    if (MODE === 'mock') {
+      await delay()
+      return RH_OFFERS
+    }
+    const rows = await apiFetch<RhOffreOut[]>('/offres/rh-liste')
+    return rows.map(mapRhOffre)
   },
   async getRhOffer(key: string): Promise<RhOffer | undefined> {
-    await delay(160)
-    return RH_OFFERS.find((o) => o.key === key)
+    if (MODE === 'mock') {
+      await delay(160)
+      return RH_OFFERS.find((o) => o.key === key)
+    }
+    const rows = await apiFetch<RhOffreOut[]>('/offres/rh-liste')
+    const offre = rows.map(mapRhOffre).find((o) => o.key === key)
+    if (!offre) return undefined
+    // Détail : joindre la liste nominative des candidats (score + couvertes/écarts).
+    const cands = await apiFetch<OffreCandidatOut[]>(`/offres/${key}/candidats`)
+    offre.candidateList = cands.map(mapRhCandidate)
+    return offre
   },
   async getRhNotifications(): Promise<NotificationItem[]> {
     if (MODE === 'mock') {

@@ -25,7 +25,8 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
-                               OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut)
+                               OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut,
+                               OffreCandidatOut, RhOffreOut)
 from app.services import offre_service
 
 router = APIRouter(prefix="/api/offres", tags=["Offres"])
@@ -79,6 +80,20 @@ def lister_offres(
 def offres_compatibles(user: User = Depends(get_current_user),
                        db: Session = Depends(get_db)) -> list[OffreCompatOut]:
     return offre_service.list_compatibles_for_user(db, user.id)
+
+
+@router.get("/rh-liste", response_model=list[RhOffreOut],
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+            summary="Offres côté RH avec statistiques de candidatures (liste + revue)")
+def offres_rh(db: Session = Depends(get_db)) -> list[RhOffreOut]:
+    return offre_service.rh_offres(db)
+
+
+@router.get("/{offre_id}/candidats", response_model=list[OffreCandidatOut],
+            dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
+            summary="Candidats d'une offre (score + couvertes/écarts) — écran revue RH")
+def candidats_offre(offre_id: int, db: Session = Depends(get_db)) -> list[OffreCandidatOut]:
+    return offre_service.list_candidats_offre(db, offre_id)
 
 
 @router.get("/{offre_id}", response_model=OffreOut,
