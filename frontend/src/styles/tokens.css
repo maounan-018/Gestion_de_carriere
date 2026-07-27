@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Design system « La Courbe » — tokens extraits des maquettes.
+   Blanc + vert, JAMAIS de mode sombre.
+   ============================================================ */
+@theme {
+  /* Typographie */
+  --font-sans: 'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Bricolage Grotesque', 'Hanken Grotesk Variable', system-ui, sans-serif;
+
+  /* Vert (identité) */
+  --color-green: #00915a;
+  --color-green-deep: #00784b;
+  --color-green-soft: #e4f2ea;
+  --color-green-line: #b9dec9;
+  --color-green-ghost: #f0f8f3;
+  --color-green-wash: #e9f5ee;
+
+  /* Encre (texte) */
+  --color-ink: #0e1a14;
+  --color-ink-2: #41504a;
+  --color-ink-3: #6e7c75;
+
+  /* Surfaces */
+  --color-bg: #f4f8f5;
+  --color-paper: #ffffff;
+  --color-panel: #f8fbf9;
+  --color-panel-2: #edf4ef;
+
+  /* Bordures */
+  --color-border: #e1eae4;
+  --color-border-strong: #cbd9d0;
+
+  /* Or (réussite / objectif) */
+  --color-gold: #b8892e;
+  --color-gold-soft: #f6eed9;
+
+  /* Alerte */
+  --color-warning: #8a5c12;
+  --color-warning-soft: #f7efdb;
+  --color-danger: #c23a32;
+  --color-danger-soft: #fbe9e7;
+
+  /* Cartographie (heatmap) */
+  --color-heat-0: #edf1ee;
+  --color-heat-1: #d3ebdc;
+  --color-heat-2: #8cd0a6;
+  --color-heat-3: #34a469;
+  --color-heat-4: #0b7a4b;
+
+  /* Ombres « La Courbe » */
+  --shadow-card: 0 2px 8px -2px rgb(14 26 20 / 0.08), 0 14px 34px -18px rgb(14 26 20 / 0.16);
+  --shadow-float: 0 16px 40px -14px rgb(14 26 20 / 0.24), 0 4px 12px -6px rgb(14 26 20 / 0.14);
+  --shadow-green: 0 10px 22px -8px rgb(0 145 90 / 0.42);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Focus clavier visible par défaut (WCAG 2.4.7). Placé en @layer base : les
+   utilitaires de focus propres aux composants (anneau de BaseButton, focus:border
+   des champs) restent prioritaires ; seuls les éléments sans indicateur propre
+   — cartes-liens, boutons-icônes — héritent de cet outline vert. */
+@layer base {
+  :where(a, button, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-green);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

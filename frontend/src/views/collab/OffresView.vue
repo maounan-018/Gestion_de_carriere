@@ -1,0 +1,126 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { Search } from 'lucide-vue-next'
+import { apiService } from '@/services/apiService'
+import { OFFER_LIGNES } from '@/data/offers'
+import type { Offer } from '@/types/domain'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BasePill from '@/components/ui/BasePill.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import LoadingState from '@/components/ui/LoadingState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+
+const offers = ref<Offer[]>([])
+const loading = ref(true)
+const error = ref('')
+const query = ref('')
+const ligne = ref<string>('Tout')
+
+async function load() {
+  loading.value = true
+  error.value = ''
+  try {
+    offers.value = await apiService.getOffers()
+  } catch {
+    error.value = 'Impossible de charger les offres internes.'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+
+const filtered = computed(() =>
+  offers.value.filter((o) => {
+    const okLigne = ligne.value === 'Tout' || o.ligne === ligne.value
+    const q = query.value.trim().toLowerCase()
+    const okQuery = !q || (o.title + ' ' + o.sub + ' ' + o.skills.join(' ')).toLowerCase().includes(q)
+    return okLigne && okQuery
+  }),
+)
+</script>
+
+<template>
+  <div class="space-y-4">
+    <!-- Barre d'outils -->
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="flex min-w-56 flex-1 items-center gap-2 rounded-xl border border-border bg-paper px-3 py-2">
+        <Search :size="16" class="text-ink-3" />
+        <input
+          v-model="query"
+          type="search"
+          placeholder="Rechercher un métier, une compétence, une ville…"
+          class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3"
+        />
+      </div>
+      <RouterLink :to="{ name: 'collab.mesCandidatures' }">
+        <BaseButton variant="secondary"><AppIcon name="send" :size="15" /> Mes candidatures</BaseButton>
+      </RouterLink>
+    </div>
+
+    <!-- Filtres par ligne métier -->
+    <div class="flex flex-wrap gap-2">
+      <button
+        v-for="f in OFFER_LIGNES"
+        :key="f"
+        class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+        :class="ligne === f
+          ? 'border-green bg-green text-white'
+          : 'border-border bg-paper text-ink-2 hover:border-green-line hover:text-green-deep'"
+        @click="ligne = f"
+      >
+        {{ f }}
+      </button>
+    </div>
+
+    <p class="text-xs text-ink-3">
+      Offres classées par <b class="text-ink-2">adéquation</b> avec votre profil · baromètre vert à
+      gauche de chaque carte.
+    </p>
+
+    <LoadingState v-if="loading" label="Chargement des offres…" />
+    <ErrorState v-else-if="error" :message="error">
+      <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
+    </ErrorState>
+    <EmptyState
+      v-else-if="filtered.length === 0"
+      title="Aucune offre pour ce filtre"
+      text="Essayez une autre famille métier ou élargissez votre recherche."
+    />
+
+    <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <RouterLink
+        v-for="o in filtered"
+        :key="o.key"
+        :to="{ name: 'collab.offreDetail', params: { key: o.key } }"
+        class="group flex flex-col rounded-2xl border border-border bg-paper p-4 shadow-card transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <BasePill :tone="o.tone">{{ o.type }}</BasePill>
+          <div class="text-right">
+            <div class="font-display text-[15px] font-bold text-green-deep">{{ o.pct }} %</div>
+            <div class="text-[10px] text-ink-3">{{ o.adq }}</div>
+          </div>
+        </div>
+        <div class="my-2 h-1.5 overflow-hidden rounded-full bg-panel-2">
+          <div class="h-full rounded-full bg-green" :style="{ width: o.pct + '%' }" />
+        </div>
+        <h4 class="text-sm font-bold text-ink group-hover:text-green-deep">{{ o.title }}</h4>
+        <p class="mt-0.5 text-xs text-ink-3">{{ o.sub }}</p>
+        <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-3">
+          <span v-for="(m, i) in o.meta" :key="i" class="inline-flex items-center gap-1">
+            <AppIcon :name="m.icon" :size="12" /> {{ m.label }}
+          </span>
+        </div>
+        <div class="mt-3 flex items-center gap-1.5 text-[11px]" :class="o.managerInformed ? 'text-warning' : 'text-ink-3'">
+          <AppIcon :name="o.managerInformed ? 'bell' : 'shield'" :size="12" />
+          {{ o.managerInformed ? 'Manager informé si vous postulez' : 'Candidature confidentielle' }}
+        </div>
+        <div class="mt-3 flex-1" />
+        <div class="mt-2">
+          <BaseButton size="sm" block>{{ o.cta }}</BaseButton>
+        </div>
+      </RouterLink>
+    </div>
+  </div>
+</template>
