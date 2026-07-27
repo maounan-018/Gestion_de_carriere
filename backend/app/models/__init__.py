@@ -11,6 +11,9 @@ from app.models.audit_log import AuditLog, AuditEventType
 from app.models.offre import Offre, OffreCompetence, OffreType, OffreStatut
 from app.models.candidature import Candidature, CandidatureStatut
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
+from app.models.notification import Notification, NotificationType
+from app.models.souhait import Souhait, SouhaitKind, SouhaitStatut
+from app.models.formation import Formation
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -24,4 +27,7 @@ __all__ = [
     "Offre", "OffreCompetence", "OffreType", "OffreStatut",
     "Candidature", "CandidatureStatut",
     "Profil", "ProfilCompetence", "CompetenceSource",
+    "Notification", "NotificationType",
+    "Souhait", "SouhaitKind", "SouhaitStatut",
+    "Formation",
 ]
