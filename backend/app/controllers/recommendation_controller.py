@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import get_current_user
+from app.models.user import User
 from app.schemas.recommendation import RecommendationRequest, RecommendationResponse
 from app.services import recommendation_service
 
@@ -29,3 +30,12 @@ def recommandations(req: RecommendationRequest, db: Session = Depends(get_db)) -
     (ancrées ESCO/O*NET/SFIA), les passerelles métiers et un plan de développement."""
     return recommendation_service.recommander(
         db, req.profil_competences, req.poste_texte, req.seuil)
+
+
+@router.get("/ma-reco", response_model=RecommendationResponse,
+            summary="Ma recommandation (profil du compte connecté vs son poste visé)")
+def ma_reco(user: User = Depends(get_current_user),
+            db: Session = Depends(get_db)) -> RecommendationResponse:
+    """Recommandation pour le collaborateur connecté : ses compétences vs son
+    poste visé (aspirations). ⚠️ Utilise Ollama (extraction + reranker + conseil)."""
+    return recommendation_service.recommander_pour_user(db, user.id)

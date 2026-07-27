@@ -23,11 +23,12 @@ EMPLACEMENT MVC
 
 import logging
 
-from sqlalchemy import text
+from sqlalchemy import text, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.skill import Skill, RelationType
+from app.models.profil import Profil, ProfilCompetence
 from app.services import (skill_extraction_service, skill_matching_service,
                           occupation_service)
 from app.services.ai_router import generate, fence
@@ -130,3 +131,22 @@ def recommander(db: Session, profil_competences: list[str], poste_texte: str,
         "passerelles_metiers": passerelles,
         "plan_developpement": plan,
     }
+
+
+def recommander_pour_user(db: Session, user_id: int) -> dict:
+    """Recommandation pour le profil LIÉ au compte connecté : compétences détenues
+    vs POSTE VISÉ = aspirations du profil (repli : poste actuel). Renvoie une reco
+    vide exploitable si le compte n'a pas de profil."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    if p is None:
+        return {"poste_vise": None, "score_actuel": 0, "modele_extraction": "-",
+                "modele_conseil": "-", "competences_a_developper": [],
+                "passerelles_metiers": [], "plan_developpement": ""}
+    comps = db.scalars(
+        select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
+    ).all()
+    labels = [c.skill_label_fr or c.libelle for c in comps] or ["(profil sans compétence)"]
+    poste_texte = (p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
+    if len(poste_texte) < 10:
+        poste_texte = f"Évolution professionnelle vers : {poste_texte}"
+    return recommander(db, labels, poste_texte)
