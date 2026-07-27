@@ -22,7 +22,7 @@ from app.models.profil import Profil, ProfilCompetence
 from app.models.user import User
 from app.models.carriere import ProfilStation, PeerReview
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
-                                 ProfilCompetenceIn, ProfilCompetenceOut)
+                                 ProfilCompetenceIn, ProfilCompetenceOut, AnnuaireEntry)
 from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
                                   SkillNiveauOut)
 
@@ -84,6 +84,28 @@ def list_profils(db: Session, *, departement_key: str | None = None,
         stmt = stmt.join(User, User.id == Profil.user_id).where(User.manager_id == manager_id)
     stmt = stmt.limit(min(max(limit, 1), 200)).offset(max(offset, 0))
     return [_to_out(db, p) for p in db.scalars(stmt).all()]
+
+
+def list_annuaire(db: Session, *, departement_key: str | None = None,
+                  limit: int = 200, offset: int = 0) -> list[AnnuaireEntry]:
+    """Répertoire LIMITÉ (sans champ sensible) de tous les profils — accessible à
+    tout utilisateur authentifié (y compris COLLAB). Compétences = libellés seuls."""
+    stmt = select(Profil).order_by(Profil.nom, Profil.prenom)
+    if departement_key is not None:
+        stmt = stmt.where(Profil.departement_key == departement_key)
+    stmt = stmt.limit(min(max(limit, 1), 500)).offset(max(offset, 0))
+    entries: list[AnnuaireEntry] = []
+    for p in db.scalars(stmt).all():
+        comps = db.scalars(
+            select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
+            .order_by(ProfilCompetence.id).limit(8)
+        ).all()
+        entries.append(AnnuaireEntry(
+            id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
+            departement_key=p.departement_key,
+            competences=[c.skill_label_fr or c.libelle for c in comps],
+        ))
+    return entries
 
 
 def get_carriere_for_user(db: Session, user_id: int) -> ProfilCarriereOut | None:
