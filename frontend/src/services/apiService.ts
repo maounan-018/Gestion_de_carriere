@@ -18,16 +18,27 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoPole, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
-  Souhait, RecoData, Formation, Colleague,
+  Souhait, RecoData, Formation, Colleague, Role,
 } from '@/types/domain'
+import { apiFetch } from './http'
+import { useSessionStore } from '@/stores/session'
+import {
+  mapNotification, mapFormation,
+  type NotificationOut, type FormationOut,
+} from './mappers'
 
 /**
- * Couche d'accès aux données — MOCK-FIRST.
- * Même signature que la future API HTTP (:5001) : des méthodes asynchrones qui
- * renvoient les fixtures avec une latence simulée. Le front ne parle jamais à la
- * base/Ollama ; on remplacera l'implémentation par des `fetch('/api/…')` plus tard.
+ * Couche d'accès aux données — bascule MOCK → LIVE, domaine par domaine.
+ * Même signature stable pour les vues ; chaque méthode renvoie les types front.
+ * - LIVE (défaut) : appelle `/api/*` puis mappe les schémas backend vers les types front.
+ * - MOCK : renvoie les fixtures (forcé via `VITE_API_MODE=mock`), utile hors backend.
+ * Les méthodes non encore basculées restent en mock quel que soit le mode.
  */
+const MODE: 'mock' | 'live' = import.meta.env.VITE_API_MODE === 'mock' ? 'mock' : 'live'
 const delay = (ms = 260): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** Rôle courant (pour la résolution des routes de notification). */
+const currentRole = (): Role => useSessionStore().role ?? 'collab'
 
 export const apiService = {
   async getOffers(): Promise<Offer[]> {
@@ -43,8 +54,13 @@ export const apiService = {
     return CANDIDATURES
   },
   async getNotifications(): Promise<NotificationItem[]> {
-    await delay(200)
-    return NOTIFICATIONS
+    if (MODE === 'mock') {
+      await delay(200)
+      return NOTIFICATIONS
+    }
+    const rows = await apiFetch<NotificationOut[]>('/notifications')
+    const role = currentRole()
+    return rows.map((n) => mapNotification(n, role))
   },
   async getCollabProfile(): Promise<CollabProfile> {
     await delay()
@@ -59,8 +75,12 @@ export const apiService = {
     return RECO
   },
   async getFormations(): Promise<Formation[]> {
-    await delay()
-    return FORMATIONS
+    if (MODE === 'mock') {
+      await delay()
+      return FORMATIONS
+    }
+    const rows = await apiFetch<FormationOut[]>('/formations')
+    return rows.map(mapFormation)
   },
   async getColleagues(): Promise<Colleague[]> {
     await delay()
@@ -109,8 +129,13 @@ export const apiService = {
     return SOUHAITS_RECUS
   },
   async getManagerNotifications(): Promise<NotificationItem[]> {
-    await delay(200)
-    return MANAGER_NOTIFICATIONS
+    if (MODE === 'mock') {
+      await delay(200)
+      return MANAGER_NOTIFICATIONS
+    }
+    const rows = await apiFetch<NotificationOut[]>('/notifications')
+    const role = currentRole()
+    return rows.map((n) => mapNotification(n, role))
   },
   async getManagerKpis(): Promise<KpiCard[]> {
     await delay(120)
@@ -159,8 +184,13 @@ export const apiService = {
     return RH_OFFERS.find((o) => o.key === key)
   },
   async getRhNotifications(): Promise<NotificationItem[]> {
-    await delay(200)
-    return RH_NOTIFICATIONS
+    if (MODE === 'mock') {
+      await delay(200)
+      return RH_NOTIFICATIONS
+    }
+    const rows = await apiFetch<NotificationOut[]>('/notifications')
+    const role = currentRole()
+    return rows.map((n) => mapNotification(n, role))
   },
   async getRhProfile(): Promise<CollabProfile> {
     await delay()
