@@ -86,6 +86,13 @@ def list_profils(db: Session, *, departement_key: str | None = None,
     return [_to_out(db, p) for p in db.scalars(stmt).all()]
 
 
+def get_carriere_for_user(db: Session, user_id: int) -> ProfilCarriereOut | None:
+    """Vue carrière du profil LIÉ à un compte (pour « mon profil » sans connaître
+    l'id du profil). None si le compte n'a pas de profil de carrière."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    return get_carriere(db, p.id) if p else None
+
+
 def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
     """Vue « carrière » enrichie : identité, aspirations, compétences (niveau),
     jalons de progression et avis des pairs. None si le profil n'existe pas."""
