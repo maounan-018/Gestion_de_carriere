@@ -51,6 +51,7 @@ from app.models.notification import Notification
 from app.models.souhait import Souhait, SouhaitStatut
 from app.models.formation import Formation
 from app.models.carriere import ProfilStation, PeerReview, StationEtat
+from app.models.entretien import Entretien, EntretienType, EntretienStatut
 from app.models.audit_log import AuditEventType
 from app.schemas.offre import OffreCreate
 from app.schemas.candidature import CandidatureCreate
@@ -471,6 +472,26 @@ def _seed_carriere(db: Session, users_by_email: dict[str, User]) -> int:
     return n
 
 
+# --- Entretiens (veille RH : réalisés / planifiés / en retard) ----------------
+_STATUTS_CYCLE = [EntretienStatut.REALISE, EntretienStatut.PLANIFIE, EntretienStatut.EN_RETARD]
+
+
+def _seed_entretiens(db: Session) -> int:
+    """Un entretien annuel + un entretien RH par profil, statut en rotation
+    (réalisé/planifié/en retard) pour peupler la veille. Idempotent par profil."""
+    profils = db.scalars(select(Profil).order_by(Profil.id)).all()
+    created = 0
+    for i, p in enumerate(profils):
+        if db.scalar(select(Entretien.id).where(Entretien.profil_id == p.id)):
+            continue
+        for j, type_ in enumerate((EntretienType.ANNUEL, EntretienType.RH)):
+            db.add(Entretien(profil_id=p.id, type=type_,
+                             statut=_STATUTS_CYCLE[(i + j) % len(_STATUTS_CYCLE)]))
+            created += 1
+    db.commit()
+    return created
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
              password: str, synthetic_offers: bool = True) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
@@ -481,7 +502,7 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
                "candidats_created": [], "candidats_existing": [],
                "candidatures_created": 0, "candidatures_existing": 0,
                "formations_created": [], "notifications_created": 0, "souhaits_created": 0,
-               "carriere_created": 0}
+               "carriere_created": 0, "entretiens_created": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -552,6 +573,7 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["notifications_created"] = _seed_notifications(db, users_by_email)
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
         summary["carriere_created"] = _seed_carriere(db, users_by_email)
+        summary["entretiens_created"] = _seed_entretiens(db)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
 
@@ -585,6 +607,7 @@ def main() -> None:
     print("Notifications   :", summary["notifications_created"], "créées")
     print("Souhaits        :", summary["souhaits_created"], "créés")
     print("Carrière        :", summary["carriere_created"], "éléments (stations + avis)")
+    print("Entretiens      :", summary["entretiens_created"], "créés")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")

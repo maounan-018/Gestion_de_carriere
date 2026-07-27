@@ -51,3 +51,22 @@ class HautPotentielItem(BaseModel):
     score: int                 # proxy de potentiel (0-100), dérivé du niveau moyen
     nb_competences: int
     niveau_moyen: float | None
+
+
+class VeilleItem(BaseModel):
+    """Veille des entretiens par type (réalisés / planifiés / en retard)."""
+    key: str                   # "annuels" | "rh"
+    label: str
+    realises: int
+    planifies: int
+    en_retard: int
+
+
+class AlerteItem(BaseModel):
+    """Alerte RH dérivée de signaux réels (retard d'entretien, potentiels, mobilité)."""
+    kind: str                  # retention | potential | succession
+    severity: str              # crit | warn | info
+    titre: str
+    texte: str
+    cta: str
+    to_route: str | None = None
