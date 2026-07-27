@@ -13,6 +13,7 @@ import type {
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
+import type { RhOffer, RhCandidate } from '@/data/rh'
 
 /* ------------------------------------------------------------------ Backend */
 export interface NotificationOut {
@@ -493,5 +494,54 @@ export function mapTeamMember(p: ProfilOut): TeamMember {
     aspirationHorizon: '',
     evals: [],
     flag: null,
+  }
+}
+
+/* ===================================================================== */
+/*  Offres RH + revue des candidatures                                   */
+/* ===================================================================== */
+export interface RhOffreOut {
+  id: number; titre: string; type: string; departement_key: string | null
+  perimetre_bmci: string | null; statut: string
+  candidats_total: number; candidats_compatibles: number; retenu_nom: string | null
+}
+export interface OffreCandidatOut {
+  profil_id: number; candidature_id: number; nom: string; prenom: string | null
+  poste_actuel: string | null; departement_key: string | null
+  score: number | null; statut: string; couvertes: string[]; ecarts: string[]
+}
+
+const RH_OFFRE_STATUT: Record<string, RhOffer['status']> = {
+  brouillon: 'brouillon', ouverte: 'ouvert', pourvue: 'clôturé', fermee: 'clôturé', annulee: 'clôturé',
+}
+const REVUE_STATUT: Record<string, RhCandidate['status']> = {
+  deposee: 'nouveau', en_evaluation: 'preselection', retenue: 'retenu', rejetee: 'ecarte', retiree: 'ecarte',
+}
+
+export function mapRhOffre(o: RhOffreOut): RhOffer {
+  return {
+    key: String(o.id),
+    title: o.titre,
+    type: OFFRE_TYPE_LABEL[o.type] ?? 'Poste',
+    ligne: o.perimetre_bmci ?? poleLabel(o.departement_key),
+    status: RH_OFFRE_STATUT[o.statut] ?? 'ouvert',
+    candidates: o.candidats_total,
+    compatible: o.candidats_compatibles,
+    retenu: o.retenu_nom ?? undefined,
+  }
+}
+
+export function mapRhCandidate(c: OffreCandidatOut): RhCandidate {
+  const name = `${c.prenom ?? ''} ${c.nom}`.trim()
+  return {
+    personId: String(c.profil_id),
+    name,
+    initials: initialsOf(name),
+    role: c.poste_actuel ?? '—',
+    pole: poleLabel(c.departement_key),
+    score: Math.round(c.score ?? 0),
+    matched: c.couvertes ?? [],
+    gaps: c.ecarts ?? [],
+    status: REVUE_STATUT[c.statut] ?? 'nouveau',
   }
 }

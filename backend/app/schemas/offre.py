@@ -120,3 +120,32 @@ class OffreCompatOut(BaseModel):
     score_compat: int | None = None
     couvertes: int = 0
     ecarts: int = 0
+
+
+class OffreCandidatOut(BaseModel):
+    """Candidat à une offre (écran RH « revue des candidatures »). Le score et les
+    compétences couvertes/écarts proviennent du snapshot d'évaluation de la
+    candidature ; l'identité vient du profil."""
+    profil_id: int
+    candidature_id: int
+    nom: str
+    prenom: str | None
+    poste_actuel: str | None
+    departement_key: str | None
+    score: float | None
+    statut: str                              # statut de la candidature (deposee/retenue/…)
+    couvertes: list[str] = Field(default_factory=list)  # libellés des compétences couvertes
+    ecarts: list[str] = Field(default_factory=list)     # libellés des écarts
+
+
+class RhOffreOut(BaseModel):
+    """Offre vue côté RH, avec les statistiques de candidatures (liste RH + revue)."""
+    id: int
+    titre: str
+    type: str
+    departement_key: str | None
+    perimetre_bmci: str | None
+    statut: str
+    candidats_total: int = 0
+    candidats_compatibles: int = 0          # au-dessus du seuil de compatibilité
+    retenu_nom: str | None = None           # nom du candidat retenu, s'il y en a un
