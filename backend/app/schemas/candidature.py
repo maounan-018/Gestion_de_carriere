@@ -32,9 +32,9 @@ class CandidatureCreate(BaseModel):
 
 
 class CandidatureDecision(BaseModel):
-    """Décision HUMAINE sur une candidature (retenue possible même si score < 100 %)."""
+    """Décision HUMAINE sur une candidature (retenue possible même si score < 100 %).
+    `decided_by` n'est PAS dans l'entrée : le serveur l'impose depuis la session."""
     statut: Literal["en_evaluation", "retenue", "rejetee"]
-    decided_by: int | None = Field(None, description="Utilisateur décideur (RH / manager).")
 
 
 class AttenduEvalue(BaseModel):

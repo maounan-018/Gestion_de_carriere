@@ -8,11 +8,13 @@ RÔLE
     l'entrée, délègue au service, traduit l'absence en 404 et un conflit (offre/
     profil inexistant, double candidature) en 400.
 
-SÉCURITÉ (à durcir — Bloc C)
-    TODO RBAC : un COLLAB candidate pour lui-même (profil_id = le sien) ; RH/MANAGER
-    consultent les candidats d'une offre de leur périmètre et portent la décision
-    (`PATCH /decision`). À restreindre via Depends(get_current_user) + guard de rôle
-    à la passe sécurité. Ouvert ici, comme profil_controller, pour l'itération data.
+SÉCURITÉ (RBAC branché — Bloc C)
+    Dépôt réservé à COLLAB/RH/ADMIN ; la décision humaine (`PATCH /decision`) et la
+    réévaluation à RH/MANAGER/ADMIN. `decided_by` est TOUJOURS l'utilisateur de la
+    session (jamais fourni par le client). Lecture ouverte à tout authentifié. CSRF
+    vérifié sur les méthodes mutantes. TODO B2 (row-level ownership) : un COLLAB ne
+    candidate que pour SON profil ; RH/MANAGER ne voient que les candidats d'une
+    offre de leur périmètre.
 
 EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
@@ -22,6 +24,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.auth.dependencies import require_roles, get_current_user
+from app.models.user import User, Role
 from app.schemas.candidature import (CandidatureCreate, CandidatureDecision,
                                      CandidatureOut)
 from app.services import candidature_service
@@ -30,6 +34,7 @@ router = APIRouter(prefix="/api/candidatures", tags=["Candidatures"])
 
 
 @router.post("", response_model=CandidatureOut, status_code=201,
+             dependencies=[Depends(require_roles(Role.COLLAB, Role.RH, Role.ADMIN))],
              summary="Déposer une candidature (score + écarts calculés au dépôt)")
 def deposer_candidature(data: CandidatureCreate, db: Session = Depends(get_db)) -> CandidatureOut:
     try:
@@ -39,6 +44,7 @@ def deposer_candidature(data: CandidatureCreate, db: Session = Depends(get_db)) 
 
 
 @router.get("", response_model=list[CandidatureOut],
+            dependencies=[Depends(get_current_user)],
             summary="Lister les candidatures (candidats d'une offre, ou candidatures d'un profil)")
 def lister_candidatures(
     offre_id: int | None = Query(None, description="Candidats d'une offre (tri par score décroissant)."),
@@ -54,6 +60,7 @@ def lister_candidatures(
 
 
 @router.get("/{candidature_id}", response_model=CandidatureOut,
+            dependencies=[Depends(get_current_user)],
             summary="Consulter une candidature et son snapshot d'évaluation")
 def consulter_candidature(candidature_id: int, db: Session = Depends(get_db)) -> CandidatureOut:
     out = candidature_service.get_candidature(db, candidature_id)
@@ -65,14 +72,17 @@ def consulter_candidature(candidature_id: int, db: Session = Depends(get_db)) ->
 @router.patch("/{candidature_id}/decision", response_model=CandidatureOut,
               summary="Décision humaine (retenue possible même si score < 100 %)")
 def decider_candidature(candidature_id: int, data: CandidatureDecision,
+                        user: User = Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN)),
                         db: Session = Depends(get_db)) -> CandidatureOut:
-    out = candidature_service.decide_candidature(db, candidature_id, data.statut, data.decided_by)
+    # Le décideur est TOUJOURS l'utilisateur de la session (anti-usurpation).
+    out = candidature_service.decide_candidature(db, candidature_id, data.statut, user.id)
     if out is None:
         raise HTTPException(status_code=404, detail="Candidature introuvable")
     return out
 
 
 @router.post("/{candidature_id}/reevaluation", response_model=CandidatureOut,
+             dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
              summary="Recalculer le score (attendus de l'offre modifiés depuis le dépôt)")
 def reevaluer_candidature(candidature_id: int, db: Session = Depends(get_db)) -> CandidatureOut:
     out = candidature_service.reevaluer_candidature(db, candidature_id)

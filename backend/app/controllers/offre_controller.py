@@ -7,12 +7,12 @@ RÔLE
     valide l'entrée (schemas), délègue au service, traduit l'absence en 404 et une
     référence invalide (Fiche inexistante) en 400.
 
-SÉCURITÉ (à durcir — Bloc C)
-    TODO RBAC : une offre de poste (`offre_poste`) est POUSSÉE par la RH ; une
-    mission/projet/gig par un MANAGER pour son périmètre. La décision de statut et
-    l'édition des attendus doivent être restreintes (Depends(get_current_user) +
-    guard de rôle) une fois la passe sécurité branchée. Laissé ouvert ici, à l'image
-    de profil_controller, pour l'itération data.
+SÉCURITÉ (RBAC branché — Bloc C)
+    Création/édition réservées à RH/MANAGER/ADMIN. Règle type↔rôle : la RH ne pousse
+    que des `offre_poste`, un MANAGER que des `mission`/`projet`/`gig` (l'ADMIN, tout).
+    `created_by` est TOUJOURS l'utilisateur de la session (jamais fourni par le
+    client). Lecture ouverte à tout utilisateur authentifié. CSRF vérifié sur les
+    méthodes mutantes. TODO B2 : périmètre du MANAGER (département/équipe).
 
 EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
@@ -22,16 +22,34 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.auth.dependencies import require_roles, get_current_user
+from app.models.user import User, Role
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceUpdate)
 from app.services import offre_service
 
 router = APIRouter(prefix="/api/offres", tags=["Offres"])
 
+# Types d'offre autorisés par rôle (l'ADMIN n'est pas restreint).
+_TYPES_PAR_ROLE = {
+    Role.RH: {"offre_poste"},
+    Role.MANAGER: {"mission", "projet", "gig"},
+}
+
 
 @router.post("", response_model=OffreOut, status_code=201,
              summary="Créer une offre (dérive d'une Fiche : attendus copiés puis overridables)")
-def creer_offre(data: OffreCreate, db: Session = Depends(get_db)) -> OffreOut:
+def creer_offre(data: OffreCreate,
+                user: User = Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN)),
+                db: Session = Depends(get_db)) -> OffreOut:
+    # Règle type↔rôle : chaque rôle ne publie que ses types d'offre (ADMIN : tout).
+    autorises = _TYPES_PAR_ROLE.get(user.role)
+    if autorises is not None and data.type not in autorises:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Le rôle {user.role} ne peut pas publier une offre de type « {data.type} ».")
+    # Identité côté serveur : le pousseur est TOUJOURS la session (anti-usurpation).
+    data.created_by = user.id
     try:
         return offre_service.create_offre(db, data)
     except ValueError as e:
@@ -39,6 +57,7 @@ def creer_offre(data: OffreCreate, db: Session = Depends(get_db)) -> OffreOut:
 
 
 @router.get("", response_model=list[OffreOut],
+            dependencies=[Depends(get_current_user)],
             summary="Lister les offres (filtres statut / type / département / fiche)")
 def lister_offres(
     statut: str | None = Query(None, description="brouillon | ouverte | pourvue | fermee | annulee"),
@@ -56,6 +75,7 @@ def lister_offres(
 
 
 @router.get("/{offre_id}", response_model=OffreOut,
+            dependencies=[Depends(get_current_user)],
             summary="Consulter une offre et ses attendus")
 def consulter_offre(offre_id: int, db: Session = Depends(get_db)) -> OffreOut:
     out = offre_service.get_offre(db, offre_id)
@@ -65,6 +85,7 @@ def consulter_offre(offre_id: int, db: Session = Depends(get_db)) -> OffreOut:
 
 
 @router.patch("/{offre_id}", response_model=OffreOut,
+              dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
               summary="Mettre à jour une offre (dont transition de statut)")
 def modifier_offre(offre_id: int, data: OffreUpdate, db: Session = Depends(get_db)) -> OffreOut:
     out = offre_service.update_offre(db, offre_id, data)
@@ -74,6 +95,7 @@ def modifier_offre(offre_id: int, data: OffreUpdate, db: Session = Depends(get_d
 
 
 @router.post("/{offre_id}/competences", response_model=OffreOut,
+             dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
              summary="Ajouter des attendus à une offre")
 def ajouter_attendus(offre_id: int, comps: list[OffreCompetenceIn],
                      db: Session = Depends(get_db)) -> OffreOut:
@@ -84,6 +106,7 @@ def ajouter_attendus(offre_id: int, comps: list[OffreCompetenceIn],
 
 
 @router.patch("/{offre_id}/competences/{comp_id}", response_model=OffreOut,
+              dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
               summary="Override un attendu (importance / niveau / libellé) au niveau de l'offre")
 def modifier_attendu(offre_id: int, comp_id: int, data: OffreCompetenceUpdate,
                      db: Session = Depends(get_db)) -> OffreOut:
@@ -94,6 +117,7 @@ def modifier_attendu(offre_id: int, comp_id: int, data: OffreCompetenceUpdate,
 
 
 @router.delete("/{offre_id}/competences/{comp_id}", response_model=OffreOut,
+               dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
                summary="Retirer un attendu de l'offre")
 def supprimer_attendu(offre_id: int, comp_id: int,
                       db: Session = Depends(get_db)) -> OffreOut:

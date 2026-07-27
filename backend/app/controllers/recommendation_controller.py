@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.auth.dependencies import get_current_user
 from app.schemas.recommendation import RecommendationRequest, RecommendationResponse
 from app.services import recommendation_service
 
@@ -21,6 +22,7 @@ router = APIRouter(prefix="/api/competences", tags=["Compétences"])
 
 
 @router.post("/recommandations", response_model=RecommendationResponse,
+             dependencies=[Depends(get_current_user)],
              summary="Recommander formations & parcours pour un poste visé")
 def recommandations(req: RecommendationRequest, db: Session = Depends(get_db)) -> RecommendationResponse:
     """À partir du profil et du poste visé, renvoie les compétences à développer
