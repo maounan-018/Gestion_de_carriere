@@ -47,6 +47,9 @@ from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.fiche import Fiche, FicheCompetence
 from app.models.offre import Offre
 from app.models.candidature import Candidature
+from app.models.notification import Notification
+from app.models.souhait import Souhait, SouhaitStatut
+from app.models.formation import Formation
 from app.models.audit_log import AuditEventType
 from app.schemas.offre import OffreCreate
 from app.schemas.candidature import CandidatureCreate
@@ -291,6 +294,125 @@ def _seed_candidatures(db: Session, offre_ids: list[int],
     return res
 
 
+# --- Catalogue de formations synthétiques (à la place du LMS) -----------------
+_FORMATIONS = [
+    {"titre": "Bâle III & gestion des risques bancaires", "provider": "BMCI Academy",
+     "duree": "16 h", "niveau": "Intermédiaire", "domaine": "Risque & Conformité",
+     "tags": "risque,bâle,crédit", "skill_cible": "Gestion du risque de crédit"},
+    {"titre": "IFRS 9 en pratique", "provider": "BMCI Academy", "duree": "12 h",
+     "niveau": "Avancé", "domaine": "Finance", "tags": "ifrs,comptabilité,finance",
+     "skill_cible": "Analyse financière"},
+    {"titre": "Analyse de données RH avec Excel", "provider": "OpenClassrooms",
+     "duree": "8 h", "niveau": "Débutant", "domaine": "Data", "tags": "excel,rh,données",
+     "skill_cible": "Analyse de données RH"},
+    {"titre": "Management d'équipe : les fondamentaux", "provider": "CrossKnowledge",
+     "duree": "10 h", "niveau": "Débutant", "domaine": "Management", "tags": "management,leadership",
+     "skill_cible": "Management d'équipe"},
+    {"titre": "Conduite de l'entretien annuel", "provider": "BMCI Academy", "duree": "6 h",
+     "niveau": "Intermédiaire", "domaine": "Management", "tags": "entretien,rh,management",
+     "skill_cible": "Conduite d'entretien"},
+    {"titre": "Relation client grands comptes", "provider": "Cegos", "duree": "14 h",
+     "niveau": "Intermédiaire", "domaine": "Commercial", "tags": "commercial,client,corporate",
+     "skill_cible": "Relation client grands comptes"},
+    {"titre": "Cybersécurité pour les métiers bancaires", "provider": "OpenClassrooms",
+     "duree": "12 h", "niveau": "Intermédiaire", "domaine": "IT & Digital", "tags": "cyber,sécurité,it",
+     "skill_cible": "Cybersécurité"},
+    {"titre": "Lutte anti-blanchiment (LCB-FT)", "provider": "BMCI Academy", "duree": "8 h",
+     "niveau": "Intermédiaire", "domaine": "Risque & Conformité", "tags": "conformité,lcb-ft,réglementaire",
+     "skill_cible": "Conformité réglementaire"},
+    {"titre": "Financement des professionnels", "provider": "Cegos", "duree": "10 h",
+     "niveau": "Avancé", "domaine": "Commercial", "tags": "commercial,crédit,pro",
+     "skill_cible": "Développement commercial"},
+    {"titre": "Leadership et conduite du changement", "provider": "CrossKnowledge",
+     "duree": "12 h", "niveau": "Avancé", "domaine": "Management", "tags": "leadership,changement",
+     "skill_cible": "Leadership"},
+]
+
+
+def _seed_formations(db: Session) -> list[str]:
+    """Catalogue de formations synthétiques (idempotent par titre)."""
+    created: list[str] = []
+    for f in _FORMATIONS:
+        if db.scalar(select(Formation).where(Formation.titre == f["titre"])):
+            continue
+        db.add(Formation(**f, synthetique=True))
+        created.append(f["titre"])
+    db.commit()
+    return created
+
+
+# --- Notifications synthétiques par persona -----------------------------------
+# email -> [(type, titre, texte, route_destination)]
+_NOTIFS = {
+    "marc.bennani@bmci.local": [
+        ("offre", "Nouvelle offre compatible",
+         "Une offre « Conseiller clientèle » correspond à 78 % à votre profil.", "offres"),
+        ("souhait", "Votre manager a consulté vos souhaits",
+         "Jean-Marc Dupont a consulté vos souhaits d'évolution.", "souhaitSuivi"),
+        ("entretien", "Entretien annuel à préparer",
+         "Pensez à préparer votre entretien de carrière.", "entretien"),
+    ],
+    "jeanmarc.dupont@bmci.local": [
+        ("souhait", "Nouveau souhait d'un collaborateur",
+         "Marc Bennani a poussé un souhait d'évolution.", "souhaitsRecus"),
+        ("entretien", "Entretiens d'équipe à mener",
+         "Il vous reste des entretiens annuels à réaliser ce trimestre.", "entretien"),
+    ],
+    "nadia.alami@bmci.local": [
+        ("action", "Offre en validation",
+         "Une offre attend votre validation finale.", "rhOffres"),
+        ("info", "Cartographie mise à jour",
+         "La cartographie des compétences a été rafraîchie.", "cartographie"),
+    ],
+}
+
+
+def _seed_notifications(db: Session, users_by_email: dict[str, User]) -> int:
+    """Notifications de démo par persona (idempotent par destinataire+titre)."""
+    created = 0
+    for email, items in _NOTIFS.items():
+        u = users_by_email.get(email)
+        if not u:
+            continue
+        for type_, titre, texte, to_route in items:
+            if db.scalar(select(Notification).where(
+                    Notification.user_id == u.id, Notification.titre == titre)):
+                continue
+            db.add(Notification(user_id=u.id, type=type_, titre=titre, texte=texte, to_route=to_route))
+            created += 1
+    db.commit()
+    return created
+
+
+# --- Souhaits d'évolution du collaborateur Marc (dont un poussé au manager) ----
+_SOUHAITS_MARC = [
+    ("Évoluer vers Chargé d'affaires professionnels", "carriere", "1-2 ans",
+     "Je souhaite évoluer vers un poste de chargé d'affaires professionnels.", True),
+    ("Participer à une mission transverse ESG", "mission", "6 mois",
+     "Intéressé par une mission ponctuelle sur le reporting ESG.", False),
+]
+
+
+def _seed_souhaits(db: Session, marc_profil: Profil | None) -> int:
+    """Souhaits de démo pour Marc (idempotent par profil+titre). Le souhait poussé
+    devient visible du manager via /api/souhaits/recus."""
+    if marc_profil is None:
+        return 0
+    created = 0
+    for titre, kind, horizon, desc, pushed in _SOUHAITS_MARC:
+        if db.scalar(select(Souhait).where(
+                Souhait.profil_id == marc_profil.id, Souhait.titre == titre)):
+            continue
+        db.add(Souhait(
+            profil_id=marc_profil.id, titre=titre, kind=kind, horizon=horizon,
+            description=desc, pushed=pushed,
+            statut=SouhaitStatut.POUSSE if pushed else SouhaitStatut.BROUILLON,
+        ))
+        created += 1
+    db.commit()
+    return created
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
              password: str, synthetic_offers: bool = True) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
@@ -299,7 +421,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
     summary = {"users_created": [], "users_existing": [], "profils_created": [], "profils_existing": [],
                "offres_created": [], "offres_existing": [],
                "candidats_created": [], "candidats_existing": [],
-               "candidatures_created": 0, "candidatures_existing": 0}
+               "candidatures_created": 0, "candidatures_existing": 0,
+               "formations_created": [], "notifications_created": 0, "souhaits_created": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -349,6 +472,9 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
     #    attendus depuis la Fiche, score calculé côté serveur). Après l'audit
     #    ci-dessus : plus aucune connexion d'audit n'écrit en concurrence.
     if synthetic_offers and demo_accounts:
+        marc_user = users_by_email.get("marc.bennani@bmci.local")
+        marc_profil = (db.scalar(select(Profil).where(Profil.user_id == marc_user.id))
+                       if marc_user else None)
         fiches = _pick_offre_fiches(db, n=len(_OFFRE_PLAN))
         if fiches:
             offre_ids, ores = _seed_offres(db, fiches, users_by_email)
@@ -357,14 +483,15 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
             candidate_profils, cres = _seed_candidate_profils(db, fiches)
             summary["candidats_created"] = cres["candidats_created"]
             summary["candidats_existing"] = cres["candidats_existing"]
-            marc_user = users_by_email.get("marc.bennani@bmci.local")
-            marc_profil = (db.scalar(select(Profil).where(Profil.user_id == marc_user.id))
-                           if marc_user else None)
             cand_res = _seed_candidatures(db, offre_ids, candidate_profils, marc_profil)
             summary["candidatures_created"] = cand_res["candidatures_created"]
             summary["candidatures_existing"] = cand_res["candidatures_existing"]
         else:
             logger.info("Aucune fiche avec ≥3 compétences — offres/candidatures non semées.")
+        # Contenus de démo indépendants des fiches (catalogue, cloches, souhaits).
+        summary["formations_created"] = _seed_formations(db)
+        summary["notifications_created"] = _seed_notifications(db, users_by_email)
+        summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
 
@@ -394,6 +521,9 @@ def main() -> None:
     print("Candidats créés :", summary["candidats_created"] or "(aucun)")
     print("Candidatures    : créées", summary["candidatures_created"],
           "· déjà là", summary["candidatures_existing"])
+    print("Formations      :", len(summary["formations_created"]), "créées")
+    print("Notifications   :", summary["notifications_created"], "créées")
+    print("Souhaits        :", summary["souhaits_created"], "créés")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")
