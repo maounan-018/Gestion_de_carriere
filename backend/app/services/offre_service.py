@@ -26,9 +26,11 @@ from sqlalchemy.orm import Session
 from app.models.fiche import FicheCompetence
 from app.models.fiche import Fiche
 from app.models.offre import Offre, OffreCompetence, OffreStatut
+from app.models.profil import Profil
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceOut,
-                               OffreCompetenceUpdate)
+                               OffreCompetenceUpdate, OffreCompatOut)
+from app.services import candidature_service
 
 # Statuts qui, à l'entrée, posent automatiquement une date si elle manque.
 _STATUTS_OUVERTURE = {OffreStatut.OUVERTE}
@@ -105,6 +107,38 @@ def create_offre(db: Session, data: OffreCreate) -> OffreOut:
 def get_offre(db: Session, offre_id: int) -> OffreOut | None:
     o = db.get(Offre, offre_id)
     return _to_out(db, o) if o else None
+
+
+def list_compatibles(db: Session, profil_id: int | None) -> list[OffreCompatOut]:
+    """Offres enrichies d'un % de compatibilité POUR le profil donné (déterministe,
+    via candidature_service.evaluer — pas d'Ollama). Triées par adéquation
+    décroissante. Si profil_id est None, renvoie les offres sans score."""
+    offres = db.scalars(select(Offre).order_by(Offre.id.desc())).all()
+    out: list[OffreCompatOut] = []
+    for o in offres:
+        comps = db.scalars(
+            select(OffreCompetence).where(OffreCompetence.offre_id == o.id)
+            .order_by(OffreCompetence.id).limit(8)
+        ).all()
+        score = couv = ecr = None
+        if profil_id is not None:
+            ev = candidature_service.evaluer(db, o.id, profil_id)
+            score, couv, ecr = ev.score, len(ev.couvertes), len(ev.ecarts)
+        out.append(OffreCompatOut(
+            id=o.id, type=o.type, titre=o.titre, description=o.description,
+            perimetre_bmci=o.perimetre_bmci, departement_key=o.departement_key,
+            statut=o.statut, competences=[c.skill_label_fr or c.libelle for c in comps],
+            score_compat=score, couvertes=couv or 0, ecarts=ecr or 0,
+        ))
+    out.sort(key=lambda x: x.score_compat if x.score_compat is not None else -1, reverse=True)
+    return out
+
+
+def list_compatibles_for_user(db: Session, user_id: int) -> list[OffreCompatOut]:
+    """Compatibilité des offres pour le profil LIÉ au compte connecté (ou sans
+    score si le compte n'a pas de profil)."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    return list_compatibles(db, p.id if p else None)
 
 
 def list_offres(db: Session, *, statut: str | None = None, type: str | None = None,

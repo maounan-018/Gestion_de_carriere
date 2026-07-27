@@ -9,6 +9,7 @@
 import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
+  Offer, OfferType, MetaItem,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
@@ -371,6 +372,67 @@ export function mapColleague(a: AnnuaireOut): Colleague {
     role: a.poste_actuel ?? '—',
     entity: poleLabel(a.departement_key),
     skills: a.competences ?? [],
+  }
+}
+
+/* -------------------------------------------------------------------- Offres */
+export interface OffreCompatOut {
+  id: number; type: string; titre: string; description: string | null
+  perimetre_bmci: string | null; departement_key: string | null; statut: string
+  competences: string[]; score_compat: number | null; couvertes: number; ecarts: number
+}
+
+const OFFRE_TYPE_LABEL: Record<string, OfferType> = {
+  offre_poste: 'Poste', mission: 'Mission transverse',
+  projet: 'Projet innovation', gig: 'Mission transverse',
+}
+const OFFRE_STATUT_LABEL: Record<string, string> = {
+  brouillon: 'Brouillon', ouverte: 'Ouverte', pourvue: 'Pourvue',
+  fermee: 'Fermée', annulee: 'Annulée',
+}
+
+/** Mappe une offre backend + compatibilité → `Offer` du front. Le % vient du
+ *  score d'évaluation réel (profil du compte vs attendus) ; le narratif absent
+ *  côté backend est dérivé (description, périmètre, statut). */
+export function mapOffre(o: OffreCompatOut): Offer {
+  const pct = o.score_compat ?? 0
+  const typeLabel = OFFRE_TYPE_LABEL[o.type] ?? 'Poste'
+  const isPoste = o.type === 'offre_poste'
+  const ligne = o.perimetre_bmci ?? poleLabel(o.departement_key)
+  const statutLabel = OFFRE_STATUT_LABEL[o.statut] ?? o.statut
+  const tone: PillTone = pct >= 85 ? 'new' : pct >= 70 ? 'ai' : 'mut'
+  const adq = pct >= 85 ? 'Très adapté' : pct >= 70 ? 'Adapté' : 'À explorer'
+  const infos: MetaItem[] = [
+    { icon: 'pin', label: `Périmètre · ${ligne}` },
+    { icon: 'brief', label: `Statut · ${statutLabel}` },
+  ]
+  return {
+    key: String(o.id),
+    type: typeLabel,
+    tone,
+    pct,
+    adq,
+    ligne,
+    title: o.titre,
+    sub: o.description ?? `${typeLabel} · ${ligne}`,
+    meta: [{ icon: 'pin', label: ligne }, { icon: 'brief', label: statutLabel }],
+    managerInformed: !isPoste,
+    managerName: isPoste ? undefined : 'votre manager direct',
+    ctx: ligne,
+    missionTitle: isPoste ? 'Le poste' : 'La mission',
+    mission: o.description ? [o.description] : [`${typeLabel} au sein de ${ligne}.`],
+    skills: o.competences ?? [],
+    infos,
+    noteIcon: isPoste ? 'shield' : 'bell',
+    noteText: isPoste
+      ? "Candidature confidentielle : pour un poste, votre manager n'est pas informé."
+      : 'Votre manager direct sera informé de votre candidature à cette opportunité.',
+    noteOk: isPoste,
+    cta: 'Postuler',
+    ctaDetail: isPoste ? 'Postuler à ce poste' : 'Postuler à cette opportunité',
+    fitTitle: `${pct} % de compatibilité`,
+    fitText: `${o.couvertes} compétence(s) couverte(s) · ${o.ecarts} à développer`,
+    tpill: null,
   }
 }
 
