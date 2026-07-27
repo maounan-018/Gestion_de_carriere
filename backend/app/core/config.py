@@ -118,6 +118,7 @@ class Settings:
         self.SAML_SIMULATION = os.getenv("SAML_SIMULATION", "false").strip().lower() in ("1", "true", "yes")
         self.SEED_DEMO_ACCOUNTS = os.getenv("SEED_DEMO_ACCOUNTS", "true").strip().lower() in ("1", "true", "yes")
         self.SEED_SYNTHETIC_PERSONAS = os.getenv("SEED_SYNTHETIC_PERSONAS", "true").strip().lower() in ("1", "true", "yes")
+        self.SEED_SYNTHETIC_OFFERS = os.getenv("SEED_SYNTHETIC_OFFERS", "true").strip().lower() in ("1", "true", "yes")
 
         # --- Cookies de session (HttpOnly) + CSRF double-submit ---
         self.SESSION_COOKIE = os.getenv("SESSION_COOKIE", "bmci_session")
