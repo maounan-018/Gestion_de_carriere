@@ -9,7 +9,7 @@
 import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
-  Offer, OfferType, MetaItem,
+  Offer, OfferType, MetaItem, Candidature, CandidatureStatus,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
@@ -433,6 +433,39 @@ export function mapOffre(o: OffreCompatOut): Offer {
     fitTitle: `${pct} % de compatibilité`,
     fitText: `${o.couvertes} compétence(s) couverte(s) · ${o.ecarts} à développer`,
     tpill: null,
+  }
+}
+
+/* -------------------------------------------------------------- Candidatures */
+export interface CandidatureMineOut {
+  id: number; statut: string; score: number | null; created_at: string
+  offre_titre: string; offre_type: string
+}
+
+const CAND_STATUT: Record<string, CandidatureStatus> = {
+  deposee: 'Envoyée', en_evaluation: 'En revue', retenue: 'Retenue',
+  rejetee: 'Refusée', retiree: 'Refusée',
+}
+const CAND_TONE: Record<CandidatureStatus, PillTone> = {
+  'Envoyée': 'mut', 'En revue': 'ai', 'Entretien planifié': 'new',
+  'Refusée': 'warn', 'Retenue': 'ok',
+}
+
+function frDate(iso: string): string {
+  const d = new Date(iso)
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** Mappe « ma candidature » backend (candidature + offre jointe) → `Candidature`. */
+export function mapCandidature(c: CandidatureMineOut): Candidature {
+  const status = CAND_STATUT[c.statut] ?? 'Envoyée'
+  return {
+    icon: 'brief',
+    title: c.offre_titre,
+    type: OFFRE_TYPE_LABEL[c.offre_type] ?? 'Poste',
+    date: frDate(c.created_at),
+    status,
+    tone: CAND_TONE[status],
   }
 }
 
