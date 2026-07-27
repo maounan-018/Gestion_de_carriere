@@ -14,6 +14,7 @@ from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.notification import Notification, NotificationType
 from app.models.souhait import Souhait, SouhaitKind, SouhaitStatut
 from app.models.formation import Formation
+from app.models.carriere import ProfilStation, PeerReview, StationEtat
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -30,4 +31,5 @@ __all__ = [
     "Notification", "NotificationType",
     "Souhait", "SouhaitKind", "SouhaitStatut",
     "Formation",
+    "ProfilStation", "PeerReview", "StationEtat",
 ]

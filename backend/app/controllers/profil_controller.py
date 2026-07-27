@@ -26,6 +26,7 @@ from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import Role
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
                                  ProfilCompetenceIn)
+from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
@@ -40,16 +41,28 @@ def creer_profil(data: ProfilCreate, db: Session = Depends(get_db)) -> ProfilOut
 
 @router.get("", response_model=list[ProfilOut],
             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN, Role.MANAGER))],
-            summary="Lister les profils (filtres département / persona)")
+            summary="Lister les profils (filtres département / persona / équipe d'un manager)")
 def lister_profils(
     departement_key: str | None = Query(None),
     synthetique: bool | None = Query(None, description="Filtrer personas de démo (true) ou réels (false)."),
+    manager_id: int | None = Query(None, description="Équipe d'un manager (profils dont le compte a ce manager)."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[ProfilOut]:
     return profil_service.list_profils(db, departement_key=departement_key,
-                                       synthetique=synthetique, limit=limit, offset=offset)
+                                       synthetique=synthetique, manager_id=manager_id,
+                                       limit=limit, offset=offset)
+
+
+@router.get("/{profil_id}/carriere", response_model=ProfilCarriereOut,
+            dependencies=[Depends(get_current_user)],
+            summary="Vue carrière enrichie (aspirations, compétences, stations, avis des pairs)")
+def carriere_profil(profil_id: int, db: Session = Depends(get_db)) -> ProfilCarriereOut:
+    out = profil_service.get_carriere(db, profil_id)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    return out
 
 
 @router.get("/{profil_id}", response_model=ProfilOut,
