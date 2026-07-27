@@ -26,8 +26,9 @@ from app.models.candidature import Candidature
 from app.models.souhait import Souhait
 from app.models.user import User
 from app.models.formation import Formation
+from app.models.entretien import Entretien, EntretienType, EntretienStatut
 from app.schemas.dashboard import (KpiItem, CartoDepartement, CartoTopCompetence,
-                                    HautPotentielItem)
+                                    HautPotentielItem, VeilleItem, AlerteItem)
 
 
 def _count(db: Session, stmt) -> int:
@@ -137,4 +138,55 @@ def hauts_potentiels(db: Session, *, limit: int = 10) -> list[HautPotentielItem]
             poste_actuel=profil.poste_actuel, departement_key=profil.departement_key,
             score=round((moy or 0) * 20), nb_competences=ncomp,
             niveau_moyen=round(moy, 2) if moy is not None else None))
+    return out
+
+
+# ---------------------------------------------------------- Veille entretiens
+def veille(db: Session) -> list[VeilleItem]:
+    """Suivi des entretiens par type : réalisés / planifiés / en retard."""
+    rows = db.execute(
+        select(Entretien.type, Entretien.statut, func.count())
+        .group_by(Entretien.type, Entretien.statut)).all()
+    agg: dict[str, dict[str, int]] = {}
+    for type_, statut, n in rows:
+        agg.setdefault(type_, {})[statut] = n
+    plan = [(EntretienType.ANNUEL, "annuels", "Entretiens annuels (managers)"),
+            (EntretienType.RH, "rh", "Entretiens RH ↔ collaborateur")]
+    out: list[VeilleItem] = []
+    for type_, key, label in plan:
+        a = agg.get(type_, {})
+        out.append(VeilleItem(
+            key=key, label=label,
+            realises=a.get(EntretienStatut.REALISE, 0),
+            planifies=a.get(EntretienStatut.PLANIFIE, 0),
+            en_retard=a.get(EntretienStatut.EN_RETARD, 0)))
+    return out
+
+
+# ------------------------------------------------------------------- Alertes
+def alertes(db: Session) -> list[AlerteItem]:
+    """Alertes RH DÉRIVÉES de signaux réels : hauts potentiels à suivre, entretiens
+    en retard, souhaits de mobilité poussés (signal de rétention)."""
+    out: list[AlerteItem] = []
+    nb_hp = len(hauts_potentiels(db, limit=50))
+    if nb_hp:
+        out.append(AlerteItem(
+            kind="potential", severity="info",
+            titre=f"{nb_hp} haut(s) potentiel(s) identifié(s)",
+            texte="Des collaborateurs au niveau de compétences élevé sont à suivre pour la succession.",
+            cta="Voir les hauts potentiels", to_route="hautsPotentiels"))
+    en_retard = _count(db, select(Entretien.id).where(Entretien.statut == EntretienStatut.EN_RETARD))
+    if en_retard:
+        out.append(AlerteItem(
+            kind="succession", severity="warn",
+            titre=f"{en_retard} entretien(s) en retard",
+            texte="Des entretiens n'ont pas été menés dans les délais.",
+            cta="Planifier", to_route="veille"))
+    mobilites = _count(db, select(Souhait.id).where(Souhait.pushed.is_(True)))
+    if mobilites:
+        out.append(AlerteItem(
+            kind="retention", severity="info",
+            titre=f"{mobilites} souhait(s) de mobilité exprimé(s)",
+            texte="Des collaborateurs ont poussé un souhait d'évolution — opportunité de rétention.",
+            cta="Voir les souhaits", to_route="souhaitsRecus"))
     return out
