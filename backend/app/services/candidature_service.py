@@ -32,7 +32,8 @@ from sqlalchemy.orm import Session
 from app.models.candidature import Candidature, CandidatureStatut
 from app.models.offre import Offre, OffreCompetence
 from app.models.profil import Profil, ProfilCompetence
-from app.schemas.candidature import CandidatureCreate, CandidatureOut, EvaluationOut
+from app.schemas.candidature import (CandidatureCreate, CandidatureOut, EvaluationOut,
+                                     CandidatureMineOut)
 
 _METHODE = "entites_v1"  # appariement déterministe skill_id/libellé (cf. docstring)
 
@@ -201,3 +202,25 @@ def reevaluer_candidature(db: Session, candidature_id: int) -> CandidatureOut | 
     db.commit()
     db.refresh(c)
     return _to_out(c)
+
+
+def list_mine(db: Session, profil_id: int) -> list[CandidatureMineOut]:
+    """« Mes candidatures » : candidatures d'un profil + titre/type de l'offre
+    (jointure), triées de la plus récente à la plus ancienne."""
+    rows = db.execute(
+        select(Candidature, Offre.titre, Offre.type)
+        .join(Offre, Offre.id == Candidature.offre_id)
+        .where(Candidature.profil_id == profil_id)
+        .order_by(Candidature.created_at.desc())
+    ).all()
+    return [
+        CandidatureMineOut(id=c.id, statut=c.statut, score=c.score,
+                           created_at=c.created_at, offre_titre=titre, offre_type=typ)
+        for (c, titre, typ) in rows
+    ]
+
+
+def list_mine_for_user(db: Session, user_id: int) -> list[CandidatureMineOut]:
+    """Mes candidatures pour le profil LIÉ au compte connecté (vide si sans profil)."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    return list_mine(db, p.id) if p else []

@@ -27,7 +27,7 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
 from app.schemas.candidature import (CandidatureCreate, CandidatureDecision,
-                                     CandidatureOut)
+                                     CandidatureOut, CandidatureMineOut)
 from app.services import candidature_service
 
 router = APIRouter(prefix="/api/candidatures", tags=["Candidatures"])
@@ -57,6 +57,13 @@ def lister_candidatures(
     return candidature_service.list_candidatures(
         db, offre_id=offre_id, profil_id=profil_id, statut=statut,
         limit=limit, offset=offset)
+
+
+@router.get("/mes", response_model=list[CandidatureMineOut],
+            summary="Mes candidatures (profil du compte connecté) + titre/type d'offre")
+def mes_candidatures(user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)) -> list[CandidatureMineOut]:
+    return candidature_service.list_mine_for_user(db, user.id)
 
 
 @router.get("/{candidature_id}", response_model=CandidatureOut,

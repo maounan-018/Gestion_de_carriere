@@ -25,10 +25,11 @@ import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
-  mapOffre,
+  mapOffre, mapCandidature,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
+  type CandidatureMineOut,
 } from './mappers'
 
 /**
@@ -62,8 +63,12 @@ export const apiService = {
     return rows.map(mapOffre).find((o) => o.key === key)
   },
   async getCandidatures(): Promise<Candidature[]> {
-    await delay()
-    return CANDIDATURES
+    if (MODE === 'mock') {
+      await delay()
+      return CANDIDATURES
+    }
+    const rows = await apiFetch<CandidatureMineOut[]>('/candidatures/mes')
+    return rows.map(mapCandidature)
   },
   async getNotifications(): Promise<NotificationItem[]> {
     if (MODE === 'mock') {

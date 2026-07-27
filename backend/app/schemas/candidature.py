@@ -71,3 +71,14 @@ class CandidatureOut(BaseModel):
     decided_by: int | None
     evaluation: EvaluationOut | None = Field(
         None, description="Snapshot des écarts au moment de l'évaluation (traçabilité).")
+
+
+class CandidatureMineOut(BaseModel):
+    """« Mes candidatures » : candidature + titre/type de l'offre (jointure) pour
+    l'écran collaborateur, sans avoir à re-fetcher chaque offre."""
+    id: int
+    statut: str
+    score: float | None
+    created_at: datetime
+    offre_titre: str
+    offre_type: str
