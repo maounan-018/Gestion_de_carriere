@@ -149,3 +149,29 @@ class RhOffreOut(BaseModel):
     candidats_total: int = 0
     candidats_compatibles: int = 0          # au-dessus du seuil de compatibilité
     retenu_nom: str | None = None           # nom du candidat retenu, s'il y en a un
+
+
+class VacancyRecoOut(BaseModel):
+    """Profil interne recommandé pour un poste (MATCHING INVERSE : le poste évalué
+    contre les compétences détenues d'un membre de l'équipe). `score` réutilise
+    l'évaluateur des candidatures ; matched/gaps = compétences couvertes/écarts."""
+    profil_id: int
+    nom: str
+    prenom: str | None
+    poste_actuel: str | None
+    score: int
+    matched: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list)
+
+
+class VacancyOut(BaseModel):
+    """Poste à pourvoir de l'équipe d'un manager + profils internes recommandés."""
+    id: int
+    titre: str
+    type: str
+    departement_key: str | None
+    perimetre_bmci: str | None
+    description: str | None
+    statut: str
+    created_at: datetime
+    recos: list[VacancyRecoOut] = Field(default_factory=list)
