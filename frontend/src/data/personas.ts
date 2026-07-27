@@ -1,0 +1,42 @@
+import type { Role, User } from '@/types/domain'
+
+/**
+ * ⚠ Données de démonstration SYNTHÉTIQUES (aucune donnée réelle BMCI).
+ * Un seul jeu de personas partagé par toute l'app (cf. manque G23 : cohérence inter-rôles).
+ * E-mails au format prenom.nom@bmci.local.
+ */
+export const PERSONAS: Record<Role, User> = {
+  collab: {
+    id: 'u-marc',
+    role: 'collab',
+    name: 'Marc Bennani',
+    firstName: 'Marc',
+    initials: 'MB',
+    email: 'marc.bennani@bmci.local',
+    title: 'Analyste Risque Senior',
+    entity: 'Direction des Risques',
+    roleLabel: 'Collaborateur',
+  },
+  manager: {
+    id: 'u-jeanmarc',
+    role: 'manager',
+    name: 'Jean-Marc Dupont',
+    firstName: 'Jean-Marc',
+    initials: 'JM',
+    email: 'jean-marc.dupont@bmci.local',
+    title: 'Directeur de Pôle Risques',
+    entity: 'Direction des Risques',
+    roleLabel: 'Manager',
+  },
+  rh: {
+    id: 'u-nadia',
+    role: 'rh',
+    name: 'Nadia Alami',
+    firstName: 'Nadia',
+    initials: 'NA',
+    email: 'nadia.alami@bmci.local',
+    title: 'Responsable Développement RH',
+    entity: 'Direction des Ressources Humaines',
+    roleLabel: 'RH',
+  },
+}
