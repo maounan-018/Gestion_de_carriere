@@ -15,13 +15,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
+from app.auth.dependencies import get_current_user
 from app.schemas.skill_extraction import ExtractRequest, ExtractResponse
 from app.services import skill_extraction_service
 
 router = APIRouter(prefix="/api/competences", tags=["Compétences"])
 
 
-@router.post("/extraction", response_model=ExtractResponse, summary="Extraire les compétences d'un descriptif de poste")
+@router.post("/extraction", response_model=ExtractResponse,
+             dependencies=[Depends(get_current_user)],
+             summary="Extraire les compétences d'un descriptif de poste")
 def extraire_competences(req: ExtractRequest, db: Session = Depends(get_db)) -> ExtractResponse:
     """Extrait les compétences d'un descriptif de poste et les ancre dans le graphe
     (compétences canoniques ESCO/O*NET). Sortie réexploitable par le matching."""
