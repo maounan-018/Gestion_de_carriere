@@ -36,7 +36,7 @@ from __future__ import annotations
 import os
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -44,9 +44,13 @@ from app.core.security import hash_password
 from app.database.session import SessionLocal
 from app.models.user import User, Role, UserType
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
-from app.models.fiche import FicheCompetence
+from app.models.fiche import Fiche, FicheCompetence
+from app.models.offre import Offre
+from app.models.candidature import Candidature
 from app.models.audit_log import AuditEventType
-from app.services import audit_service
+from app.schemas.offre import OffreCreate
+from app.schemas.candidature import CandidatureCreate
+from app.services import audit_service, offre_service, candidature_service
 
 logger = logging.getLogger(__name__)
 
@@ -149,10 +153,153 @@ def _get_or_create_profil(db: Session, user: User, spec: dict) -> tuple[Profil |
     return p, True
 
 
+# --- Offres + candidatures synthétiques (débloque les écrans offres/revue) ----
+# Plan appliqué aux fiches choisies (une offre par fiche) : (type, statut, créateur, manager ?).
+# Les 2 premières (offre_poste ouvertes, poussées RH) servent de cibles de « revue candidats ».
+_OFFRE_PLAN = [
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #1
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #2
+    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("gig",         "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("projet",      "brouillon", "jeanmarc.dupont@bmci.local", True),
+    ("offre_poste", "pourvue",   "nadia.alami@bmci.local",     False),
+]
+_TYPE_LABEL = {"mission": "Mission", "projet": "Projet", "gig": "Gig"}  # offre_poste = pas de suffixe
+
+# Candidats synthétiques : (nom, matricule, index de la fiche cible (0|1), nb de
+# compétences reprises de cette fiche). Moins de compétences = score plus bas → étalement.
+_CANDIDATS = [
+    ("Salma Idrissi",   "DEMO-C1", 0, 6),
+    ("Youssef Alaoui",  "DEMO-C2", 0, 4),
+    ("Hicham Berrada",  "DEMO-C3", 0, 2),
+    ("Imane Cherkaoui", "DEMO-C4", 1, 5),
+    ("Karim Sabri",     "DEMO-C5", 1, 3),
+]
+_NIVEAUX = [4, 3, 5, 3, 4, 2, 4, 3]  # niveaux tournants (1-5) pour varier les profils
+
+
+def _fiche_competences_rows(db: Session, fiche_id: int, limit: int = 8) -> list[FicheCompetence]:
+    return list(db.scalars(
+        select(FicheCompetence).where(FicheCompetence.fiche_id == fiche_id)
+        .order_by(FicheCompetence.id).limit(limit)
+    ).all())
+
+
+def _pick_offre_fiches(db: Session, n: int) -> list[Fiche]:
+    """Choisit `n` fiches (les + petits ids ayant ≥3 compétences) — déterministe,
+    et garantit des attendus non vides pour que le score d'une candidature ait du sens."""
+    ids = db.scalars(
+        select(FicheCompetence.fiche_id).group_by(FicheCompetence.fiche_id)
+        .having(func.count() >= 3).order_by(FicheCompetence.fiche_id).limit(n)
+    ).all()
+    return [f for f in (db.get(Fiche, i) for i in ids) if f is not None]
+
+
+def _seed_offres(db: Session, fiches: list[Fiche],
+                 users_by_email: dict[str, User]) -> tuple[list[int], dict]:
+    """Crée une offre par fiche selon _OFFRE_PLAN (idempotent par titre+fiche).
+    Renvoie (offre_ids alignés sur `fiches`, résumé créées/existantes)."""
+    res = {"offres_created": [], "offres_existing": []}
+    offre_ids: list[int] = []
+    mgr = users_by_email.get("jeanmarc.dupont@bmci.local")
+    for i, fiche in enumerate(fiches):
+        type_, statut, creator_email, avec_mgr = _OFFRE_PLAN[i % len(_OFFRE_PLAN)]
+        suffix = _TYPE_LABEL.get(type_)
+        titre = f"{fiche.intitule_poste} · {suffix}" if suffix else fiche.intitule_poste
+        existing = db.scalar(select(Offre).where(Offre.titre == titre, Offre.fiche_id == fiche.id))
+        if existing:
+            offre_ids.append(existing.id)
+            res["offres_existing"].append(titre)
+            continue
+        creator = users_by_email.get(creator_email)
+        out = offre_service.create_offre(db, OffreCreate(
+            titre=titre, fiche_id=fiche.id, type=type_, statut=statut,
+            departement_key=fiche.departement_key, perimetre_bmci=fiche.perimetre_bmci,
+            created_by=creator.id if creator else None,
+            manager_id=mgr.id if (avec_mgr and mgr) else None,
+            synthetique=True,
+        ))
+        offre_ids.append(out.id)
+        res["offres_created"].append(titre)
+    return offre_ids, res
+
+
+def _seed_candidate_profils(db: Session, fiches: list[Fiche]) -> tuple[list[tuple[Profil, int]], dict]:
+    """Crée les profils candidats synthétiques (sans compte), compétences reprises
+    partiellement de leur fiche cible. Idempotent par matricule. Renvoie
+    ([(profil, index_fiche_cible)], résumé)."""
+    res = {"candidats_created": [], "candidats_existing": []}
+    out: list[tuple[Profil, int]] = []
+    for nom_complet, matricule, cible_idx, nb in _CANDIDATS:
+        if cible_idx >= len(fiches):
+            continue
+        fiche = fiches[cible_idx]
+        existing = db.scalar(select(Profil).where(Profil.matricule == matricule))
+        if existing:
+            out.append((existing, cible_idx))
+            res["candidats_existing"].append(nom_complet)
+            continue
+        prenom_val, nom_val = (nom_complet.split(" ", 1) + [""])[:2]
+        p = Profil(
+            user_id=None, nom=nom_val or nom_complet, prenom=prenom_val, matricule=matricule,
+            poste_actuel=fiche.intitule_poste, departement_key=fiche.departement_key,
+            synthetique=True,  # ⚠️ candidat de démonstration (donnée fabriquée)
+        )
+        db.add(p)
+        db.flush()  # -> p.id
+        for j, fc in enumerate(_fiche_competences_rows(db, fiche.id, limit=nb)):
+            db.add(ProfilCompetence(
+                profil_id=p.id, libelle=fc.libelle, categorie=fc.categorie,
+                skill_id=fc.skill_id, skill_label_fr=fc.skill_label_fr,
+                niveau=_NIVEAUX[j % len(_NIVEAUX)], source=CompetenceSource.DECLARATIF,
+            ))
+        out.append((p, cible_idx))
+        res["candidats_created"].append(nom_complet)
+    db.commit()
+    return out, res
+
+
+def _seed_candidatures(db: Session, offre_ids: list[int],
+                       candidate_profils: list[tuple[Profil, int]],
+                       marc_profil: Profil | None) -> dict:
+    """Dépose les candidatures (score calculé par le service). Idempotent (unicité
+    profil/offre pré-vérifiée). Cibles : offres ouvertes #0/#1 + mission (#2)."""
+    res = {"candidatures_created": 0, "candidatures_existing": 0}
+
+    def _postuler(offre_id: int | None, profil_id: int | None, motivation: str) -> None:
+        if offre_id is None or profil_id is None:
+            return
+        if db.scalar(select(Candidature).where(
+                Candidature.offre_id == offre_id, Candidature.profil_id == profil_id)):
+            res["candidatures_existing"] += 1
+            return
+        candidature_service.create_candidature(db, CandidatureCreate(
+            offre_id=offre_id, profil_id=profil_id, motivation=motivation))
+        res["candidatures_created"] += 1
+
+    def _offre(idx: int) -> int | None:
+        return offre_ids[idx] if idx < len(offre_ids) else None
+
+    # Chaque candidat -> l'offre de sa fiche cible (revue candidats #0/#1).
+    for profil, cible_idx in candidate_profils:
+        _postuler(_offre(cible_idx), profil.id, "[DÉMO] Candidature synthétique")
+
+    # Le collaborateur Marc Bennani -> cible #0 (poste) + la mission (#2).
+    if marc_profil is not None:
+        _postuler(_offre(0), marc_profil.id, "[DÉMO] Intéressé par cette évolution.")
+        _postuler(_offre(2), marc_profil.id, "[DÉMO] Disponible pour cette mission.")
+    return res
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
-             password: str) -> dict:
-    """Amorce comptes + profils selon les leviers. Idempotent. Renvoie un résumé."""
-    summary = {"users_created": [], "users_existing": [], "profils_created": [], "profils_existing": []}
+             password: str, synthetic_offers: bool = True) -> dict:
+    """Amorce comptes + profils + offres/candidatures selon les leviers.
+    Idempotent. Renvoie un résumé. `synthetic_offers` no-op sans fiches en base
+    (défaut True → rétro-compatible avec les appelants existants)."""
+    summary = {"users_created": [], "users_existing": [], "profils_created": [], "profils_existing": [],
+               "offres_created": [], "offres_existing": [],
+               "candidats_created": [], "candidats_existing": [],
+               "candidatures_created": 0, "candidatures_existing": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -198,6 +345,29 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
             AuditEventType.USER_CREATED, f"Compte de démo créé : {email} ({role})",
             user_id=uid, username=email, role=role)
 
+    # 5) Offres + candidatures synthétiques (via les services : héritage des
+    #    attendus depuis la Fiche, score calculé côté serveur). Après l'audit
+    #    ci-dessus : plus aucune connexion d'audit n'écrit en concurrence.
+    if synthetic_offers and demo_accounts:
+        fiches = _pick_offre_fiches(db, n=len(_OFFRE_PLAN))
+        if fiches:
+            offre_ids, ores = _seed_offres(db, fiches, users_by_email)
+            summary["offres_created"] = ores["offres_created"]
+            summary["offres_existing"] = ores["offres_existing"]
+            candidate_profils, cres = _seed_candidate_profils(db, fiches)
+            summary["candidats_created"] = cres["candidats_created"]
+            summary["candidats_existing"] = cres["candidats_existing"]
+            marc_user = users_by_email.get("marc.bennani@bmci.local")
+            marc_profil = (db.scalar(select(Profil).where(Profil.user_id == marc_user.id))
+                           if marc_user else None)
+            cand_res = _seed_candidatures(db, offre_ids, candidate_profils, marc_profil)
+            summary["candidatures_created"] = cand_res["candidatures_created"]
+            summary["candidatures_existing"] = cand_res["candidatures_existing"]
+        else:
+            logger.info("Aucune fiche avec ≥3 compétences — offres/candidatures non semées.")
+    elif synthetic_offers and not demo_accounts:
+        logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
+
     return summary
 
 
@@ -208,7 +378,8 @@ def main() -> None:
     try:
         summary = seed_all(
             db, demo_accounts=settings.SEED_DEMO_ACCOUNTS,
-            synthetic_personas=settings.SEED_SYNTHETIC_PERSONAS, password=password,
+            synthetic_personas=settings.SEED_SYNTHETIC_PERSONAS,
+            synthetic_offers=settings.SEED_SYNTHETIC_OFFERS, password=password,
         )
     finally:
         db.close()
@@ -218,6 +389,11 @@ def main() -> None:
     print("Comptes déjà là :", summary["users_existing"] or "(aucun)")
     print("Profils créés   :", summary["profils_created"] or "(aucun)")
     print("Profils déjà là :", summary["profils_existing"] or "(aucun)")
+    print("Offres créées   :", summary["offres_created"] or "(aucune)")
+    print("Offres déjà là  :", summary["offres_existing"] or "(aucune)")
+    print("Candidats créés :", summary["candidats_created"] or "(aucun)")
+    print("Candidatures    : créées", summary["candidatures_created"],
+          "· déjà là", summary["candidatures_existing"])
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")
