@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Lock, Mail } from 'lucide-vue-next'
 import { useSessionStore } from '@/stores/session'
-import { PERSONAS } from '@/data/personas'
+import { DEMO_CREDENTIALS } from '@/data/personas'
 import type { Role } from '@/types/domain'
 import AuthCard from '@/components/access/AuthCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,18 +18,26 @@ const roles: { value: Role; label: string }[] = [
   { value: 'rh', label: 'RH' },
 ]
 const selectedRole = ref<Role>('collab')
-const email = ref(PERSONAS.collab.email)
-const password = ref('MotDePasse1!')
+const email = ref(DEMO_CREDENTIALS.collab.email)
+const password = ref(DEMO_CREDENTIALS.collab.password)
+const error = ref('')
 
 function onRole(r: Role) {
   selectedRole.value = r
-  email.value = PERSONAS[r].email
+  email.value = DEMO_CREDENTIALS[r].email
+  password.value = DEMO_CREDENTIALS[r].password
 }
 
 async function submit() {
-  await session.login(selectedRole.value, email.value, password.value)
-  const redirect = route.query.redirect as string | undefined
-  router.push(redirect || { name: `${selectedRole.value}.dashboard` })
+  error.value = ''
+  try {
+    // Le rôle de redirection vient du backend (source de vérité), pas du sélecteur.
+    const user = await session.login(email.value, password.value)
+    const redirect = route.query.redirect as string | undefined
+    router.push(redirect || { name: `${user.role}.dashboard` })
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Connexion impossible.'
+  }
 }
 </script>
 
@@ -93,6 +101,14 @@ async function submit() {
           </button>
         </div>
       </div>
+
+      <p
+        v-if="error"
+        class="rounded-xl border border-danger/30 bg-danger-soft px-3 py-2 text-xs font-semibold text-danger"
+        role="alert"
+      >
+        {{ error }}
+      </p>
 
       <BaseButton type="submit" block :disabled="session.loading">
         <Lock :size="16" /> {{ session.loading ? 'Connexion…' : 'Se connecter' }}

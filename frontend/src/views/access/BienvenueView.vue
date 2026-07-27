@@ -1,16 +1,24 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Check, Sparkles } from 'lucide-vue-next'
 import { useSessionStore } from '@/stores/session'
+import { DEMO_CREDENTIALS } from '@/data/personas'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()
 const session = useSessionStore()
+const error = ref('')
 
 async function enter() {
-  // Un nouvel arrivant qui termine l'onboarding est un collaborateur.
-  await session.login('collab')
-  router.push({ name: 'collab.dashboard' })
+  // Un nouvel arrivant qui termine l'onboarding est un collaborateur (démo).
+  error.value = ''
+  try {
+    await session.login(DEMO_CREDENTIALS.collab.email, DEMO_CREDENTIALS.collab.password)
+    router.push({ name: 'collab.dashboard' })
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Connexion impossible.'
+  }
 }
 </script>
 
@@ -38,6 +46,7 @@ async function enter() {
         <BaseButton :disabled="session.loading" @click="enter">
           {{ session.loading ? 'Connexion…' : 'Accéder à mon espace →' }}
         </BaseButton>
+        <p v-if="error" class="mt-3 text-xs font-semibold text-danger" role="alert">{{ error }}</p>
       </div>
     </div>
   </div>
