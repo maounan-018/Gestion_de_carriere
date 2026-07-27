@@ -25,7 +25,7 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import Role, User
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
-                                 ProfilCompetenceIn)
+                                 ProfilCompetenceIn, AnnuaireEntry)
 from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service
 
@@ -64,6 +64,17 @@ def ma_carriere(user: User = Depends(get_current_user),
     if out is None:
         raise HTTPException(status_code=404, detail="Aucun profil de carrière lié à ce compte.")
     return out
+
+
+@router.get("/annuaire", response_model=list[AnnuaireEntry],
+            dependencies=[Depends(get_current_user)],
+            summary="Annuaire (répertoire limité, accessible à tout utilisateur authentifié)")
+def annuaire(departement_key: str | None = Query(None),
+             limit: int = Query(200, ge=1, le=500),
+             offset: int = Query(0, ge=0),
+             db: Session = Depends(get_db)) -> list[AnnuaireEntry]:
+    return profil_service.list_annuaire(db, departement_key=departement_key,
+                                        limit=limit, offset=offset)
 
 
 @router.get("/{profil_id}/carriere", response_model=ProfilCarriereOut,

@@ -24,10 +24,10 @@ import { apiFetch } from './http'
 import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
-  mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember,
+  mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
-  type ProfilCarriereOut, type ProfilOut,
+  type ProfilCarriereOut, type ProfilOut, type AnnuaireOut,
 } from './mappers'
 
 /**
@@ -93,12 +93,20 @@ export const apiService = {
     return rows.map(mapFormation)
   },
   async getColleagues(): Promise<Colleague[]> {
-    await delay()
-    return COLLEAGUES
+    if (MODE === 'mock') {
+      await delay()
+      return COLLEAGUES
+    }
+    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire')
+    return rows.map(mapColleague)
   },
   async getColleague(id: string): Promise<Colleague | undefined> {
-    await delay(160)
-    return COLLEAGUES.find((c) => c.id === id)
+    if (MODE === 'mock') {
+      await delay(160)
+      return COLLEAGUES.find((c) => c.id === id)
+    }
+    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire')
+    return rows.map(mapColleague).find((c) => c.id === id)
   },
 
   // ---------------------------------------------------------------- Manager

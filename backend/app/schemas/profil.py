@@ -77,3 +77,14 @@ class ProfilOut(BaseModel):
     synthetique: bool
     created_at: datetime
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)
+
+
+class AnnuaireEntry(BaseModel):
+    """Vue ANNUAIRE (répertoire limité, sans champ sensible) : accessible à tout
+    utilisateur authentifié, y compris COLLAB. Pas de user_id/matricule/manager_id."""
+    id: int
+    nom: str
+    prenom: str | None
+    poste_actuel: str | None
+    departement_key: str | None
+    competences: list[str] = Field(default_factory=list)

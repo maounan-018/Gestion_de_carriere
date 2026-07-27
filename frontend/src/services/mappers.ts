@@ -8,7 +8,7 @@
 
 import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
-  Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview,
+  Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
@@ -352,6 +352,25 @@ export function mapProfil(p: ProfilOut): RhPerson {
     strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
     gaps: [],
     flag: null,
+  }
+}
+
+/* ------------------------------------------------------------------ Annuaire */
+export interface AnnuaireOut {
+  id: number; nom: string; prenom: string | null
+  poste_actuel: string | null; departement_key: string | null; competences: string[]
+}
+
+/** Mappe une entrée d'annuaire backend vers un `Colleague` (recherche collègues). */
+export function mapColleague(a: AnnuaireOut): Colleague {
+  const name = `${a.prenom ?? ''} ${a.nom}`.trim()
+  return {
+    id: String(a.id),
+    initials: initialsOf(name),
+    name,
+    role: a.poste_actuel ?? '—',
+    entity: poleLabel(a.departement_key),
+    skills: a.competences ?? [],
   }
 }
 
