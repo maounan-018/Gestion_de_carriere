@@ -8,6 +8,8 @@ import type { RhOffer } from '@/data/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -19,6 +21,27 @@ const router = useRouter()
 
 function goCandidats(key: string) {
   router.push({ name: 'rh.revueCandidats', params: { key } })
+}
+
+// Publier une offre (RH) — la RH peut publier tous les types, POSTES inclus.
+const showPublish = ref(false)
+const publishing = ref(false)
+const pubType = ref<'Poste' | 'Mission transverse' | 'Projet innovation'>('Poste')
+const pubTitle = ref('')
+async function publish() {
+  if (publishing.value || !pubTitle.value.trim()) return
+  publishing.value = true
+  try {
+    await apiService.publishOffer({ titre: pubTitle.value.trim(), type: pubType.value })
+    showPublish.value = false
+    toast('Offre créée en brouillon')
+    pubTitle.value = ''
+    await load()
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la publication', 'error')
+  } finally {
+    publishing.value = false
+  }
 }
 
 async function load() {
@@ -50,7 +73,7 @@ const statusLabel: Record<string, string> = {
       <p class="text-sm text-ink-3">
         Offres du Groupe · <b class="text-ink-2">{{ inValidation }} en validation finale</b>.
       </p>
-      <BaseButton size="sm" @click="toast('Publier une offre (poste / mission / projet) — bientôt', 'info')">
+      <BaseButton size="sm" @click="showPublish = true">
         <Plus :size="15" /> Publier une offre
       </BaseButton>
     </div>
@@ -84,5 +107,46 @@ const statusLabel: Record<string, string> = {
         </div>
       </BaseCard>
     </div>
+
+    <BaseModal v-model="showPublish" title="Publier une offre">
+      <div class="space-y-4">
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Type</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button
+              v-for="t in (['Poste', 'Mission transverse', 'Projet innovation'] as const)"
+              :key="t"
+              type="button"
+              class="rounded-lg border px-2 py-1.5 text-xs font-semibold transition"
+              :class="pubType === t
+                ? 'border-green bg-green text-white'
+                : 'border-border bg-paper text-ink-2 hover:text-ink'"
+              @click="pubType = t"
+            >
+              {{ t }}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label for="rh-pub-title" class="mb-1.5 block text-xs font-semibold text-ink-2">Intitulé</label>
+          <input
+            id="rh-pub-title"
+            v-model="pubTitle"
+            placeholder="Ex : Responsable Conformité"
+            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+        <div class="flex items-start gap-2 rounded-xl border border-green-line bg-green-ghost px-3 py-2 text-xs text-green-deep">
+          <AppIcon name="shield" :size="14" />
+          <span>La RH publie tous les types d'offres, <b>postes</b> inclus. L'offre est créée en <b>brouillon</b>.</span>
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showPublish = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="!pubTitle.trim() || publishing" @click="publish">
+          <AppIcon name="send" :size="14" /> {{ publishing ? 'Publication…' : 'Publier' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
