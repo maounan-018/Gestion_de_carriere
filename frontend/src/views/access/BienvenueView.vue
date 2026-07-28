@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Check, Sparkles } from 'lucide-vue-next'
+import { Check, Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { DEMO_CREDENTIALS } from '@/data/personas'
 import BaseButton from '@/components/ui/BaseButton.vue'

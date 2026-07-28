@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
 import type { RhKpi, RhAlert, CartoPole } from '@/types/rh'

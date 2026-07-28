@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Lock, ShieldCheck, TrendingUp, Flag } from 'lucide-vue-next'
+import { Lock, ShieldCheck, TrendingUp, Flag } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()

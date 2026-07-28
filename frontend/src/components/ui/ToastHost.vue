@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Info, TriangleAlert } from 'lucide-vue-next'
+import { Check, Info, TriangleAlert } from '@lucide/vue'
 import { useToast } from '@/composables/useToast'
 import type { ToastTone } from '@/types/ui'
 

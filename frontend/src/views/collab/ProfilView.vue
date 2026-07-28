@@ -12,7 +12,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ProgressionCurve from '@/components/shared/ProgressionCurve.vue'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles } from '@lucide/vue'
 
 const session = useSessionStore()
 const { toast } = useToast()

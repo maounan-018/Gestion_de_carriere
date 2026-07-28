@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Settings, Check, BookOpen, ChevronRight } from 'lucide-vue-next'
+import { Settings, Check, BookOpen, ChevronRight } from '@lucide/vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 

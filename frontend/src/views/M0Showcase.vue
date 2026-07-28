@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, TrendingUp, Flag, ShieldCheck } from 'lucide-vue-next'
+import { Sparkles, TrendingUp, Flag, ShieldCheck } from '@lucide/vue'
 
 const palette: Array<[string, string]> = [
   ['green', '#00915A'],

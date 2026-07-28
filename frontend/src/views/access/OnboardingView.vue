@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ShieldCheck, User } from 'lucide-vue-next'
+import { ShieldCheck, User } from '@lucide/vue'
 import AuthCard from '@/components/access/AuthCard.vue'
 import AuthStepper from '@/components/access/AuthStepper.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

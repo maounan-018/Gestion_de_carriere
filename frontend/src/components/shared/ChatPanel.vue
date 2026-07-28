@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Send, Sparkles } from 'lucide-vue-next'
+import { Send, Sparkles } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
 

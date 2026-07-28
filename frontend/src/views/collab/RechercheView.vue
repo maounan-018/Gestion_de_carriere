@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { Search } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { Colleague } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'

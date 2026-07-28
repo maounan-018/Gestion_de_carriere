@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Sparkles, Send, Search, Plus, TrendingUp } from 'lucide-vue-next'
+import { Sparkles, Send, Search, Plus, TrendingUp } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'

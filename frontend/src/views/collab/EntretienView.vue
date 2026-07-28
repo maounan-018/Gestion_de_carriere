@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, MessageSquare, Clock, Sparkles } from 'lucide-vue-next'
+import { Check, MessageSquare, Clock, Sparkles } from '@lucide/vue'
 import ChatPanel from '@/components/shared/ChatPanel.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
 

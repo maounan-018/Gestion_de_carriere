@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Shield } from 'lucide-vue-next'
+import { Shield } from '@lucide/vue'
 import ChatPanel from '@/components/shared/ChatPanel.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'

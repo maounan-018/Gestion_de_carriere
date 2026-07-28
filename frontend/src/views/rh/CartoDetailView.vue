@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { CARTO_SKILLS } from '@/data/rh'
 import type { CartoPole } from '@/types/rh'

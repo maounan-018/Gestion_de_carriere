@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Bell, Menu, Settings } from 'lucide-vue-next'
+import { Bell, Menu, Settings } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import BaseBadge from '@/components/ui/BaseBadge.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
