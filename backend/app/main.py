@@ -12,11 +12,14 @@ EMPLACEMENT MVC
 """
 
 import logging
+import threading
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.services import ai_router
 from app.controllers import (skill_extraction_controller, skill_matching_controller,
                              recommendation_controller, fiche_controller, auth_controller,
                              profil_controller, offre_controller, candidature_controller,
@@ -25,10 +28,21 @@ from app.controllers import (skill_extraction_controller, skill_matching_control
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Démarrage : précharge les modèles IA en tâche de fond (ne bloque ni le boot
+    ni la matérialisation des routes). Best-effort — ignoré si Ollama est éteint."""
+    if settings.AI_WARMUP_MODELS:
+        threading.Thread(target=ai_router.warmup, name="ollama-warmup", daemon=True).start()
+    yield
+
+
 app = FastAPI(
     title="BMCI Gestion des Carrières — API",
     description="Graphe de compétences (ESCO/O*NET/SFIA) + IA locale, 100 % on-premise.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # CORS — origines explicites + credentials (cookies). JAMAIS "*" avec credentials.

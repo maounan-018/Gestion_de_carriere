@@ -26,6 +26,7 @@ EMPLACEMENT MVC
 import re
 import json
 import logging
+import threading
 
 import requests
 from fastapi import HTTPException
@@ -33,6 +34,11 @@ from fastapi import HTTPException
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# 8 Go de VRAM : un seul gros LLM tient à la fois. Ce sémaphore SÉRIALISE les
+# générations (les endpoints sync tournent dans un threadpool) → pas de bataille
+# pour la VRAM (= débordement CPU). Embeddings/reranker (CPU) ne passent PAS ici.
+_GPU_LOCK = threading.Semaphore(1)
 
 
 # ============================ JSON tolérant ============================
@@ -94,6 +100,7 @@ def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
         "system": system or "",
         "prompt": f"/no_think\n{prompt}",
         "stream": False,
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,   # garde le modèle en VRAM (anti cold-start)
         "options": {
             "temperature": temperature,
             "num_ctx": num_ctx,          # borné : évite le débordement CPU (128K par défaut)
@@ -103,7 +110,8 @@ def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
     if as_json:
         payload["format"] = "json"
     try:
-        r = requests.post(settings.OLLAMA_GENERATE_URL, json=payload, timeout=300)
+        with _GPU_LOCK:   # une génération LLM à la fois (VRAM 8 Go)
+            r = requests.post(settings.OLLAMA_GENERATE_URL, json=payload, timeout=300)
         r.raise_for_status()
         return r.json().get("response", "")
     except requests.exceptions.ConnectionError:
@@ -170,3 +178,23 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
         raise last_error
     raise HTTPException(status_code=500,
                         detail=f"Réponse IA {'invalide' if as_json else 'vide'} pour la tâche '{task}'.")
+
+
+# ============================ Préchauffage ============================
+
+def warmup(models: list[str] | None = None) -> None:
+    """Précharge des modèles en VRAM (prompt minimal) pour éviter le cold-start du
+    PREMIER vrai appel (chargement du modèle = le gros du délai). Best-effort :
+    n'interrompt jamais le démarrage si Ollama est éteint. À lancer en tâche de fond."""
+    mods = models if models is not None else settings.AI_WARMUP_MODELS
+    for model in mods:
+        try:
+            with _GPU_LOCK:
+                requests.post(settings.OLLAMA_GENERATE_URL, json={
+                    "model": model, "prompt": "ok", "stream": False,
+                    "keep_alive": settings.OLLAMA_KEEP_ALIVE,
+                    "options": {"num_ctx": 512, "num_predict": 1},
+                }, timeout=180)
+            logger.info("Modèle préchauffé : %s", model)
+        except Exception as e:  # noqa: BLE001 — le préchauffage ne doit jamais bloquer le boot
+            logger.warning("Préchauffage %s ignoré (%s).", model, e)
