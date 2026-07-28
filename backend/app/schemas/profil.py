@@ -63,6 +63,14 @@ class ProfilUpdate(BaseModel):
     manager_id: int | None = None
 
 
+class ProfilSelfUpdate(BaseModel):
+    """Édition par le collaborateur de SON PROPRE profil : uniquement les champs
+    auto-déclarés (poste visé / aspirations, poste actuel). PAS `departement_key`
+    ni `manager_id` (données d'organisation, hors self-service)."""
+    aspirations: str | None = Field(None, description="Poste visé / souhaits d'évolution.")
+    poste_actuel: str | None = Field(None, max_length=200)
+
+
 class ProfilOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

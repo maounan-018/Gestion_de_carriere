@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import Role, User
-from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
+from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry)
 from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service
@@ -63,6 +63,17 @@ def ma_carriere(user: User = Depends(get_current_user),
     out = profil_service.get_carriere_for_user(db, user.id)
     if out is None:
         raise HTTPException(status_code=404, detail="Aucun profil de carrière lié à ce compte.")
+    return out
+
+
+@router.patch("/me", response_model=ProfilOut,
+              summary="Éditer MON profil (auto-service : poste visé / aspirations / poste actuel)")
+def modifier_mon_profil(data: ProfilSelfUpdate,
+                        user: User = Depends(get_current_user),
+                        db: Session = Depends(get_db)) -> ProfilOut:
+    out = profil_service.update_self(db, user.id, data)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Aucun profil lié à ce compte.")
     return out
 
 
