@@ -51,7 +51,7 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
           <p class="mt-2 max-w-2xl text-sm text-ink-2">{{ profile.description }}</p>
         </div>
-        <BaseButton variant="secondary" @click="toast('Édition du profil — à venir dans un prochain jalon', 'info')">
+        <BaseButton variant="secondary" @click="toast('La mise à jour de votre profil se fait avec votre RH (poste, aspirations).', 'info')">
           <AppIcon name="user" :size="15" /> Éditer
         </BaseButton>
       </div>
