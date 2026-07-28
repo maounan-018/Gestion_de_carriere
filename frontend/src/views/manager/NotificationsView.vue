@@ -28,9 +28,16 @@ async function load() {
 }
 onMounted(load)
 
-function markAll() {
+async function markAll() {
+  const prev = notifs.value.map((n) => n.unread)
   notifs.value = notifs.value.map((n) => ({ ...n, unread: false }))
-  toast('Notifications marquées comme lues')
+  try {
+    await apiService.markAllNotificationsRead()
+    toast('Notifications marquées comme lues')
+  } catch (e) {
+    notifs.value = notifs.value.map((n, i) => ({ ...n, unread: prev[i] }))
+    toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
+  }
 }
 </script>
 

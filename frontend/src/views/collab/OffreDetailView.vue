@@ -55,10 +55,20 @@ function next() {
   if (offer.value?.managerInformed && step.value === 1 && !consent.value) return
   step.value++
 }
-function send() {
-  showApply.value = false
-  toast('Candidature envoyée')
-  router.push({ name: 'collab.mesCandidatures' })
+const sending = ref(false)
+async function send() {
+  if (!offer.value || sending.value) return
+  sending.value = true
+  try {
+    await apiService.postuler(offer.value.key, motiv.value.trim() || undefined)
+    showApply.value = false
+    toast('Candidature envoyée')
+    router.push({ name: 'collab.mesCandidatures' })
+  } catch (e) {
+    toast(e instanceof Error ? e.message : "Échec de l'envoi de la candidature", 'error')
+  } finally {
+    sending.value = false
+  }
 }
 </script>
 
@@ -210,8 +220,8 @@ function send() {
           :disabled="offer.managerInformed && step === 1 && !consent"
           @click="next"
         >Suivant →</BaseButton>
-        <BaseButton v-else size="sm" @click="send">
-          <AppIcon name="send" :size="14" /> Envoyer ma candidature
+        <BaseButton v-else size="sm" :disabled="sending" @click="send">
+          <AppIcon name="send" :size="14" /> {{ sending ? 'Envoi…' : 'Envoyer ma candidature' }}
         </BaseButton>
       </template>
     </BaseModal>

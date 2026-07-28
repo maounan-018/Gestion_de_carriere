@@ -31,9 +31,16 @@ async function load() {
 onMounted(load)
 
 const unreadCount = computed(() => items.value.filter((n) => n.unread).length)
-function markAll() {
+async function markAll() {
+  const prev = items.value.map((n) => n.unread)
   items.value.forEach((n) => (n.unread = false))
-  toast('Notifications marquées comme lues')
+  try {
+    await apiService.markAllNotificationsRead()
+    toast('Notifications marquées comme lues')
+  } catch (e) {
+    items.value.forEach((n, i) => (n.unread = prev[i]))
+    toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
+  }
 }
 </script>
 

@@ -60,6 +60,8 @@ export const VEILLE: VeilleType[] = [
  * des compétences du poste), jamais un filtre : tous les candidats restent visibles. */
 export interface RhCandidate {
   personId: string
+  /** Id de la candidature backend (pour la décision RH/manager). Absent en mock. */
+  candidatureId?: string
   name: string
   initials: string
   role: string

@@ -56,15 +56,36 @@ function scoreColor(s: number) {
   return s >= 80 ? 'bg-green' : s >= 65 ? 'bg-gold' : 'bg-warning'
 }
 
-function setStatus(c: RhCandidate, status: RhCandidate['status'], msg: string) {
-  // Un seul candidat retenu à la fois.
+// Statut front → décision backend (les 3 seules valeurs acceptées par l'API).
+const BACKEND_DECISION: Partial<Record<RhCandidate['status'], 'retenue' | 'rejetee' | 'en_evaluation'>> = {
+  retenu: 'retenue',
+  ecarte: 'rejetee',
+  entretien: 'en_evaluation',
+  preselection: 'en_evaluation',
+}
+
+async function setStatus(c: RhCandidate, status: RhCandidate['status'], msg: string) {
+  const prev = c.status
+  // Un seul candidat retenu à la fois (démotion locale du précédent).
   if (status === 'retenu') {
     candidates.value.forEach((x) => {
       if (x !== c && x.status === 'retenu') x.status = 'entretien'
     })
   }
   c.status = status
-  toast(msg, status === 'ecarte' ? 'info' : 'ok')
+  const decision = BACKEND_DECISION[status]
+  // En live, on persiste la décision ; en mock (pas de candidatureId), simple retour visuel.
+  if (c.candidatureId && decision) {
+    try {
+      await apiService.decideCandidature(c.candidatureId, decision)
+      toast(msg, status === 'ecarte' ? 'info' : 'ok')
+    } catch (e) {
+      c.status = prev
+      toast(e instanceof Error ? e.message : 'Échec de la décision', 'error')
+    }
+  } else {
+    toast(msg, status === 'ecarte' ? 'info' : 'ok')
+  }
 }
 </script>
 
