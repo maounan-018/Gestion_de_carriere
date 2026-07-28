@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Mail, Lock, Check, Eye, EyeOff } from 'lucide-vue-next'
+import { Mail, Lock, Check, Eye, EyeOff } from '@lucide/vue'
 import { useToast } from '@/composables/useToast'
 import AuthCard from '@/components/access/AuthCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'

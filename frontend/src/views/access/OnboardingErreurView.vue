@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Flag, Mail, LayoutGrid, Briefcase } from 'lucide-vue-next'
+import { Flag, Mail, LayoutGrid, Briefcase } from '@lucide/vue'
 import { useToast } from '@/composables/useToast'
 import AuthCard from '@/components/access/AuthCard.vue'
 import AuthStepper from '@/components/access/AuthStepper.vue'

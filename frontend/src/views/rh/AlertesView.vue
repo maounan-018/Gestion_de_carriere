@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { RhAlert } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'

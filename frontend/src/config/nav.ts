@@ -12,7 +12,7 @@ import {
   Award,
   LayoutGrid,
   Settings,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import type { NavItem } from '@/types/ui'
 import type { Role } from '@/types/domain'
 

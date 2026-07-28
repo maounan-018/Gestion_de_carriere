@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Search } from 'lucide-vue-next'
+import { Search } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { OFFER_LIGNES } from '@/data/offers'
 import type { Offer } from '@/types/domain'

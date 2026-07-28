@@ -4,7 +4,7 @@ import {
   MapPin, Briefcase, Calendar, Clock, Users, BookOpen, Sparkles, Route,
   Award, Shield, Bell, Send, Check, User, Mail, LayoutGrid, Search,
   MessageSquare, Zap, Filter, Lock, Flag,
-} from 'lucide-vue-next'
+} from '@lucide/vue'
 import type { IconKey } from '@/types/domain'
 import type { Component } from 'vue'
 

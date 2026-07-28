@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watch, onUnmounted } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X } from '@lucide/vue'
 
 const props = defineProps<{ modelValue: boolean; title?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()

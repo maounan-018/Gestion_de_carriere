@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { ShieldAlert } from 'lucide-vue-next'
+import { ShieldAlert } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import BaseButton from '@/components/ui/BaseButton.vue'
 

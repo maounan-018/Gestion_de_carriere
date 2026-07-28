@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Mail, Lock, Eye, EyeOff, Check } from 'lucide-vue-next'
+import { User, Mail, Lock, Eye, EyeOff, Check } from '@lucide/vue'
 import { useToast } from '@/composables/useToast'
 import AuthCard from '@/components/access/AuthCard.vue'
 import AuthStepper from '@/components/access/AuthStepper.vue'

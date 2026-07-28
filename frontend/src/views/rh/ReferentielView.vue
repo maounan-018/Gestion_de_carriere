@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sparkles, BookOpen } from 'lucide-vue-next'
+import { Sparkles, BookOpen } from '@lucide/vue'
 import { CARTO_SKILLS } from '@/data/rh'
 import { useToast } from '@/composables/useToast'
 import BaseCard from '@/components/ui/BaseCard.vue'

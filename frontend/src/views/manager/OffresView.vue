@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { MANAGER_OFFER_LIGNES } from '@/data/manager'
 import { useToast } from '@/composables/useToast'

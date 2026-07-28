@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { LayoutGrid } from 'lucide-vue-next'
+import { LayoutGrid } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { CartoPole } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'

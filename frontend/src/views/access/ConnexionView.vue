@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Lock, Mail } from 'lucide-vue-next'
+import { Lock, Mail } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { DEMO_CREDENTIALS } from '@/data/personas'
 import type { Role } from '@/types/domain'

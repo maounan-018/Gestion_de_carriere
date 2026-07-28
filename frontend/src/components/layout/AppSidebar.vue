@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { LogOut, X, ScrollText } from 'lucide-vue-next'
+import { LogOut, X, ScrollText } from '@lucide/vue'
 import type { NavItem } from '@/types/ui'
 import { useSessionStore } from '@/stores/session'
 

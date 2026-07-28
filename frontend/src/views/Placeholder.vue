@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { Hammer } from 'lucide-vue-next'
+import { Hammer } from '@lucide/vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const route = useRoute()
