@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.profil import Profil, ProfilCompetence
 from app.models.user import User
 from app.models.carriere import ProfilStation, PeerReview
-from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilOut,
+from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, ProfilCompetenceOut, AnnuaireEntry)
 from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
                                   SkillNiveauOut)
@@ -68,6 +68,20 @@ def get_profil(db: Session, profil_id: int) -> ProfilOut | None:
     """Renvoie le profil et ses compétences, ou None s'il n'existe pas."""
     p = db.get(Profil, profil_id)
     return _to_out(db, p) if p else None
+
+
+def update_self(db: Session, user_id: int, data: ProfilSelfUpdate) -> ProfilOut | None:
+    """Auto-édition : l'utilisateur met à jour SON profil lié (champs self-safe
+    uniquement, cf. ProfilSelfUpdate — jamais département/manager). None si le
+    compte n'a pas de profil de carrière."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    if p is None:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(p, field, value)
+    db.commit()
+    db.refresh(p)
+    return _to_out(db, p)
 
 
 def list_profils(db: Session, *, departement_key: str | None = None,
