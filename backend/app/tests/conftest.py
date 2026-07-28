@@ -22,6 +22,7 @@ _TMPDIR = tempfile.mkdtemp(prefix="bmci-test-")
 os.environ["DATABASE_PATH"] = str(pathlib.Path(_TMPDIR) / "bmci_test.db")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("SEED_DEMO_PASSWORD", "Test-RBAC-2026!")
+os.environ["AI_WARMUP_MODELS"] = ""  # pas de préchauffage Ollama pendant les tests
 
 import pytest
 from sqlalchemy import create_engine

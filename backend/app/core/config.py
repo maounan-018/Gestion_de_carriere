@@ -81,6 +81,12 @@ class Settings:
         self.EMBED_DIM = int(os.getenv("EMBED_DIM", "1024"))
         self.AI_MAX_ATTEMPTS = int(os.getenv("AI_MAX_ATTEMPTS", "2"))
         self.AI_SEED = int(os.getenv("AI_SEED", "42"))
+        # Garde les modèles chargés en VRAM entre les appels (fin du cold-start
+        # ~85 s → ~35 s). "0" pour décharger aussitôt, "-1" pour garder indéfiniment.
+        self.OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m").strip()
+        # Modèles préchargés au démarrage (en tâche de fond) — vide = désactivé.
+        self.AI_WARMUP_MODELS = [m.strip() for m in os.getenv(
+            "AI_WARMUP_MODELS", "hermes3:8b,mistral-nemo").split(",") if m.strip()]
 
         # Routage modèle-par-tâche (ia/routing.yaml)
         self.ROUTING_PATH = os.getenv("ROUTING_PATH", "").strip() or os.path.join(REPO_ROOT, "ia", "routing.yaml")
