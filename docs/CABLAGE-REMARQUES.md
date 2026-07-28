@@ -56,7 +56,7 @@ Champs affichés par le front mais **non portés par le backend** → repli `—
 
 | # | Sév. | Remarque | Détail |
 |---|------|----------|--------|
-| 6.1 | ✅ | **Durcissement session (#4)** | Intercepteur 401 (`http.ts` → `main.ts` : `session.expire()` + redirection `connexion?redirect`), `hydrate()` purge le cache sur 401. *Réserve : scénario 401→redirection pas encore rejoué au navigateur.* |
+| 6.1 | ✅ | **Durcissement session (#4) — vérifié runtime** | Intercepteur 401 (`http.ts` → `main.ts` : `session.expire()` + redirection `connexion?redirect`), `hydrate()` purge le cache sur 401. **Rejoué au navigateur (live)** : session révoquée serveur → appel API → 401 → redirection `/connexion?redirect=/app/rh/notifications` + store purgé. ✅ |
 | 6.2 | 🟡 | **CORS `ALLOWED_ORIGINS` sans `:3001`** | Sans effet **tant qu'on passe par le proxy Vite** `/api→:5001` (same-origin). À corriger seulement si le front est servi hors proxy. |
 | 6.3 | 🟠 | **Pas de `.env` → mode `live` par défaut** | Sans backend lancé, tous les appels live échouent. (Chantier #2 mis de côté par l'utilisateur.) → fournir `.env.example` + trancher le défaut, ou `VITE_API_MODE=mock`. |
 | 6.4 | 🟡 | **Backend à lancer sur `:5001`** | `uvicorn app.main:app --port 5001` (défaut 8000 sinon). SQLite = un seul writer. |
