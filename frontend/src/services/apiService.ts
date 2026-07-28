@@ -391,4 +391,17 @@ export const apiService = {
       body: { titre: input.titre, type: typeMap[input.type], statut: 'brouillon', synthetique: true },
     })
   },
+  /** Éditer un profil (RH/ADMIN). `id` = profil_id backend. Champs éditables :
+   *  poste actuel + aspirations. (Un collaborateur ne peut PAS éditer son propre
+   *  profil : PATCH /profils/{id} est réservé RH/ADMIN — pas d'endpoint self-service.) */
+  async updateProfil(
+    id: string,
+    patch: { poste_actuel?: string; aspirations?: string },
+  ): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(200)
+      return
+    }
+    await apiFetch(`/profils/${id}`, { method: 'PATCH', body: patch })
+  },
 }

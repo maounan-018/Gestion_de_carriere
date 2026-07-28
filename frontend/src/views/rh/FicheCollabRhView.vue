@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiService } from '@/services/apiService'
+import { useToast } from '@/composables/useToast'
 import type { RhPerson } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -9,12 +10,14 @@ import BaseChip from '@/components/ui/BaseChip.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import BaseBreadcrumb from '@/components/ui/BaseBreadcrumb.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
 const route = useRoute()
+const { toast } = useToast()
 const p = ref<RhPerson | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -32,6 +35,35 @@ async function load() {
 }
 onMounted(load)
 watch(() => route.params.id, load)
+
+// Édition RH du profil (PATCH /profils/{id} — réservé RH/ADMIN).
+const showEdit = ref(false)
+const saving = ref(false)
+const editPoste = ref('')
+const editAspi = ref('')
+function openEdit() {
+  if (!p.value) return
+  editPoste.value = p.value.role === '—' ? '' : p.value.role
+  editAspi.value = p.value.aspiration ?? ''
+  showEdit.value = true
+}
+async function save() {
+  if (!p.value || saving.value) return
+  saving.value = true
+  try {
+    await apiService.updateProfil(p.value.id, {
+      poste_actuel: editPoste.value.trim(),
+      aspirations: editAspi.value.trim(),
+    })
+    showEdit.value = false
+    toast('Profil mis à jour')
+    await load()
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
+  } finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
@@ -65,6 +97,9 @@ watch(() => route.params.id, load)
               <div class="font-display text-2xl font-extrabold text-green-deep">{{ p.ring }}%</div>
               <div class="text-[10px] text-ink-3">profil</div>
             </div>
+            <BaseButton variant="secondary" size="sm" @click="openEdit">
+              <AppIcon name="user" :size="14" /> Éditer
+            </BaseButton>
           </div>
         </BaseCard>
 
@@ -112,5 +147,36 @@ watch(() => route.params.id, load)
         </BaseCard>
       </div>
     </div>
+
+    <!-- Édition RH du profil -->
+    <BaseModal v-model="showEdit" :title="`Éditer — ${p.name}`">
+      <div class="space-y-4">
+        <div>
+          <label for="edit-poste" class="mb-1.5 block text-xs font-semibold text-ink-2">Poste actuel</label>
+          <input
+            id="edit-poste"
+            v-model="editPoste"
+            placeholder="Ex : Conseiller clientèle particuliers"
+            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+        <div>
+          <label for="edit-aspi" class="mb-1.5 block text-xs font-semibold text-ink-2">Aspiration / poste visé</label>
+          <textarea
+            id="edit-aspi"
+            v-model="editAspi"
+            rows="3"
+            placeholder="Ex : Chargé d'affaires professionnels"
+            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showEdit = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="saving" @click="save">
+          <AppIcon name="check" :size="14" /> {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
