@@ -25,11 +25,12 @@ import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
-  mapOffre, mapCandidature, mapRhOffre, mapRhCandidate,
+  mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapReco,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
-  type CandidatureMineOut, type RhOffreOut, type OffreCandidatOut,
+  type CandidatureMineOut, type RhOffreOut, type OffreCandidatOut, type VacancyOut,
+  type RecommendationOut,
 } from './mappers'
 
 /**
@@ -95,8 +96,12 @@ export const apiService = {
     return rows.map(mapSouhait)
   },
   async getReco(): Promise<RecoData> {
-    await delay()
-    return RECO
+    if (MODE === 'mock') {
+      await delay()
+      return RECO
+    }
+    // ⚠️ Ollama : extraction + reranker + conseil (peut prendre quelques secondes).
+    return mapReco(await apiFetch<RecommendationOut>('/competences/ma-reco'))
   },
   async getFormations(): Promise<Formation[]> {
     if (MODE === 'mock') {
@@ -154,8 +159,11 @@ export const apiService = {
     return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
   },
   async getManagerReco(): Promise<RecoData> {
-    await delay()
-    return MANAGER_RECO
+    if (MODE === 'mock') {
+      await delay()
+      return MANAGER_RECO
+    }
+    return mapReco(await apiFetch<RecommendationOut>('/competences/ma-reco'))
   },
   async getManagerOffers(): Promise<Offer[]> {
     if (MODE === 'mock') {
@@ -174,12 +182,20 @@ export const apiService = {
     return rows.map(mapOffre).find((o) => o.key === key)
   },
   async getVacancies(): Promise<Vacancy[]> {
-    await delay()
-    return VACANCIES
+    if (MODE === 'mock') {
+      await delay()
+      return VACANCIES
+    }
+    const rows = await apiFetch<VacancyOut[]>('/offres/vacances')
+    return rows.map(mapVacancy)
   },
   async getVacancy(key: string): Promise<Vacancy | undefined> {
-    await delay(160)
-    return VACANCIES.find((v) => v.key === key)
+    if (MODE === 'mock') {
+      await delay(160)
+      return VACANCIES.find((v) => v.key === key)
+    }
+    const rows = await apiFetch<VacancyOut[]>('/offres/vacances')
+    return rows.map(mapVacancy).find((v) => v.key === key)
   },
   async getSouhaitsRecus(): Promise<SouhaitRecu[]> {
     if (MODE === 'mock') {
@@ -303,5 +319,48 @@ export const apiService = {
       return NADIA_PROFILE
     }
     return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
+  },
+
+  // ============================================================ Écritures
+  /** Postuler à une offre (collab). `offerKey` = id backend (mapOffre). Le profil
+   *  du candidat est résolu depuis la session (/profils/me/carriere). */
+  async postuler(offerKey: string, motivation?: string): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(220)
+      return
+    }
+    const me = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
+    await apiFetch('/candidatures', {
+      method: 'POST',
+      body: { offre_id: Number(offerKey), profil_id: me.profil_id, motivation: motivation ?? null },
+    })
+  },
+  /** Marquer une notification comme lue. */
+  async markNotificationRead(id: string): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(100)
+      return
+    }
+    await apiFetch(`/notifications/${id}/lu`, { method: 'PATCH' })
+  },
+  /** Tout marquer lu. */
+  async markAllNotificationsRead(): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(120)
+      return
+    }
+    await apiFetch('/notifications/lues', { method: 'POST' })
+  },
+  /** Décision humaine sur une candidature (RH/manager). Le score reste indicatif :
+   *  un candidat < 100 % peut être retenu. */
+  async decideCandidature(
+    candidatureId: string,
+    statut: 'retenue' | 'rejetee' | 'en_evaluation',
+  ): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(160)
+      return
+    }
+    await apiFetch(`/candidatures/${candidatureId}/decision`, { method: 'PATCH', body: { statut } })
   },
 }

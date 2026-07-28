@@ -10,8 +10,9 @@ import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
   Offer, OfferType, MetaItem, Candidature, CandidatureStatus,
+  RecoData, RecoSkill, Passerelle,
 } from '@/types/domain'
-import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember } from '@/types/manager'
+import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 
@@ -470,6 +471,58 @@ export function mapCandidature(c: CandidatureMineOut): Candidature {
   }
 }
 
+/* --------------------------------------------------------- Recommandation IA */
+export interface EtapeFormationOut {
+  competence: string; importance: string | null; type: string | null
+  niveau_sfia: number | null; description: string | null; sous_competences: string[]
+}
+export interface PasserelleOut { metier: string; source: string; pertinence: number }
+export interface RecommendationOut {
+  poste_vise: string | null; score_actuel: number
+  modele_extraction: string; modele_conseil: string
+  competences_a_developper: EtapeFormationOut[]
+  passerelles_metiers: PasserelleOut[]
+  plan_developpement: string
+}
+
+const RECO_ICON: Record<string, IconKey> = {
+  metier: 'brief', comportementale: 'user', transversale: 'route', outil_technologie: 'bolt',
+  competence: 'grid', connaissance: 'book',
+}
+
+/** Mappe la recommandation backend (IA : extraction + reranker + conseil) → `RecoData`. */
+export function mapReco(r: RecommendationOut): RecoData {
+  const skills: RecoSkill[] = r.competences_a_developper.map((e) => {
+    const critical = (e.importance ?? '').toLowerCase().startsWith('essent')
+    const desc = e.description
+      || (e.sous_competences.length ? 'Étapes : ' + e.sous_competences.slice(0, 3).join(' · ') : '')
+    return {
+      icon: RECO_ICON[e.type ?? ''] ?? 'spark',
+      title: e.competence,
+      desc,
+      tag: e.niveau_sfia ? `Niveau SFIA ${e.niveau_sfia}` : (e.type ?? 'compétence'),
+      critical,
+    }
+  })
+  const passerelles: Passerelle[] = r.passerelles_metiers.map((p) => {
+    const pct = Math.round(p.pertinence * 100)
+    return {
+      title: p.metier,
+      pct,
+      label: pct >= 75 ? 'Forte affinité' : pct >= 55 ? 'Bonne affinité' : 'Affinité modérée',
+      source: p.source,
+      tone: pct >= 75 ? 'new' : pct >= 55 ? 'ai' : 'mut',
+    }
+  })
+  return {
+    posteVise: r.poste_vise ?? 'Votre poste visé',
+    pct: r.score_actuel,
+    skills,
+    passerelles,
+    plan: r.plan_developpement || 'Plan de développement personnalisé en cours.',
+  }
+}
+
 /** Mappe un profil backend vers un `TeamMember` (équipe du manager). Les champs
  *  d'évaluation (séniorité, note, dernier entretien, evals) prennent un repli
  *  neutre — pas encore portés par le backend. */
@@ -535,6 +588,7 @@ export function mapRhCandidate(c: OffreCandidatOut): RhCandidate {
   const name = `${c.prenom ?? ''} ${c.nom}`.trim()
   return {
     personId: String(c.profil_id),
+    candidatureId: String(c.candidature_id),
     name,
     initials: initialsOf(name),
     role: c.poste_actuel ?? '—',
@@ -543,5 +597,51 @@ export function mapRhCandidate(c: OffreCandidatOut): RhCandidate {
     matched: c.couvertes ?? [],
     gaps: c.ecarts ?? [],
     status: REVUE_STATUT[c.statut] ?? 'nouveau',
+  }
+}
+
+/* ===================================================================== */
+/*  Postes à pourvoir de l'équipe + reco de profils internes (inverse)   */
+/* ===================================================================== */
+export interface VacancyRecoOut {
+  profil_id: number; nom: string; prenom: string | null; poste_actuel: string | null
+  score: number; matched: string[]; gaps: string[]
+}
+export interface VacancyOut {
+  id: number; titre: string; type: string; departement_key: string | null
+  perimetre_bmci: string | null; description: string | null; statut: string
+  created_at: string; recos: VacancyRecoOut[]
+}
+
+const VAC_STATUT: Record<string, Vacancy['status']> = {
+  brouillon: 'brouillon', ouverte: 'ouvert', pourvue: 'clôturé', fermee: 'clôturé', annulee: 'clôturé',
+}
+
+function recoLabelTone(score: number): { label: string; tone: PillTone } {
+  if (score >= 70) return { label: 'Forte adéquation', tone: 'new' }
+  if (score >= 40) return { label: 'Bonne adéquation', tone: 'ai' }
+  return { label: 'À explorer', tone: 'mut' }
+}
+
+export function mapVacancyReco(r: VacancyRecoOut): VacancyReco {
+  const { label, tone } = recoLabelTone(r.score)
+  const why = r.matched.length
+    ? `Points forts : ${r.matched.slice(0, 3).join(', ')}`
+    : 'Profil à faire monter en compétence sur ce poste.'
+  return { memberId: String(r.profil_id), score: Math.round(r.score), label, tone, why }
+}
+
+export function mapVacancy(v: VacancyOut): Vacancy {
+  const type = OFFRE_TYPE_LABEL[v.type] ?? 'Poste'
+  const ligne = v.perimetre_bmci ?? poleLabel(v.departement_key)
+  return {
+    key: String(v.id),
+    title: v.titre,
+    type,
+    ligne,
+    sub: v.description ?? `${type} · ${ligne}`,
+    openSince: `Ouvert ${relativeTime(v.created_at)}`,
+    status: VAC_STATUT[v.statut] ?? 'ouvert',
+    recos: v.recos.map(mapVacancyReco),
   }
 }
