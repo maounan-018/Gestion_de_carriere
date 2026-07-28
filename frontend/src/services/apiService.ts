@@ -371,4 +371,24 @@ export const apiService = {
     }
     await apiFetch(`/souhaits/${id}`, { method: 'PATCH', body: { pushed: true, statut: 'pousse' } })
   },
+  /** Publier une offre (manager/RH). Part en brouillon → validation RH.
+   *  Marquée `synthetique` (donnée de démo étiquetée). */
+  async publishOffer(input: {
+    titre: string
+    type: 'Poste' | 'Mission transverse' | 'Projet innovation'
+  }): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(220)
+      return
+    }
+    const typeMap = {
+      'Poste': 'offre_poste',
+      'Mission transverse': 'mission',
+      'Projet innovation': 'projet',
+    } as const
+    await apiFetch('/offres', {
+      method: 'POST',
+      body: { titre: input.titre, type: typeMap[input.type], statut: 'brouillon', synthetique: true },
+    })
+  },
 }

@@ -42,12 +42,24 @@ const filtered = computed(() =>
 
 // Publier une offre — cycle de vie (manque G9)
 const showPublish = ref(false)
-const pubType = ref<'Poste' | 'Mission transverse' | 'Projet innovation'>('Poste')
+// Un manager publie des missions/projets ; les POSTES relèvent de la RH (règle backend).
+const pubType = ref<'Mission transverse' | 'Projet innovation'>('Mission transverse')
 const pubTitle = ref('')
-function publish() {
-  showPublish.value = false
-  toast('Offre créée en brouillon · envoyée en validation à la ligne RH', 'info')
-  pubTitle.value = ''
+const publishing = ref(false)
+async function publish() {
+  if (publishing.value || !pubTitle.value.trim()) return
+  publishing.value = true
+  try {
+    await apiService.publishOffer({ titre: pubTitle.value.trim(), type: pubType.value })
+    showPublish.value = false
+    toast('Offre créée en brouillon · envoyée en validation à la ligne RH', 'info')
+    pubTitle.value = ''
+    await load()
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la publication', 'error')
+  } finally {
+    publishing.value = false
+  }
 }
 
 const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
@@ -153,9 +165,9 @@ const statusLabel: Record<string, string> = {
       <div class="space-y-4">
         <div>
           <label class="mb-1.5 block text-xs font-semibold text-ink-2">Type</label>
-          <div class="grid grid-cols-3 gap-1.5">
+          <div class="grid grid-cols-2 gap-1.5">
             <button
-              v-for="t in (['Poste', 'Mission transverse', 'Projet innovation'] as const)"
+              v-for="t in (['Mission transverse', 'Projet innovation'] as const)"
               :key="t"
               type="button"
               class="rounded-lg border px-2 py-1.5 text-xs font-semibold transition"
@@ -178,13 +190,13 @@ const statusLabel: Record<string, string> = {
         </div>
         <div class="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning-soft px-3 py-2 text-xs text-warning">
           <AppIcon name="shield" :size="14" />
-          <span>L'offre part en <b>brouillon</b> puis en <b>validation par la ligne RH</b> avant diffusion.</span>
+          <span>L'offre part en <b>brouillon</b> puis en <b>validation par la ligne RH</b> avant diffusion. Les <b>postes</b> sont publiés par la RH.</span>
         </div>
       </div>
       <template #footer>
         <BaseButton variant="secondary" size="sm" @click="showPublish = false">Annuler</BaseButton>
-        <BaseButton size="sm" :disabled="!pubTitle.trim()" @click="publish">
-          <AppIcon name="send" :size="14" /> Envoyer en validation
+        <BaseButton size="sm" :disabled="!pubTitle.trim() || publishing" @click="publish">
+          <AppIcon name="send" :size="14" /> {{ publishing ? 'Envoi…' : 'Envoyer en validation' }}
         </BaseButton>
       </template>
     </BaseModal>
