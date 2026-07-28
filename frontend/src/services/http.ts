@@ -11,12 +11,22 @@
 const BASE = '/api'
 const CSRF_COOKIE = 'bmci_csrf'
 const SAFE = new Set(['GET', 'HEAD', 'OPTIONS'])
+// Endpoints d'auth : un 401 y est normal (probe /me non connecté, logout expiré)
+// et ne doit PAS déclencher la redirection globale (sinon boucle).
+const AUTH_PATH = /^\/auth\//
 
 let csrfToken: string | null = null
 
 /** Mémorise le token CSRF renvoyé par /auth/login (et re-lu du cookie au reload). */
 export function setCsrf(token: string | null): void {
   csrfToken = token
+}
+
+// Intercepteur 401 : session expirée en cours d'usage → l'app décide (déconnexion
+// + retour connexion). Enregistré par main.ts pour éviter un import circulaire.
+let onUnauthorized: ((path: string) => void) | null = null
+export function setUnauthorizedHandler(cb: ((path: string) => void) | null): void {
+  onUnauthorized = cb
 }
 
 function readCsrfCookie(): string | null {
@@ -63,6 +73,8 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   const data: unknown = text ? JSON.parse(text) : undefined
 
   if (!res.ok) {
+    // Session expirée en cours d'usage (hors endpoints d'auth) → notifie l'app.
+    if (res.status === 401 && !AUTH_PATH.test(path)) onUnauthorized?.(path)
     const detail =
       data && typeof data === 'object' && 'detail' in data ? (data as { detail: unknown }).detail : data
     const message = typeof detail === 'string' ? detail : `Erreur ${res.status}`
