@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Role, User } from '@/types/domain'
 import { authService } from '@/services/authService'
+import { ApiError } from '@/services/http'
 
 const STORAGE_KEY = 'bmci.session'
 
@@ -41,11 +42,22 @@ export const useSessionStore = defineStore('session', {
         const user = await authService.me()
         this.user = user
         persist(user)
-      } catch {
-        /* réseau indisponible : on garde le cache local le temps de la session */
+      } catch (e) {
+        // 401 = cookie absent/invalide → la session n'existe pas : purge le cache
+        // périmé. Autre erreur (réseau) → on garde le cache le temps de la session.
+        if (e instanceof ApiError && e.status === 401) {
+          this.user = null
+          persist(null)
+        }
       } finally {
         this.hydrated = true
       }
+    },
+    /** Session invalidée côté serveur (401 en cours d'usage) : purge locale, sans
+     *  appel réseau (le cookie est déjà mort). La redirection est gérée par l'appelant. */
+    expire() {
+      this.user = null
+      persist(null)
     },
     /** Connexion par e-mail / mot de passe (auth locale backend). */
     async login(email: string, password: string) {
