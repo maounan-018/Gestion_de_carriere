@@ -363,4 +363,12 @@ export const apiService = {
     }
     await apiFetch(`/candidatures/${candidatureId}/decision`, { method: 'PATCH', body: { statut } })
   },
+  /** Pousser un souhait existant à son manager (collab). */
+  async pushSouhait(id: string): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(160)
+      return
+    }
+    await apiFetch(`/souhaits/${id}`, { method: 'PATCH', body: { pushed: true, statut: 'pousse' } })
+  },
 }

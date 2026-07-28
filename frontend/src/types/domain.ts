@@ -127,6 +127,8 @@ export interface CollabProfile {
 /* --------------------------------------------------------------- Souhaits */
 export type SouhaitStatus = 'Brouillon' | 'Poussé au manager' | 'En discussion'
 export interface Souhait {
+  /** Id backend (pour pousser / éditer). Absent en mock. */
+  id?: string
   title: string
   horizon: string
   desc: string
