@@ -49,7 +49,7 @@ Champs affichés par le front mais **non portés par le backend** → repli `—
 |---|------|----------|--------|
 | 5.1 | ✅ | **chart.js + vue-chartjs inutilisés** | Aucun import dans `src/` (la « Courbe » est en SVG, la heatmap en grille CSS). **Retirés de `package.json`** → lancer `npm install` pour purger `node_modules`. |
 | 5.2 | ✅ | **`tsconfig.node.json` orphelin** | Aucune référence (ni `references`, ni import). **Supprimé.** |
-| 5.3 | 🟡 | **`lucide-vue-next` ^1.0.0 signalé déprécié** | Migration = toucher `AppIcon` + ~tous les imports d'icônes (~50 fichiers) → risqué. **Différé** ; vérifier d'abord le successeur réel (`@lucide/vue` ?) avant migration de masse. |
+| 5.3 | ✅ | **`lucide-vue-next` déprécié → migré vers `@lucide/vue`** | Confirmé déprécié (npm : « Please use @lucide/vue instead »). Migré : chemin d'import remplacé sur **47 fichiers** (`@lucide/vue` = drop-in, mêmes exports nommés), package déprécié désinstallé. Vérifié : **typecheck exit 0 + build OK**. |
 | 5.4 | 🟡 | **Zéro test** | Aucun harnais (pas de vitest). **Différé** ; démarrage le moins coûteux = tests unitaires des fonctions pures des mappers (`relativeTime`, `initialsOf`, `mapOffre`, `mapCandidature`). |
 
 ## 5. Auth / session / infra
