@@ -1,14 +1,20 @@
 import type { Role, User } from '@/types/domain'
-import { PERSONAS } from '@/data/personas'
+import { PERSONAS, DEMO_CREDENTIALS } from '@/data/personas'
 import { apiFetch, setCsrf } from './http'
 
 /**
- * Service d'authentification — API réelle (/api/auth/*).
- * Login par e-mail/mot de passe → cookies HttpOnly + token CSRF. L'identité
- * (id/nom/e-mail/rôle) vient du backend ; les champs présentationnels
- * (titre, entité, libellé, photo) sont fournis par le persona correspondant,
- * pour garder l'UI riche sans dupliquer ces données côté backend.
+ * Service d'authentification — respecte la bascule `VITE_API_MODE` (comme apiService).
+ * - LIVE (défaut) : `/api/auth/*`. Login e-mail/mot de passe → cookies HttpOnly +
+ *   token CSRF. L'identité vient du backend ; les champs présentationnels (titre,
+ *   entité, libellé, photo) sont fournis par le persona correspondant.
+ * - MOCK : résout le persona de démo à partir de l'e-mail, **sans backend** (démo
+ *   offline). Sans cette branche, se connecter exigeait le backend même en mock.
  */
+
+const MODE: 'mock' | 'live' = import.meta.env.VITE_API_MODE === 'mock' ? 'mock' : 'live'
+// Miroir de la clé de stores/session.ts — utilisé uniquement pour rejouer la
+// session en mode mock (pas de cookie de session à revalider).
+const SESSION_KEY = 'bmci.session'
 
 interface BackendUser {
   id: number
@@ -49,9 +55,23 @@ function mapUser(u: BackendUser): User {
   }
 }
 
+/** Résout le persona de démo à partir de l'e-mail (mode mock, sans backend). */
+function personaByEmail(email: string): User | null {
+  const e = email.trim().toLowerCase()
+  const role = (Object.keys(DEMO_CREDENTIALS) as Role[]).find(
+    (r) => DEMO_CREDENTIALS[r].email.toLowerCase() === e,
+  )
+  return role ? PERSONAS[role] : null
+}
+
 export const authService = {
-  /** Connexion locale : pose les cookies (session + CSRF) et renvoie l'utilisateur. */
+  /** Connexion : pose les cookies (session + CSRF) et renvoie l'utilisateur. */
   async login(email: string, password: string): Promise<User> {
+    if (MODE === 'mock') {
+      const user = personaByEmail(email)
+      if (!user) throw new Error('Identifiants de démonstration inconnus.')
+      return user
+    }
     const res = await apiFetch<LoginResponse>('/auth/login', {
       method: 'POST',
       body: { email, password },
@@ -62,6 +82,14 @@ export const authService = {
 
   /** Utilisateur courant depuis le cookie de session, ou null si non authentifié. */
   async me(): Promise<User | null> {
+    if (MODE === 'mock') {
+      try {
+        const raw = localStorage.getItem(SESSION_KEY)
+        return raw ? (JSON.parse(raw) as User) : null
+      } catch {
+        return null
+      }
+    }
     try {
       const u = await apiFetch<BackendUser>('/auth/me')
       return mapUser(u)
@@ -72,6 +100,10 @@ export const authService = {
 
   /** Révoque la session côté serveur et oublie le token CSRF local. */
   async logout(): Promise<void> {
+    if (MODE === 'mock') {
+      setCsrf(null)
+      return
+    }
     try {
       await apiFetch('/auth/logout', { method: 'POST' })
     } catch {
