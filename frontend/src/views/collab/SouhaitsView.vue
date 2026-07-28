@@ -34,11 +34,18 @@ async function load() {
 }
 onMounted(load)
 
-function push(s: Souhait) {
+async function push(s: Souhait) {
+  const prev = { pushed: s.pushed, status: s.status, tone: s.tone }
   s.pushed = true
   s.status = 'Poussé au manager'
   s.tone = 'new'
-  toast('Souhait transmis à votre manager')
+  try {
+    await apiService.pushSouhait(s.id ?? '')
+    toast('Souhait transmis à votre manager')
+  } catch (e) {
+    Object.assign(s, prev)
+    toast(e instanceof Error ? e.message : "Échec de l'envoi au manager", 'error')
+  }
 }
 </script>
 

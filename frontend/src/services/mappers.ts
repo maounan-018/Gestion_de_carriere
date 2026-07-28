@@ -156,6 +156,7 @@ function initialsOf(name: string): string {
 export function mapSouhait(s: SouhaitOut): Souhait {
   const m = SOUHAIT_STATUS[s.statut] ?? SOUHAIT_STATUS.brouillon
   return {
+    id: String(s.id),
     title: s.titre,
     horizon: s.horizon ?? '',
     desc: s.description ?? '',
