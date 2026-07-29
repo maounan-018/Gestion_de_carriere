@@ -1,12 +1,14 @@
 # Feuille de route — BMCI Gestion des Carrières
 
 Liste **factuelle et exhaustive** des briques. Légende : ✅ fait · ⏳ en cours / partiel · ⬜ à faire · 🅿️ différé/hors scope.
-**Mise à jour : 2026-07-27** — backend fortement avancé. Depuis le 2026-07-22 :
-**CRUD Offre/Candidature** livré ; **14 endpoints applicatifs** ajoutés (notifications, souhaits,
-formations, dashboards RH/manager, cartographie, hauts-potentiels, profil carrière, veille, alertes) ;
-**auth locale + RBAC + audit OPÉRATIONNELS** (4 comptes seedés + personas) ; **5 migrations Alembic**
-incrémentales ; **pytest 46 verts** ; **42 endpoints** exposés ; **frontend Vue mock-first** complet +
-auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées à chaque migration/seed).
+**Mise à jour : 2026-07-29** — moteur IA complété. Depuis le 2026-07-27 :
+**Coach Carrière agentique** (function-calling sur données réelles) + **streaming SSE** (`/api/coach`, `/stream`) ;
+**reco non bloquante** (cache + job async `/ma-reco/async` + polling) ; **3 tâches IA « dormantes » activées** —
+`normalisation` (llama3.1 → `POST /competences/normaliser`), `redaction` (mistral-nemo → `POST /redaction`),
+`raisonnement_batch` (qwen3.6 → **plan de succession** `POST /rh/succession`, e2e vérifié 162 s) ; **matching inverse**
+(candidats d'une offre `GET /offres/{id}/candidats`) ; **pytest 79 verts** ; **~57 routes** déclarées.
+Socle (≤ 2026-07-27) : CRUD Offre/Candidature, auth locale + RBAC + audit + CSRF, 5 migrations Alembic,
+frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (préservées à chaque migration/seed).
 
 > ### 🎯 Cadrage retenu (décisions utilisateur)
 > - **🔒 La SÉCURITÉ est la priorité CENTRALE** — à traiter tôt, en première classe.
@@ -39,11 +41,14 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 - ✅ Reranker **bge-reranker-v2-m3** (CPU, offline)
 - ✅ Optimisation **num_ctx** (indispensable 8 Go VRAM)
 - ✅ Résilience : repli automatique sur modèle fallback en cas d'erreur d'infra ; batch résilient par fiche
-- ⬜ Brancher les **modèles en réserve** : `llama3.1:8b` (normalisation), `qwen3:8b` (agent),
-  `qwen3.6` (raisonnement lourd batch)
+- ✅ Brancher les **modèles en réserve** : `llama3.1:8b` (normalisation → `POST /competences/normaliser`),
+  `qwen3:8b` (agent → Coach), `qwen3.6` (raisonnement batch → plan de succession) — les 3 tâches « dormantes » activées
+- ✅ **Orchestration agentique** (function calling) — Coach Carrière : boucle outil → observation → réponse,
+  outils déterministes (offres compatibles, formations), + **streaming SSE**, repli mono-coup si Ollama down
+- ✅ **Utilitaire de rédaction** IA (`mistral-nemo`) : résumé / reformulation ancrés (`POST /redaction`)
 - ⬜ **Modelfiles spécialisés** (lc-extracteur, lc-conseiller…) — optimisation
-- ⬜ **Orchestration agentique** (function calling) pour tâches multi-étapes
-- ⬜ **Benchmark systématique** par tâche sur données réelles → affiner routing.yaml
+- ⏳ **Benchmark systématique** par tâche sur données réelles → affiner routing.yaml
+  (mesures ad hoc faites : reco cache, latence Coach, succession qwen3.6)
 
 ## III. Modèle métier & données
 - ✅ Entité **`Fiche`** (référence) + **`FicheCompetence`** (attendus typés + ancrés)
@@ -58,7 +63,8 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 - ✅ Entités applicatives : **`Notification`**, **`Souhait`** (+ `/recus`), **`Formation`** (catalogue),
   **`ProfilStation`/`PeerReview`** (carrière), **`Entretien`** (veille) — endpoints livrés (cf. IV bis)
 - ⏳ **Niveau de maîtrise** (1-5) présent (profils/attendus/évaluation) ; **historique dans le temps** ⬜
-- ⏳ **Persistance des résultats** : la candidature persiste son snapshot ✅ ; endpoints matching/reco autonomes ⬜
+- ✅ **Persistance des résultats** : la candidature persiste son snapshot ; endpoints matching/reco autonomes livrés
+  (`/matching`, `/offres/compatibles`, `/ma-reco` + `/ma-reco/async` non bloquant + polling)
 
 ## IV. Fonctionnalités métier (IA + graphe)
 - ✅ **Extraction de compétences** d'un descriptif de poste (hermes3)
@@ -69,9 +75,9 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 - ⬜ **Extraction de compétences d'un CV / profil** (symétrique du poste)
 - ⬜ **Matching candidat ↔ offre** (sur entités persistées) + pondération essentiel/souhaité
   + prise en compte du **niveau** + logique « < 100 % peut être retenu »
-- ⬜ **Recommandation de candidats internes** pour une offre (sens inverse du matching)
-- ⏳ **Succession / hauts potentiels** — endpoint `/api/dashboards/hauts-potentiels` livré (proxy = niveau
-  moyen de compétences) ; viviers/plan de succession dédiés ⬜
+- ✅ **Recommandation de candidats internes** pour une offre (sens inverse du matching) — `GET /api/offres/{id}/candidats`
+- ✅ **Succession / hauts potentiels** — `/api/dashboards/hauts-potentiels` (proxy = niveau moyen) + **plan de
+  succession raisonné dédié** `POST /api/rh/succession` (qwen3.6, cartographie réelle fencée) ; viviers formalisés ⬜
 - ⬜ **Passerelles de mobilité** intégrées au profil (déjà ébauché via vec_occupations)
 - ⬜ Extraction depuis **évaluations de mission (managers)** et **évaluations de performance**
 - ✅ **Dashboards RH — cartographie des compétences** (`/api/dashboards/cartographie` : effectif, niveau
@@ -80,13 +86,16 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 - ⬜ Enrichir la cartographie (familles de compétences, couverture/tensions par famille) au-delà de l'agrégation par département
 - 🅿️ **Mini-jeux** de détection de compétences par thème (plus tard, recherches approfondies)
 
-## IV bis. API applicative (endpoints alimentant le front) — 42 endpoints exposés
+## IV bis. API applicative (endpoints alimentant le front) — ~57 routes déclarées
 - ✅ **Notifications** : `GET /api/notifications`, `PATCH /{id}/lu`, `POST /lues` (filtré par utilisateur)
 - ✅ **Souhaits d'évolution** : `GET/POST/PATCH /api/souhaits` (ownership) + `GET /api/souhaits/recus` (manager)
 - ✅ **Formations** : `GET /api/formations` (catalogue synthétique filtrable domaine/texte)
 - ✅ **Dashboards** : `GET /api/dashboards/{kpis?scope=rh|manager, cartographie, hauts-potentiels}`
 - ✅ **RH analytics** : `GET /api/rh/veille`, `GET /api/rh/alertes`
 - ✅ **Profil carrière** : `GET /api/profils/{id}/carriere` (stations + avis pairs + compétences) + filtre `manager_id` (équipe)
+- ✅ **Coach Carrière** : `POST /api/coach` (agentique) + `POST /api/coach/stream` (SSE token par token)
+- ✅ **Reco perso** : `GET /api/ma-reco` + `POST /api/ma-reco/async` + `GET /api/ma-reco/jobs/{id}` (non bloquant)
+- ✅ **IA utilitaires** : `POST /api/competences/normaliser`, `POST /api/redaction`, `POST /api/rh/succession`
 - ⬜ **Décision de souhait côté RH**, notifications émises par évènements métier (aujourd'hui : seed), reco/formations reliées au matching
 
 ## V. Authentification, identité & sécurité (priorité centrale)
@@ -102,6 +111,7 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
 - ⬜ **Sécurité applicative** : rate-limit IA, taille requête, en-têtes sécu, CORS strict,
   PBKDF2, anti-brute-force — à auditer/compléter (primitives partielles dans `core/security.py`)
+  — ⚠️ **priorité** : endpoints IA coûteux (Coach/reco/succession, GPU sérialisé) **non bornés** aujourd'hui
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
 - ⬜ **Édition gabarit + cartographie via UI protégée RBAC** (aujourd'hui = fichiers YAML)
 
@@ -129,8 +139,9 @@ auth réelle câblée. Base : **164 fiches / 2 939 compétences** (préservées 
 > Note : les **3 maquettes HTML par rôle** (collab / manager / RH) existent dans `design/` — base de l'implémentation.
 
 ## VIII. Qualité, tests & lancement
-- ⏳ Suite **pytest** — **46 tests verts** (auth, RBAC, ownership, notifications, souhaits, formations,
-  dashboards, cartographie, hauts-potentiels, carrière, veille, alertes) ; reste ⬜ : matching/extraction, ownership B2
+- ⏳ Suite **pytest** — **79 tests verts** (auth, RBAC, ownership, notifications, souhaits, formations,
+  dashboards, cartographie, hauts-potentiels, carrière, veille, alertes, **Coach agentique + streaming**,
+  **normalisation, rédaction, plan de succession**) ; reste ⬜ : matching/extraction CV, ownership B2
 - ✅ Migrations **Alembic** — **workflow incrémental éprouvé** (chaque migration validée sur COPIE avant la
   vraie base). Révisions : `66913f77409f` (reevaluated_at) → `13cd08085178` (notifications/souhaits/formations)
   → `6e077337b0c7` (profil_stations/peer_reviews) → `3871a47d3323` (entretiens). **164 fiches préservées** partout.
