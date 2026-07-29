@@ -20,7 +20,7 @@ import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage,
 } from '@/types/domain'
-import { apiFetch } from './http'
+import { apiFetch, getCsrf, ApiError } from './http'
 import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
@@ -52,6 +52,21 @@ function coachReplyToHtml(s: string): string {
   return esc.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>')
 }
 const stripHtml = (s: string): string => s.replace(/<[^>]*>/g, '')
+
+/** Événements du flux SSE du Coach (voir backend `chat_agent_stream`). */
+type CoachStreamEvent =
+  | { type: 'token'; text: string }
+  | { type: 'tool'; name: string }
+  | { type: 'reset' }
+  | { type: 'done'; model: string; outils?: string[] }
+
+/** Callbacks de consommation du flux Coach (tous optionnels). */
+export interface CoachStreamHandlers {
+  onToken?: (text: string) => void
+  onTool?: (name: string) => void
+  onReset?: () => void
+  onDone?: (info: { model: string; outils: string[] }) => void
+}
 
 /** Reco en mode ASYNCHRONE : lance le job puis interroge jusqu'à complétion.
  *  Requêtes courtes (plus de HTTP tenu ~85 s) → robuste aux timeouts proxy ;
@@ -143,6 +158,70 @@ export const apiService = {
       body: { message, history: hist },
     })
     return coachReplyToHtml(r.reply)
+  },
+  /** Coach Carrière en STREAMING (SSE) : émet outils interrogés + tokens au fil
+   *  de l'eau. Lit `/coach/stream` via `fetch` + reader (POST + cookie + CSRF ;
+   *  `EventSource` ne gère ni en-tête ni corps). En mock : pseudo-stream local. */
+  async streamCoachMessage(
+    message: string,
+    history: ChatMessage[],
+    handlers: CoachStreamHandlers,
+  ): Promise<void> {
+    if (MODE === 'mock') {
+      const mock =
+        "D'après votre profil, un levier clé est de combler l'écart « Diriger une équipe » : mentorat + formation management. Voulez-vous un plan détaillé ?"
+      for (const chunk of mock.match(/\S+\s*/g) ?? []) {
+        await delay(28)
+        handlers.onToken?.(chunk)
+      }
+      handlers.onDone?.({ model: 'mock', outils: [] })
+      return
+    }
+
+    const hist = history
+      .filter((m) => (m.text || '').trim())
+      .map((m) => ({ role: m.from === 'me' ? 'user' : 'assistant', content: stripHtml(m.text) }))
+
+    const csrf = getCsrf()
+    const res = await fetch('/api/coach/stream', {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+      },
+      body: JSON.stringify({ message, history: hist }),
+    })
+    if (!res.ok || !res.body) {
+      throw new ApiError(res.status, `Erreur ${res.status}`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      // Trames SSE séparées par une ligne vide ; on garde le reliquat partiel.
+      const frames = buf.split('\n\n')
+      buf = frames.pop() ?? ''
+      for (const frame of frames) {
+        const line = frame.split('\n').find((l) => l.startsWith('data:'))
+        if (!line) continue
+        let ev: CoachStreamEvent
+        try {
+          ev = JSON.parse(line.slice(5).trim())
+        } catch {
+          continue
+        }
+        if (ev.type === 'token') handlers.onToken?.(ev.text)
+        else if (ev.type === 'tool') handlers.onTool?.(ev.name)
+        else if (ev.type === 'reset') handlers.onReset?.()
+        else if (ev.type === 'done') handlers.onDone?.({ model: ev.model, outils: ev.outils ?? [] })
+      }
+    }
   },
   async getFormations(): Promise<Formation[]> {
     if (MODE === 'mock') {
