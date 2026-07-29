@@ -15,10 +15,10 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 
-from app.models.profil import Profil, ProfilCompetence
+from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.user import User
 from app.models.carriere import ProfilStation, PeerReview
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
@@ -172,5 +172,27 @@ def add_competences(db: Session, profil_id: int,
     if not p:
         return None
     _add_competences(db, profil_id, comps)
+    db.commit()
+    return _to_out(db, p)
+
+
+def enregistrer_competences_cv(db: Session, profil_id: int, comps: list[dict],
+                               *, remplacer: bool = True) -> ProfilOut | None:
+    """Persiste les compétences issues d'un CV (source=cv), avec leur ancrage graphe
+    (skill_id/skill_label_fr). `comps` = dicts {libelle, categorie, niveau, skill_id,
+    skill_label_fr}. Si `remplacer`, purge d'abord les compétences source=cv du profil
+    (ré-extraction idempotente). None si le profil est introuvable."""
+    p = db.get(Profil, profil_id)
+    if not p:
+        return None
+    if remplacer:
+        db.execute(delete(ProfilCompetence).where(
+            ProfilCompetence.profil_id == profil_id,
+            ProfilCompetence.source == CompetenceSource.CV))
+    for c in comps:
+        db.add(ProfilCompetence(
+            profil_id=profil_id, libelle=c["libelle"], categorie=c.get("categorie"),
+            niveau=c.get("niveau"), skill_id=c.get("skill_id"),
+            skill_label_fr=c.get("skill_label_fr"), source=CompetenceSource.CV))
     db.commit()
     return _to_out(db, p)
