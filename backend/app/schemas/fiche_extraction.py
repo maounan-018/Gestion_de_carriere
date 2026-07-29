@@ -69,6 +69,12 @@ class DepartementInfo(BaseModel):
     metiers: list[str] = Field(default_factory=list)
 
 
+class CartographieDoc(BaseModel):
+    """Cartographie complète (pour l'éditeur RBAC : lecture + enregistrement)."""
+    version: int | None = None
+    departements: list[DepartementInfo] = Field(..., min_length=1)
+
+
 class FicheGenerationRequest(BaseModel):
     metier: str = Field(..., min_length=2, description="Intitulé du métier à générer.")
     departement_key: str = Field(..., description="Clé de département (cartographie).")
