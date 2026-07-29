@@ -111,11 +111,12 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   Reste ⬜ : périmètre par **OFFRE** sur decision/réévaluation (nécessite un ownership d'offre)
 - ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
-- ⏳ **Sécurité applicative** : ✅ **rate-limit des endpoints IA** par utilisateur (débit + concurrence,
-  429 + `Retry-After`, journalisé — `core/rate_limit.py`, 12 routes IA) ; ✅ **durcissement HTTP**
-  (`core/http_hardening.py`, middleware ASGI pur, SSE-safe) : en-têtes sécu (nosniff, X-Frame-Options DENY,
-  Referrer-Policy, Permissions-Policy, CSP stricte pour l'API + HSTS en prod) + **plafond de taille de requête**
-  (413) ; CORS non-"*" ✅ ; reste ⬜ : audit PBKDF2 / anti-brute-force (primitives dans `core/security.py`)
+- ✅ **Sécurité applicative** : **rate-limit des endpoints IA** (débit + concurrence, 429 + `Retry-After`,
+  audité — `core/rate_limit.py`, 12 routes IA) ; **durcissement HTTP** (`core/http_hardening.py`, middleware
+  ASGI pur, SSE-safe) : en-têtes sécu (nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy,
+  CSP stricte pour l'API + HSTS en prod) + **plafond de taille de requête** (413) ; **CORS** non-"*" ;
+  **PBKDF2** (sel + itérations + comparaison temps constant) & **anti-brute-force** (verrouillage 429 après
+  N échecs sur fenêtre glissante) — vérifiés & testés
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
 - ⬜ **Édition gabarit + cartographie via UI protégée RBAC** (aujourd'hui = fichiers YAML)
 
