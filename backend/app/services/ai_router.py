@@ -180,6 +180,39 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
                         detail=f"Réponse IA {'invalide' if as_json else 'vide'} pour la tâche '{task}'.")
 
 
+# ============================ Chat + outils (agent) ============================
+
+def chat_call(model: str, messages: list[dict], tools: list | None = None,
+              num_ctx: int = 8192, temperature: float = 0) -> dict:
+    """Un appel HTTP à /api/chat (multi-tours + tool-calling). Renvoie le dict
+    `message` d'Ollama, qui peut contenir `content` et/ou `tool_calls`. Même
+    sérialisation GPU et gestion d'erreur d'infra que `generate`."""
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+        "think": False,                              # coupe le raisonnement des modèles 'thinking'
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,
+        "options": {"temperature": temperature, "num_ctx": num_ctx, "seed": settings.AI_SEED},
+    }
+    if tools:
+        payload["tools"] = tools
+    try:
+        with _GPU_LOCK:   # une génération LLM à la fois (VRAM 8 Go)
+            r = requests.post(settings.OLLAMA_CHAT_URL, json=payload, timeout=300)
+        r.raise_for_status()
+        return r.json().get("message", {}) or {}
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve').")
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Le modèle met trop de temps à répondre.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erreur Ollama chat (%s): %s", model, e)
+        raise HTTPException(status_code=500, detail="Erreur interne lors de l'appel au modèle.")
+
+
 # ============================ Préchauffage ============================
 
 def warmup(models: list[str] | None = None) -> None:

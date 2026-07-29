@@ -31,3 +31,5 @@ class CoachRequest(BaseModel):
 class CoachResponse(BaseModel):
     reply: str
     model: str
+    outils: list[str] = Field(default_factory=list,
+                              description="Outils (données réelles) interrogés par le coach agentique.")
