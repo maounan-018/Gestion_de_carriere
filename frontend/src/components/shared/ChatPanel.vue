@@ -1,22 +1,83 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { Send, Sparkles } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
+import type { CoachStreamHandlers } from '@/services/apiService'
 
-// `onSend` fourni -> chat LIVE (appel backend, avec indicateur d'attente).
-// Sinon -> repli sur `botReply` statique (simulations d'entretien, démo).
+// Priorité des modes de réponse :
+//  1. `onStream` -> chat LIVE en STREAMING (tokens au fil de l'eau + statut d'outil).
+//  2. `onSend`   -> chat LIVE bloquant (une réponse complète, avec indicateur d'attente).
+//  3. `botReply` -> repli statique (simulations d'entretien, démo).
 const props = defineProps<{
   messages: ChatMessage[]
   suggestions?: ChatSuggestion[]
   placeholder?: string
   botReply?: string
   onSend?: (message: string, history: ChatMessage[]) => Promise<string>
+  onStream?: (
+    message: string,
+    history: ChatMessage[],
+    handlers: CoachStreamHandlers,
+  ) => Promise<void>
 }>()
 
 const list = ref<ChatMessage[]>([...props.messages])
 const input = ref('')
 const busy = ref(false)
+const streamingHtml = ref('') // bulle bot en cours de streaming (HTML échappé)
+const streamStatus = ref('') // libellé de l'outil interrogé ('' sinon)
+const scroller = ref<HTMLElement>()
+
+const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
+
+// Libellés lisibles des outils du coach agentique (voir backend `_DISPATCH`).
+const TOOL_LABELS: Record<string, string> = {
+  chercher_offres_compatibles: 'Consultation des offres internes…',
+  lister_formations: 'Consultation du catalogue de formations…',
+}
+
+/** Échappe le HTML d'un texte LLM (rendu en v-html) et préserve les sauts de ligne. */
+function toHtml(raw: string): string {
+  const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return esc.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>')
+}
+
+// Auto-scroll en bas à chaque nouveau contenu (messages, tokens, statut).
+watch([() => list.value.length, streamingHtml, streamStatus, busy], async () => {
+  await nextTick()
+  if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
+})
+
+async function streamSend(text: string, history: ChatMessage[]) {
+  busy.value = true
+  streamStatus.value = ''
+  streamingHtml.value = ''
+  let raw = ''
+  try {
+    await props.onStream!(text, history, {
+      onTool: (name) => {
+        streamStatus.value = TOOL_LABELS[name] ?? 'Consultation des données…'
+      },
+      onToken: (tk) => {
+        streamStatus.value = ''
+        raw += tk
+        streamingHtml.value = toHtml(raw)
+      },
+      onReset: () => {
+        raw = ''
+        streamingHtml.value = ''
+      },
+    })
+    list.value.push({ from: 'bot', text: raw.trim() ? toHtml(raw) : ERR })
+  } catch {
+    list.value.push({ from: 'bot', text: ERR })
+  } finally {
+    busy.value = false
+    streamStatus.value = ''
+    streamingHtml.value = ''
+  }
+}
 
 async function send(text?: string) {
   const t = (text ?? input.value).trim()
@@ -25,16 +86,15 @@ async function send(text?: string) {
   list.value.push({ from: 'me', text: t })
   input.value = ''
 
-  if (props.onSend) {
+  if (props.onStream) {
+    await streamSend(t, history)
+  } else if (props.onSend) {
     busy.value = true
     try {
       const reply = await props.onSend(t, history)
       list.value.push({ from: 'bot', text: reply })
     } catch {
-      list.value.push({
-        from: 'bot',
-        text: "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment.",
-      })
+      list.value.push({ from: 'bot', text: ERR })
     } finally {
       busy.value = false
     }
@@ -49,7 +109,7 @@ async function send(text?: string) {
 
 <template>
   <div class="flex min-h-[440px] flex-col rounded-2xl border border-border bg-paper p-4 shadow-card">
-    <div class="flex-1 space-y-3 overflow-y-auto">
+    <div ref="scroller" class="flex-1 space-y-3 overflow-y-auto">
       <div v-for="(m, i) in list" :key="i" class="flex" :class="m.from === 'me' ? 'justify-end' : ''">
         <div
           class="max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed"
@@ -59,7 +119,24 @@ async function send(text?: string) {
           <span v-else>{{ m.text }}</span>
         </div>
       </div>
-      <div v-if="busy" class="flex">
+
+      <!-- Bulle vivante pendant le streaming : statut d'outil, puis tokens en direct. -->
+      <div v-if="busy && onStream" class="flex">
+        <div class="max-w-[80%] rounded-2xl bg-green-soft px-3.5 py-2.5 text-sm leading-relaxed text-ink-2">
+          <template v-if="streamingHtml">
+            <span v-html="streamingHtml" /><span
+              class="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-green-deep align-middle"
+            />
+          </template>
+          <span v-else class="inline-flex items-center gap-1.5 text-ink-3">
+            <Sparkles :size="14" class="animate-pulse text-green-deep" />
+            {{ streamStatus || 'Le Coach réfléchit…' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Indicateur d'attente pour le mode bloquant (onSend). -->
+      <div v-if="busy && !onStream" class="flex">
         <div class="rounded-2xl bg-green-soft px-3.5 py-2.5 text-sm text-ink-3">
           <span class="inline-flex items-center gap-1.5">
             <Sparkles :size="14" class="animate-pulse text-green-deep" /> Le Coach réfléchit…

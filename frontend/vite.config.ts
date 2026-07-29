@@ -13,9 +13,13 @@ export default defineConfig({
     // 3000 est pris par un autre projet local (ObjectifSMART) → port assigné automatiquement.
     port: process.env.PORT ? Number(process.env.PORT) : 3001,
     strictPort: false,
-    // Prêt pour le câblage backend (:5001) — mock-first pour l'instant, donc inactif.
+    // Proxy /api → backend FastAPI (:5001 par défaut ; surchargeable via
+    // VITE_PROXY_TARGET pour pointer un autre backend local, ex. :5002).
     proxy: {
-      '/api': { target: 'http://localhost:5001', changeOrigin: true },
+      '/api': {
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5001',
+        changeOrigin: true,
+      },
     },
   },
 })

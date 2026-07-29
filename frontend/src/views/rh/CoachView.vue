@@ -4,10 +4,10 @@ import { useSessionStore } from '@/stores/session'
 import ChatPanel from '@/components/shared/ChatPanel.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
-import { apiService } from '@/services/apiService'
+import { apiService, type CoachStreamHandlers } from '@/services/apiService'
 
-const askCoach = (message: string, history: ChatMessage[]) =>
-  apiService.sendCoachMessage(message, history)
+const askCoach = (message: string, history: ChatMessage[], h: CoachStreamHandlers) =>
+  apiService.streamCoachMessage(message, history, h)
 const session = useSessionStore()
 const messages: ChatMessage[] = [
   {
@@ -31,7 +31,7 @@ const suggestions: ChatSuggestion[] = [
       :messages="messages"
       :suggestions="suggestions"
       placeholder="Posez votre question au Coach…"
-      :on-send="askCoach"
+      :on-stream="askCoach"
     />
     <BaseCard>
       <div class="mb-2 inline-flex items-center gap-1.5 rounded-full border border-green-line bg-green-ghost px-2.5 py-0.5 text-[11px] font-bold text-green-deep">

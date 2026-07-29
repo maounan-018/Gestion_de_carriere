@@ -34,6 +34,12 @@ function readCsrfCookie(): string | null {
   return m ? decodeURIComponent(m[1]) : null
 }
 
+/** Token CSRF courant (mémoire au login, sinon relu du cookie). Pour les appels
+ *  qui ne passent pas par `apiFetch` (ex. flux SSE lu via `fetch` + reader). */
+export function getCsrf(): string | null {
+  return csrfToken ?? readCsrfCookie()
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
