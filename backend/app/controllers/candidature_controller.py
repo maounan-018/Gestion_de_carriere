@@ -8,13 +8,14 @@ RÔLE
     l'entrée, délègue au service, traduit l'absence en 404 et un conflit (offre/
     profil inexistant, double candidature) en 400.
 
-SÉCURITÉ (RBAC branché — Bloc C)
+SÉCURITÉ (RBAC + ownership B2)
     Dépôt réservé à COLLAB/RH/ADMIN ; la décision humaine (`PATCH /decision`) et la
     réévaluation à RH/MANAGER/ADMIN. `decided_by` est TOUJOURS l'utilisateur de la
-    session (jamais fourni par le client). Lecture ouverte à tout authentifié. CSRF
-    vérifié sur les méthodes mutantes. TODO B2 (row-level ownership) : un COLLAB ne
-    candidate que pour SON profil ; RH/MANAGER ne voient que les candidats d'une
-    offre de leur périmètre.
+    session (jamais fourni par le client). Ownership ligne-à-ligne (cf.
+    `auth/ownership.py`) : un COLLAB ne candidate que pour SON profil et ne voit que
+    SES candidatures ; un MANAGER est borné à son équipe / aux candidats d'une offre ;
+    RH/ADMIN sont globaux. CSRF vérifié sur les méthodes mutantes.
+    (Différé : périmètre par OFFRE sur decision/réévaluation — cf. ownership.py.)
 
 EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
@@ -25,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
+from app.auth import ownership
 from app.models.user import User, Role
 from app.schemas.candidature import (CandidatureCreate, CandidatureDecision,
                                      CandidatureOut, CandidatureMineOut)
@@ -34,9 +36,12 @@ router = APIRouter(prefix="/api/candidatures", tags=["Candidatures"])
 
 
 @router.post("", response_model=CandidatureOut, status_code=201,
-             dependencies=[Depends(require_roles(Role.COLLAB, Role.RH, Role.ADMIN))],
              summary="Déposer une candidature (score + écarts calculés au dépôt)")
-def deposer_candidature(data: CandidatureCreate, db: Session = Depends(get_db)) -> CandidatureOut:
+def deposer_candidature(data: CandidatureCreate,
+                        user: User = Depends(require_roles(Role.COLLAB, Role.RH, Role.ADMIN)),
+                        db: Session = Depends(get_db)) -> CandidatureOut:
+    # Ownership B2 : un COLLAB ne peut candidater que pour SON profil (RH/ADMIN libres).
+    ownership.require_own_profil_for_candidature(db, user, data.profil_id)
     try:
         return candidature_service.create_candidature(db, data)
     except ValueError as e:
@@ -44,7 +49,6 @@ def deposer_candidature(data: CandidatureCreate, db: Session = Depends(get_db)) 
 
 
 @router.get("", response_model=list[CandidatureOut],
-            dependencies=[Depends(get_current_user)],
             summary="Lister les candidatures (candidats d'une offre, ou candidatures d'un profil)")
 def lister_candidatures(
     offre_id: int | None = Query(None, description="Candidats d'une offre (tri par score décroissant)."),
@@ -52,8 +56,12 @@ def lister_candidatures(
     statut: str | None = Query(None, description="deposee | en_evaluation | retenue | rejetee | retiree"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[CandidatureOut]:
+    # Ownership B2 : borne la liste au périmètre (COLLAB=ses candidatures ;
+    # MANAGER=offre/équipe ; RH/ADMIN=global). Lève 403 hors périmètre.
+    ownership.require_candidature_list_scope(db, user, offre_id, profil_id)
     return candidature_service.list_candidatures(
         db, offre_id=offre_id, profil_id=profil_id, statut=statut,
         limit=limit, offset=offset)
@@ -67,9 +75,10 @@ def mes_candidatures(user: User = Depends(get_current_user),
 
 
 @router.get("/{candidature_id}", response_model=CandidatureOut,
-            dependencies=[Depends(get_current_user)],
             summary="Consulter une candidature et son snapshot d'évaluation")
-def consulter_candidature(candidature_id: int, db: Session = Depends(get_db)) -> CandidatureOut:
+def consulter_candidature(candidature_id: int, user: User = Depends(get_current_user),
+                          db: Session = Depends(get_db)) -> CandidatureOut:
+    ownership.require_candidature_view(db, user, candidature_id)  # 404 si absent, 403 hors périmètre
     out = candidature_service.get_candidature(db, candidature_id)
     if out is None:
         raise HTTPException(status_code=404, detail="Candidature introuvable")
