@@ -4,6 +4,7 @@ import { Send, Sparkles } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
 import type { CoachStreamHandlers } from '@/services/apiService'
+import { formatCoachReply } from '@/services/coachFormat'
 
 // Priorité des modes de réponse :
 //  1. `onStream` -> chat LIVE en STREAMING (tokens au fil de l'eau + statut d'outil).
@@ -37,12 +38,6 @@ const TOOL_LABELS: Record<string, string> = {
   lister_formations: 'Consultation du catalogue de formations…',
 }
 
-/** Échappe le HTML d'un texte LLM (rendu en v-html) et préserve les sauts de ligne. */
-function toHtml(raw: string): string {
-  const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return esc.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>')
-}
-
 // Auto-scroll en bas à chaque nouveau contenu (messages, tokens, statut).
 watch([() => list.value.length, streamingHtml, streamStatus, busy], async () => {
   await nextTick()
@@ -62,14 +57,14 @@ async function streamSend(text: string, history: ChatMessage[]) {
       onToken: (tk) => {
         streamStatus.value = ''
         raw += tk
-        streamingHtml.value = toHtml(raw)
+        streamingHtml.value = formatCoachReply(raw)
       },
       onReset: () => {
         raw = ''
         streamingHtml.value = ''
       },
     })
-    list.value.push({ from: 'bot', text: raw.trim() ? toHtml(raw) : ERR })
+    list.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
   } catch {
     list.value.push({ from: 'bot', text: ERR })
   } finally {

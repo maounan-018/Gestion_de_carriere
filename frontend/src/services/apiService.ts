@@ -21,6 +21,7 @@ import type {
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage,
 } from '@/types/domain'
 import { apiFetch, getCsrf, ApiError } from './http'
+import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
@@ -46,11 +47,6 @@ const delay = (ms = 260): Promise<void> => new Promise((resolve) => setTimeout(r
 /** Rôle courant (pour la résolution des routes de notification). */
 const currentRole = (): Role => useSessionStore().role ?? 'collab'
 
-/** Échappe le HTML d'une réponse LLM (rendue en v-html) et préserve les sauts de ligne. */
-function coachReplyToHtml(s: string): string {
-  const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return esc.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>')
-}
 const stripHtml = (s: string): string => s.replace(/<[^>]*>/g, '')
 
 /** Événements du flux SSE du Coach (voir backend `chat_agent_stream`). */
@@ -157,7 +153,7 @@ export const apiService = {
       method: 'POST',
       body: { message, history: hist },
     })
-    return coachReplyToHtml(r.reply)
+    return formatCoachReply(r.reply)
   },
   /** Coach Carrière en STREAMING (SSE) : émet outils interrogés + tokens au fil
    *  de l'eau. Lit `/coach/stream` via `fetch` + reader (POST + cookie + CSRF ;
