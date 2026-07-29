@@ -42,6 +42,16 @@ ACCOUNTS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _reset_ia_rate_limit():
+    """Vide l'état du limiteur de débit IA entre chaque test (singleton module :
+    sans ça les compteurs de débit/concurrence fuiraient d'un test à l'autre)."""
+    from app.core import rate_limit
+    rate_limit._limiter.reset()
+    yield
+    rate_limit._limiter.reset()
+
+
 @pytest.fixture()
 def db(tmp_path) -> Session:
     """Session SQLAlchemy sur une base SQLite temporaire, neuve à chaque test."""

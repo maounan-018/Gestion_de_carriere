@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles
+from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role
 from app.schemas.dashboard import VeilleItem, AlerteItem
 from app.schemas.succession import SuccessionRequest, SuccessionResponse
@@ -40,6 +41,7 @@ def alertes(db: Session = Depends(get_db)) -> list[AlerteItem]:
 
 
 @router.post("/succession", response_model=SuccessionResponse,
+             dependencies=[Depends(ia_rate_limit)],
              summary="Plan de succession raisonné d'un pôle (IA de raisonnement lourde)")
 def succession(req: SuccessionRequest, db: Session = Depends(get_db)) -> SuccessionResponse:
     """⚠️ Tâche BATCH : modèle de raisonnement 23 Go (qwen3.6) — lent sur 8 Go VRAM.

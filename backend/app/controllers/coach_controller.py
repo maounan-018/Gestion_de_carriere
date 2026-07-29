@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db, SessionLocal
 from app.auth.dependencies import get_current_user
+from app.core.rate_limit import ia_rate_limit
 from app.models.user import User
 from app.schemas.coach import CoachRequest, CoachResponse
 from app.services import coach_service
@@ -29,6 +30,7 @@ router = APIRouter(prefix="/api/coach", tags=["Coach"])
 
 
 @router.post("", response_model=CoachResponse,
+             dependencies=[Depends(ia_rate_limit)],
              summary="Dialoguer avec mon Coach Carrière (contextualisé sur mon profil)")
 def coach(req: CoachRequest, user: User = Depends(get_current_user),
           db: Session = Depends(get_db)) -> CoachResponse:
@@ -36,7 +38,8 @@ def coach(req: CoachRequest, user: User = Depends(get_current_user),
     return CoachResponse(**coach_service.chat_agent(db, user.id, req.message, req.history))
 
 
-@router.post("/stream", summary="Dialoguer avec mon Coach Carrière (réponse en streaming SSE)")
+@router.post("/stream", dependencies=[Depends(ia_rate_limit)],
+             summary="Dialoguer avec mon Coach Carrière (réponse en streaming SSE)")
 def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> StreamingResponse:
     """Même coach agentique, mais la réponse arrive en flux (Server-Sent Events).
 

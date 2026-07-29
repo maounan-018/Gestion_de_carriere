@@ -109,9 +109,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   fait pour souhaits/notifications ; à généraliser à profils/candidatures
 - ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
-- ⬜ **Sécurité applicative** : rate-limit IA, taille requête, en-têtes sécu, CORS strict,
-  PBKDF2, anti-brute-force — à auditer/compléter (primitives partielles dans `core/security.py`)
-  — ⚠️ **priorité** : endpoints IA coûteux (Coach/reco/succession, GPU sérialisé) **non bornés** aujourd'hui
+- ⏳ **Sécurité applicative** : ✅ **rate-limit des endpoints IA** par utilisateur (débit fenêtre glissante +
+  concurrence, 429 + `Retry-After`, journalisé — `core/rate_limit.py`, sur les **12 routes IA**) ;
+  reste ⬜ : en-têtes sécu (CSP/HSTS…), CORS strict (déjà non-"*"), plafond taille de requête effectif,
+  audit PBKDF2/anti-brute-force (primitives partielles dans `core/security.py`)
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
 - ⬜ **Édition gabarit + cartographie via UI protégée RBAC** (aujourd'hui = fichiers YAML)
 

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import get_current_user
+from app.core.rate_limit import ia_rate_limit
 from app.schemas.skill_matching import MatchRequest, MatchResponse
 from app.services import skill_matching_service
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/competences", tags=["Compétences"])
 
 
 @router.post("/matching", response_model=MatchResponse,
-             dependencies=[Depends(get_current_user)],
+             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
              summary="Mesurer la correspondance entre un profil et un poste")
 def matching_profil_poste(req: MatchRequest, db: Session = Depends(get_db)) -> MatchResponse:
     """Calcule le score d'adéquation d'un profil à un poste et détaille les
