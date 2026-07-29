@@ -122,7 +122,9 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   **PBKDF2** (sel + itérations + comparaison temps constant) & **anti-brute-force** (verrouillage 429 après
   N échecs sur fenêtre glissante) — vérifiés & testés
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
-- ⬜ **Édition gabarit + cartographie via UI protégée RBAC** (aujourd'hui = fichiers YAML)
+- ⏳ **Édition gabarit + cartographie** — **API RBAC livrée** (`PUT /api/fiches/gabarit`,
+  `GET/PUT /api/fiches/cartographie`, RH/ADMIN) : validation AVANT écriture (400 si cassé, fichier intact),
+  persistance atomique, rechargement à chaud, audité (`CONFIG_CHANGED`) ; reste ⬜ : l'écran d'édition côté UI
 
 ## VI. Intégrations
 - 🅿️ Connecteurs **SIRH HCM** (Workday / SAP…) : différés — **prévoir un point d'intégration/

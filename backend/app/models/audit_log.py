@@ -29,6 +29,7 @@ class AuditEventType:
     SENSITIVE_READ = "SENSITIVE_READ"      # accès à un profil / données RH
     EXPORT = "EXPORT"
     RATE_LIMITED = "RATE_LIMITED"          # 429 (abus / saturation des endpoints IA)
+    CONFIG_CHANGED = "CONFIG_CHANGED"      # référentiel édité (gabarit, cartographie)
 
 
 class AuditLog(Base):
