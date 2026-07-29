@@ -17,17 +17,17 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session
 
 from app.models.profil import Profil, ProfilCompetence
-from app.models.offre import Offre, OffreStatut
+from app.models.offre import Offre, OffreStatut, OffreCompetence
 from app.models.candidature import Candidature
 from app.models.souhait import Souhait
 from app.models.user import User
 from app.models.formation import Formation
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
-from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne,
+from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne, FamilleCompetence,
                                     HautPotentielItem, VeilleItem, AlerteItem)
 
 
@@ -130,6 +130,55 @@ def cartographie(db: Session) -> CartoMatrix:
             niveaux=[cells.get((dept, f)) for f in familles],
             people=people.get(dept, [])[:12]))
     return CartoMatrix(familles=familles, lignes=lignes)
+
+
+# ------------------------------------------------- Familles de compétences
+def _tension(demande: int, profils_couverts: int) -> str:
+    """Signal INDICATIF de tension sur une famille : demande (offres ouvertes) vs
+    couverture interne (profils la détenant). Pas de demande -> faible ; demandé mais
+    personne ne le détient -> forte ; sinon selon le ratio couverts/demande."""
+    if demande == 0:
+        return "faible"
+    if profils_couverts == 0:
+        return "forte"
+    ratio = profils_couverts / demande
+    if ratio >= 2:
+        return "faible"
+    if ratio >= 1:
+        return "moyenne"
+    return "forte"
+
+
+def familles(db: Session) -> list[FamilleCompetence]:
+    """Cartographie par FAMILLE de compétences (catégorie), au-delà des départements :
+    offre interne DÉTENUE (profils/compétences/niveau) confrontée à la DEMANDE des
+    offres ouvertes → signal de tension. Familles = catégories réellement présentes
+    (défaut `transversale` quand la compétence n'est pas catégorisée)."""
+    fam_p = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
+    supply = {
+        f: (det, couv, moy)
+        for f, det, couv, moy in db.execute(
+            select(fam_p, func.count(ProfilCompetence.id),
+                   func.count(distinct(ProfilCompetence.profil_id)),
+                   func.avg(ProfilCompetence.niveau))
+            .group_by(fam_p)).all()
+    }
+    fam_o = func.coalesce(OffreCompetence.categorie, _FAM_DEFAUT)
+    demand = dict(db.execute(
+        select(fam_o, func.count(OffreCompetence.id))
+        .join(Offre, Offre.id == OffreCompetence.offre_id)
+        .where(Offre.statut == OffreStatut.OUVERTE)
+        .group_by(fam_o)).all())
+
+    out: list[FamilleCompetence] = []
+    for f in sorted(set(supply) | set(demand)):
+        det, couv, moy = supply.get(f, (0, 0, None))
+        dem = demand.get(f, 0)
+        out.append(FamilleCompetence(
+            famille=f, detenues=det, profils_couverts=couv,
+            niveau_moyen=round(moy, 2) if moy is not None else None,
+            demande=dem, tension=_tension(dem, couv)))
+    return out
 
 
 # --------------------------------------------------------- Hauts potentiels
