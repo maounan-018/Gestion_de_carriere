@@ -21,7 +21,9 @@ EMPLACEMENT MVC
     Couche "services" : orchestration, sans route HTTP.
 """
 
+import hashlib
 import logging
+import time
 
 from sqlalchemy import text, select
 from sqlalchemy.orm import Session
@@ -36,6 +38,27 @@ from app.services.ai_router import generate, fence
 logger = logging.getLogger(__name__)
 
 _TASK = "conseil"   # -> mistral-nemo (meilleur FR) via routing.yaml
+
+# --- Cache de reco -----------------------------------------------------------
+# La reco « ma-reco » est LENTE (~85 s, pipeline Ollama sur 8 Go VRAM). Elle est
+# stable tant que le profil ne change pas → on mémoïse le résultat par
+# (profil, poste visé, compétences détenues). Invalidation NATURELLE : toute
+# édition du profil change la clé (aspirations/compétences) → recalcul. TTL de
+# sécurité pour borner la fraîcheur. Cache PROCESS-LOCAL (perdu au redémarrage,
+# non partagé entre workers) — suffisant pour la démo mono-worker.
+_CACHE_TTL_S = 1800  # 30 min
+_reco_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _reco_signature(profil_id: int, poste_texte: str, labels: list[str]) -> str:
+    raw = f"{profil_id}\n{poste_texte}\n" + "\n".join(sorted(labels))
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def clear_reco_cache() -> None:
+    """Purge complète du cache de reco (utilitaire ; l'invalidation par clé suffit
+    normalement, la clé changeant dès que le profil évolue)."""
+    _reco_cache.clear()
 
 _SYSTEM = (
     "Tu es un coach carrière d'une banque (BMCI, groupe BNP Paribas). On te fournit "
@@ -149,4 +172,14 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
     poste_texte = (p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
     if len(poste_texte) < 10:
         poste_texte = f"Évolution professionnelle vers : {poste_texte}"
-    return recommander(db, labels, poste_texte)
+
+    # Cache : appel répété à profil inchangé → réponse instantanée (évite ~85 s Ollama).
+    sig = _reco_signature(p.id, poste_texte, labels)
+    now = time.time()
+    hit = _reco_cache.get(sig)
+    if hit and now - hit[0] < _CACHE_TTL_S:
+        logger.info("Reco servie depuis le cache (profil %d).", p.id)
+        return hit[1]
+    result = recommander(db, labels, poste_texte)
+    _reco_cache[sig] = (now, result)
+    return result
