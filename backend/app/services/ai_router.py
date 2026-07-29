@@ -213,6 +213,59 @@ def chat_call(model: str, messages: list[dict], tools: list | None = None,
         raise HTTPException(status_code=500, detail="Erreur interne lors de l'appel au modèle.")
 
 
+def chat_stream(model: str, messages: list[dict], tools: list | None = None,
+                num_ctx: int = 8192, temperature: float = 0):
+    """Variante STREAMING de `chat_call` : générateur qui `yield` au fil de l'eau.
+
+    - `{"delta": "<fragment de texte>"}` pour chaque morceau de contenu ;
+    - un dernier `{"tool_calls": [...], "done": True}` à la fin du tour (les
+      `tool_calls` éventuels arrivent groupés en fin de génération avec Ollama).
+
+    Le verrou GPU est tenu sur TOUTE la durée du flux (une génération LLM à la
+    fois, VRAM 8 Go). Les erreurs d'infra lèvent une HTTPException, comme `generate`."""
+    payload = {
+        "model": model,
+        "messages": messages,
+        "stream": True,
+        "think": False,
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,
+        "options": {"temperature": temperature, "num_ctx": num_ctx, "seed": settings.AI_SEED},
+    }
+    if tools:
+        payload["tools"] = tools
+    try:
+        with _GPU_LOCK:   # sérialise le GPU pour toute la durée du stream
+            with requests.post(settings.OLLAMA_CHAT_URL, json=payload,
+                               stream=True, timeout=300) as r:
+                r.raise_for_status()
+                tool_calls: list = []
+                for line in r.iter_lines():
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    msg = obj.get("message") or {}
+                    delta = msg.get("content") or ""
+                    if delta:
+                        yield {"delta": delta}
+                    if msg.get("tool_calls"):
+                        tool_calls += msg["tool_calls"]
+                    if obj.get("done"):
+                        yield {"tool_calls": tool_calls, "done": True}
+                        return
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve').")
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Le modèle met trop de temps à répondre.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Erreur Ollama chat stream (%s): %s", model, e)
+        raise HTTPException(status_code=500, detail="Erreur interne lors de l'appel au modèle.")
+
+
 # ============================ Préchauffage ============================
 
 def warmup(models: list[str] | None = None) -> None:
