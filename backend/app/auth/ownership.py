@@ -84,6 +84,18 @@ def require_profil_view(db: Session, user: User, profil_id: int) -> Profil:
     return p
 
 
+def require_profil_edit(db: Session, user: User, profil_id: int) -> Profil:
+    """Écriture sur un profil (ex. enrichissement CV) : réservée au PROPRIÉTAIRE
+    (COLLAB) ou à RH/ADMIN. Un manager ne modifie pas les profils de son équipe.
+    404 si absent, 403 hors périmètre."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    if _is_global(user) or (p.user_id is not None and p.user_id == user.id):
+        return p
+    raise HTTPException(status_code=403, detail="Ce profil est hors de votre périmètre.")
+
+
 # --------------------------------------------------------------- Candidatures
 
 def require_own_profil_for_candidature(db: Session, user: User, profil_id: int) -> None:

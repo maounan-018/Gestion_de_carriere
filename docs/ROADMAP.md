@@ -72,7 +72,9 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ✅ **Matching profil ↔ poste** (score + écarts, reranker)
 - ✅ **Recommandations formation & parcours** (mistral-nemo, ancré)
 - ✅ **Génération de fiches de poste** (compétences inférées)
-- ⬜ **Extraction de compétences d'un CV / profil** (symétrique du poste)
+- ✅ **Extraction de compétences d'un CV / profil** (symétrique du poste) — `POST /api/profils/{id}/extraction-cv`
+  (`cv_extraction_service`) : extraction IA (hermes3, CV fencé) + ancrage graphe, persiste les compétences
+  DÉTENUES (`source=cv`, niveau estimé, idempotent via remplacement) ; ownership propriétaire / RH-ADMIN, rate-limité
 - ⬜ **Matching candidat ↔ offre** (sur entités persistées) + pondération essentiel/souhaité
   + prise en compte du **niveau** + logique « < 100 % peut être retenu »
 - ✅ **Recommandation de candidats internes** pour une offre (sens inverse du matching) — `GET /api/offres/{id}/candidats`

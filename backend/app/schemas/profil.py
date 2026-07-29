@@ -40,6 +40,15 @@ class ProfilCompetenceOut(ProfilCompetenceIn):
     skill_label_fr: str | None = None
 
 
+class CvExtractionRequest(BaseModel):
+    """Entrée de l'extraction CV → profil : le texte du CV/parcours à analyser."""
+    texte: str = Field(..., min_length=10, description="Texte du CV / parcours à analyser.")
+    top_k: int = Field(1, ge=1, le=5,
+                       description="Compétences canoniques rapprochées par compétence extraite.")
+    remplacer: bool = Field(True, description="Remplacer les compétences déjà issues d'un CV "
+                                              "(source=cv) avant d'ajouter les nouvelles.")
+
+
 class ProfilCreate(BaseModel):
     nom: str = Field(..., min_length=1, max_length=120)
     prenom: str | None = Field(None, max_length=120)

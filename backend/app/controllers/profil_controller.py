@@ -24,11 +24,12 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.auth import ownership
+from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role, User
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
-                                 ProfilCompetenceIn, AnnuaireEntry)
+                                 ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest)
 from app.schemas.carriere import ProfilCarriereOut
-from app.services import profil_service
+from app.services import profil_service, cv_extraction_service
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
 
@@ -132,6 +133,23 @@ def modifier_profil(profil_id: int, data: ProfilUpdate, db: Session = Depends(ge
 def ajouter_competences(profil_id: int, comps: list[ProfilCompetenceIn],
                         db: Session = Depends(get_db)) -> ProfilOut:
     out = profil_service.add_competences(db, profil_id, comps)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    return out
+
+
+@router.post("/{profil_id}/extraction-cv", response_model=ProfilOut,
+             dependencies=[Depends(ia_rate_limit)],
+             summary="Extraire les compétences d'un CV et enrichir le profil (source=cv)")
+def extraire_cv_vers_profil(profil_id: int, data: CvExtractionRequest,
+                            user: User = Depends(get_current_user),
+                            db: Session = Depends(get_db)) -> ProfilOut:
+    """⚠️ Utilise Ollama (extraction + ancrage graphe). Ownership : propriétaire du
+    profil (COLLAB) ou RH/ADMIN. Les compétences détenues extraites sont ajoutées avec
+    `source=cv` ; par défaut on remplace les précédentes issues d'un CV (idempotent)."""
+    ownership.require_profil_edit(db, user, profil_id)          # 404 si absent, 403 hors périmètre
+    comps = cv_extraction_service.extraire_cv(db, data.texte, data.top_k)
+    out = profil_service.enregistrer_competences_cv(db, profil_id, comps, remplacer=data.remplacer)
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
