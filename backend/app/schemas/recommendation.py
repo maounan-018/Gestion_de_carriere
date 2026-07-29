@@ -12,6 +12,8 @@ EMPLACEMENT MVC
     Couche "schemas" : validation/sérialisation (Pydantic).
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -48,3 +50,17 @@ class RecommendationResponse(BaseModel):
     competences_a_developper: list[EtapeFormation]
     passerelles_metiers: list[Passerelle]
     plan_developpement: str
+
+
+# --- Reco asynchrone (le pipeline Ollama est lent : lancer puis interroger) ----
+class RecoJobLaunched(BaseModel):
+    """Réponse au lancement : un identifiant de job à interroger ensuite."""
+    job_id: str
+    status: str = "pending"
+
+
+class RecoJobStatus(BaseModel):
+    """État d'un job de reco : `result` peuplé quand `status == done`."""
+    status: Literal["pending", "done", "error"]
+    result: RecommendationResponse | None = None
+    error: str | None = None

@@ -46,6 +46,25 @@ const delay = (ms = 260): Promise<void> => new Promise((resolve) => setTimeout(r
 /** Rôle courant (pour la résolution des routes de notification). */
 const currentRole = (): Role => useSessionStore().role ?? 'collab'
 
+/** Reco en mode ASYNCHRONE : lance le job puis interroge jusqu'à complétion.
+ *  Requêtes courtes (plus de HTTP tenu ~85 s) → robuste aux timeouts proxy ;
+ *  le cache backend rend un job déjà calculé quasi instantané. */
+async function fetchRecoLive(): Promise<RecoData> {
+  const { job_id } = await apiFetch<{ job_id: string }>('/competences/ma-reco/async', {
+    method: 'POST',
+  })
+  for (let i = 0; i < 90; i++) {
+    // ~90 × 2 s = 3 min de marge (le 1er calcul froid dure ~85 s).
+    await delay(2000)
+    const s = await apiFetch<{ status: string; result?: RecommendationOut; error?: string }>(
+      `/competences/ma-reco/jobs/${job_id}`,
+    )
+    if (s.status === 'done' && s.result) return mapReco(s.result)
+    if (s.status === 'error') throw new Error(s.error || 'Échec de la recommandation.')
+  }
+  throw new Error('La recommandation a expiré (délai dépassé).')
+}
+
 export const apiService = {
   async getOffers(): Promise<Offer[]> {
     if (MODE === 'mock') {
@@ -101,7 +120,7 @@ export const apiService = {
       return RECO
     }
     // ⚠️ Ollama : extraction + reranker + conseil (peut prendre quelques secondes).
-    return mapReco(await apiFetch<RecommendationOut>('/competences/ma-reco'))
+    return fetchRecoLive()
   },
   async getFormations(): Promise<Formation[]> {
     if (MODE === 'mock') {
@@ -163,7 +182,7 @@ export const apiService = {
       await delay()
       return MANAGER_RECO
     }
-    return mapReco(await apiFetch<RecommendationOut>('/competences/ma-reco'))
+    return fetchRecoLive()
   },
   async getManagerOffers(): Promise<Offer[]> {
     if (MODE === 'mock') {
