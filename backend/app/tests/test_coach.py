@@ -109,3 +109,51 @@ def test_coach_agentique_repli_mono_coup(db, monkeypatch):
     monkeypatch.setattr(cs, "generate", lambda *a, **k: "Conseil de repli mono-coup.")
     out = cs.chat_agent(db, u.id, "Bonjour", [])
     assert out["reply"] == "Conseil de repli mono-coup."
+
+
+# ---------------------------------------------------------- Agentique STREAMING
+
+def test_coach_agentique_stream(db, monkeypatch):
+    """Le stream émet un événement outil puis les tokens de la réponse, puis 'done'."""
+    u, _ = _make_collab(db, "coach6@bmci.local", aspirations="Manager")
+    db.commit()
+
+    turns = [
+        # Tour 1 : le modèle demande un outil (aucun texte).
+        [{"tool_calls": [{"function": {"name": "chercher_offres_compatibles",
+                                       "arguments": {}}}], "done": True}],
+        # Tour 2 : réponse streamée en deux fragments, sans nouvel outil.
+        [{"delta": "Voici "}, {"delta": "mon conseil."}, {"tool_calls": [], "done": True}],
+    ]
+    idx = {"i": 0}
+
+    def fake_chat_stream(model, messages, tools=None, num_ctx=8192, temperature=0):
+        chunks = turns[idx["i"]]
+        idx["i"] += 1
+        yield from chunks
+
+    monkeypatch.setattr(cs, "chat_stream", fake_chat_stream)
+    events = list(cs.chat_agent_stream(db, u.id, "Quelles offres pour moi ?", []))
+
+    assert any(e["type"] == "tool" and e["name"] == "chercher_offres_compatibles" for e in events)
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert text == "Voici mon conseil."
+    done = [e for e in events if e["type"] == "done"]
+    assert done and "chercher_offres_compatibles" in done[-1]["outils"]
+
+
+def test_coach_agentique_stream_repli(db, monkeypatch):
+    """Si le stream échoue (Ollama down), repli mono-coup émis en un bloc + 'done'."""
+    u, _ = _make_collab(db, "coach7@bmci.local")
+    db.commit()
+
+    def boom(*a, **k):
+        raise RuntimeError("ollama down")
+
+    monkeypatch.setattr(cs, "chat_stream", boom)
+    monkeypatch.setattr(cs, "generate", lambda *a, **k: "Repli mono-coup streamé.")
+    events = list(cs.chat_agent_stream(db, u.id, "Bonjour", []))
+
+    text = "".join(e["text"] for e in events if e["type"] == "token")
+    assert text == "Repli mono-coup streamé."
+    assert events[-1]["type"] == "done"

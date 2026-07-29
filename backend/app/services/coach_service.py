@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.profil import Profil, ProfilCompetence
 from app.models.formation import Formation
-from app.services.ai_router import generate, chat_call, fence
+from app.services.ai_router import generate, chat_call, chat_stream, fence
 
 logger = logging.getLogger(__name__)
 
@@ -164,21 +164,42 @@ def _clean(text: str | None) -> str:
     return re.sub(r"<think>.*?</think>", "", text or "", flags=re.IGNORECASE | re.DOTALL).strip()
 
 
-def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
-    """Coach AGENTIQUE : boucle pensée → appel d'outil (données réelles) → observation
-    → réponse. Un seul modèle (tâche `agent` = qwen3:8b, bon tool-caller, évite les
-    swaps). Repli sur le mono-coup si le tool-calling échoue (Ollama down, etc.)."""
+def _agent_setup(db: Session, user_id: int, message: str, history: list) -> tuple[str, int, list[dict]]:
+    """Prépare (modèle, num_ctx, messages) pour l'agent : système + profil fencé,
+    historique récent, question courante. Mutualisé mono-coup ↔ streaming."""
     cfg = settings.task_model(_AGENT_TASK)
     model = cfg.get("model", "qwen3:8b")
     num_ctx = int(cfg.get("num_ctx", 8192))
     system = _SYSTEM_AGENT + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
-
     messages: list[dict] = [{"role": "system", "content": system}]
     for m in history[-_MAX_HISTORY:]:
         role = "user" if getattr(m, "role", "user") == "user" else "assistant"
         messages.append({"role": role, "content": getattr(m, "content", "")})
     messages.append({"role": "user", "content": message.strip()})
+    return model, num_ctx, messages
 
+
+def _run_tool(db: Session, user_id: int, tc: dict) -> tuple[str, str]:
+    """Exécute un tool_call (déterministe). Renvoie (nom, résultat JSON)."""
+    fn = tc.get("function", {}) or {}
+    name = fn.get("name", "")
+    args = fn.get("arguments") or {}
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except json.JSONDecodeError:
+            args = {}
+    handler = _DISPATCH.get(name)
+    result = handler(db, user_id, args) if handler else json.dumps(
+        {"erreur": f"outil inconnu: {name}"}, ensure_ascii=False)
+    return name, result
+
+
+def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
+    """Coach AGENTIQUE : boucle pensée → appel d'outil (données réelles) → observation
+    → réponse. Un seul modèle (tâche `agent` = qwen3:8b, bon tool-caller, évite les
+    swaps). Repli sur le mono-coup si le tool-calling échoue (Ollama down, etc.)."""
+    model, num_ctx, messages = _agent_setup(db, user_id, message, history)
     outils: list[str] = []
     try:
         for _ in range(_MAX_STEPS):
@@ -192,17 +213,7 @@ def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
             messages.append({"role": "assistant", "content": msg.get("content") or "",
                              "tool_calls": calls})
             for tc in calls:
-                fn = tc.get("function", {}) or {}
-                name = fn.get("name", "")
-                args = fn.get("arguments") or {}
-                if isinstance(args, str):
-                    try:
-                        args = json.loads(args)
-                    except json.JSONDecodeError:
-                        args = {}
-                handler = _DISPATCH.get(name)
-                result = handler(db, user_id, args) if handler else json.dumps(
-                    {"erreur": f"outil inconnu: {name}"}, ensure_ascii=False)
+                name, result = _run_tool(db, user_id, tc)
                 outils.append(name)
                 messages.append({"role": "tool", "content": result})
         # Étapes épuisées ou réponse vide : un dernier appel SANS outils pour conclure.
@@ -215,3 +226,57 @@ def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
 
     # Repli robuste : le MVP mono-coup (contexte statique, sans outils).
     return chat(db, user_id, message, history)
+
+
+def chat_agent_stream(db: Session, user_id: int, message: str, history: list):
+    """Coach AGENTIQUE en STREAMING : générateur d'ÉVÉNEMENTS (pour du SSE).
+
+    Émet des dicts :
+      - {"type": "tool",  "name": <outil>}       quand une donnée réelle est interrogée ;
+      - {"type": "token", "text": <fragment>}    au fil de la génération de la réponse ;
+      - {"type": "reset"}                         annule d'éventuels fragments parasites d'un
+                                                  tour d'outil (rare, avec think:false) ;
+      - {"type": "done",  "model": <m>, "outils": [...]} en fin normale.
+
+    La réponse finale est streamée EN DIRECT (think:false ⇒ un tour d'outil ne
+    produit pas de texte, un tour de réponse streame ses tokens). Multi-sauts
+    d'outils supportés. Repli mono-coup (émis en un bloc) si le flux échoue.
+    NE FERME PAS `db` : c'est l'appelant (controller) qui possède la session."""
+    model, num_ctx, messages = _agent_setup(db, user_id, message, history)
+    outils: list[str] = []
+    try:
+        for _ in range(_MAX_STEPS):
+            turn_text: list[str] = []
+            tool_calls: list = []
+            for ev in chat_stream(model, messages, tools=_TOOLS, num_ctx=num_ctx):
+                if "delta" in ev:
+                    turn_text.append(ev["delta"])
+                    yield {"type": "token", "text": ev["delta"]}
+                elif ev.get("done"):
+                    tool_calls = ev.get("tool_calls") or []
+            if not tool_calls:
+                yield {"type": "done", "model": model, "outils": outils}
+                return
+            # Tour d'outil : d'éventuels fragments déjà émis sont annulés côté client.
+            if any(t.strip() for t in turn_text):
+                yield {"type": "reset"}
+            messages.append({"role": "assistant", "content": "".join(turn_text),
+                             "tool_calls": tool_calls})
+            for tc in tool_calls:
+                name, result = _run_tool(db, user_id, tc)
+                outils.append(name)
+                yield {"type": "tool", "name": name}
+                messages.append({"role": "tool", "content": result})
+        # Étapes épuisées : un dernier tour SANS outils, streamé, pour conclure.
+        for ev in chat_stream(model, messages, tools=None, num_ctx=num_ctx):
+            if "delta" in ev:
+                yield {"type": "token", "text": ev["delta"]}
+        yield {"type": "done", "model": model, "outils": outils}
+        return
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Coach agentique (stream) indisponible (%s) — repli mono-coup.", e)
+
+    # Repli robuste : réponse mono-coup, émise en un seul bloc (pas de streaming réel).
+    out = chat(db, user_id, message, history)
+    yield {"type": "token", "text": out.get("reply", "")}
+    yield {"type": "done", "model": out.get("model", "?"), "outils": []}
