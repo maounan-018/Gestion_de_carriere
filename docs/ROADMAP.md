@@ -96,7 +96,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ✅ **Coach Carrière** : `POST /api/coach` (agentique) + `POST /api/coach/stream` (SSE token par token)
 - ✅ **Reco perso** : `GET /api/ma-reco` + `POST /api/ma-reco/async` + `GET /api/ma-reco/jobs/{id}` (non bloquant)
 - ✅ **IA utilitaires** : `POST /api/competences/normaliser`, `POST /api/redaction`, `POST /api/rh/succession`
-- ⬜ **Décision de souhait côté RH**, notifications émises par évènements métier (aujourd'hui : seed), reco/formations reliées au matching
+- ✅ **Notifications événementielles** (`services/notification_events.py`) — émises sur évènements RÉELS,
+  atomiques avec la mutation : décision de candidature → candidat ; souhait poussé → manager ; souhait
+  décidé (accordé/refusé) → collaborateur (3 tests e2e). Reste ⬜ : reco/formations reliées au matching,
+  autres évènements (nouvelle offre compatible…)
 
 ## V. Authentification, identité & sécurité (priorité centrale)
 - ✅ **Auth locale** + sessions — **opérationnelle** : `seed.py` provisionne 4 comptes (ADMIN/RH/MANAGER/COLLAB)

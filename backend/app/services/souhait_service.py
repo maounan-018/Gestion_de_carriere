@@ -23,6 +23,8 @@ from app.models.profil import Profil
 from app.models.souhait import Souhait, SouhaitStatut
 from app.models.user import User
 from app.schemas.souhait import SouhaitCreate, SouhaitUpdate, SouhaitOut, SouhaitRecuOut
+from app.auth import ownership
+from app.services import notification_events
 
 # Statuts « poussés » visibles du manager.
 _STATUTS_POUSSES = {SouhaitStatut.POUSSE, SouhaitStatut.EN_DISCUSSION,
@@ -46,6 +48,11 @@ def create_souhait(db: Session, profil_id: int, data: SouhaitCreate) -> SouhaitO
         statut=SouhaitStatut.POUSSE if data.pushed else SouhaitStatut.BROUILLON,
     )
     db.add(s)
+    if data.pushed:  # créé directement « poussé » -> notifie le manager (atomique)
+        profil = db.get(Profil, profil_id)
+        if profil is not None:
+            notification_events.on_souhait_pousse(
+                db, s, profil, ownership.manager_user_id_of_profil(db, profil))
     db.commit()
     db.refresh(s)
     return SouhaitOut.model_validate(s)
@@ -61,14 +68,27 @@ def update_souhait(db: Session, souhait_id: int, data: SouhaitUpdate) -> Souhait
     s = db.get(Souhait, souhait_id)
     if s is None:
         return None
+    prev_statut = s.statut
     changes = data.model_dump(exclude_unset=True)
     for field, value in changes.items():
         setattr(s, field, value)
     # Cohérence statut/pushed : pousser un brouillon le fait passer « poussé ».
-    if changes.get("pushed") is True and s.statut == SouhaitStatut.BROUILLON:
+    devient_pousse = changes.get("pushed") is True and prev_statut == SouhaitStatut.BROUILLON
+    if devient_pousse:
         s.statut = SouhaitStatut.POUSSE
-    if "statut" in changes and changes["statut"] in (SouhaitStatut.ACCORDE, SouhaitStatut.REFUSE):
+    est_decide = "statut" in changes and changes["statut"] in (SouhaitStatut.ACCORDE,
+                                                               SouhaitStatut.REFUSE)
+    if est_decide:
         s.decided_at = datetime.now(timezone.utc)
+    # Notifications (atomiques) : poussée -> manager ; décision -> collaborateur.
+    if devient_pousse or est_decide:
+        profil = db.get(Profil, s.profil_id)
+        if profil is not None:
+            if devient_pousse:
+                notification_events.on_souhait_pousse(
+                    db, s, profil, ownership.manager_user_id_of_profil(db, profil))
+            if est_decide:
+                notification_events.on_souhait_decide(db, s, profil)
     db.commit()
     db.refresh(s)
     return SouhaitOut.model_validate(s)

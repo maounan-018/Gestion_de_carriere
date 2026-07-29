@@ -34,6 +34,7 @@ from app.models.offre import Offre, OffreCompetence
 from app.models.profil import Profil, ProfilCompetence
 from app.schemas.candidature import (CandidatureCreate, CandidatureOut, EvaluationOut,
                                      CandidatureMineOut)
+from app.services import notification_events
 
 _METHODE = "entites_v1"  # appariement déterministe skill_id/libellé (cf. docstring)
 
@@ -184,6 +185,7 @@ def decide_candidature(db: Session, candidature_id: int, statut: str,
     c.statut = statut
     c.decided_by = decided_by
     c.decided_at = datetime.now(timezone.utc)
+    notification_events.on_candidature_decidee(db, c)  # notifie le candidat (atomique)
     db.commit()
     db.refresh(c)
     return _to_out(c)

@@ -52,6 +52,15 @@ def is_manager_of_profil(db: Session, manager_user_id: int, profil: Profil) -> b
     return linked is not None and linked.manager_id == manager_user_id
 
 
+def manager_user_id_of_profil(db: Session, profil: Profil) -> int | None:
+    """Id du compte MANAGER dont dépend ce profil (via `Profil.user_id → User.manager_id`),
+    ou None (persona synthétique / pas de manager). Sert à router les notifications."""
+    if profil.user_id is None:
+        return None
+    linked = db.get(User, profil.user_id)
+    return linked.manager_id if linked else None
+
+
 # ------------------------------------------------------------------ Profils
 
 def can_view_profil(db: Session, user: User, profil: Profil) -> bool:
