@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+"""
+schemas/succession.py — Plan de succession (planification des talents).
+
+RÔLE
+    Contrats de la tâche `raisonnement_batch` (qwen3.6) : à partir de la cartographie
+    d'un pôle (collaborateurs, compétences, niveaux, aspirations), produire un PLAN
+    DE SUCCESSION raisonné (successeurs internes potentiels, préparation, écarts,
+    risques). Tâche de RAISONNEMENT lourde → usage batch/RH (pas temps réel).
+
+EMPLACEMENT MVC
+    Couche "schemas" : validation/sérialisation (Pydantic).
+"""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class SuccessionRequest(BaseModel):
+    departement_key: str = Field(..., min_length=1, max_length=48,
+                                 description="Pôle/département à analyser (ex. 'retail_banking').")
+
+
+class SuccessionResponse(BaseModel):
+    departement_key: str
+    effectif: int                 # nb de collaborateurs pris en compte
+    plan: str                     # plan de succession rédigé (raisonnement)
+    model: str
