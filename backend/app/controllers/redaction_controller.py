@@ -15,6 +15,7 @@ EMPLACEMENT MVC
 from fastapi import APIRouter, Depends
 
 from app.auth.dependencies import get_current_user
+from app.core.rate_limit import ia_rate_limit
 from app.schemas.redaction import RedactionRequest, RedactionResponse
 from app.services import redaction_service
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/redaction", tags=["Rédaction"])
 
 
 @router.post("", response_model=RedactionResponse,
-             dependencies=[Depends(get_current_user)],
+             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
              summary="Résumer ou reformuler un texte (bilan, aspiration, note)")
 def rediger(req: RedactionRequest) -> RedactionResponse:
     """⚠️ Utilise Ollama (mistral-nemo) : quelques secondes."""

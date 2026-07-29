@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
+from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role
 from app.schemas.fiche_extraction import (FicheRequest, FicheResponse, GabaritResponse,
                                           DepartementInfo, FicheGenerationRequest, FicheGeneree)
@@ -38,7 +39,7 @@ def lister_departements() -> list[dict]:
 
 
 @router.post("/generation", response_model=FicheGeneree,
-             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
              summary="Générer une fiche de poste (compétences inférées, SYNTHÉTIQUE)")
 def generer_fiche(req: FicheGenerationRequest, db: Session = Depends(get_db)) -> FicheGeneree:
     """Génère une fiche de poste pour un métier d'un département (compétences inférées
@@ -61,7 +62,7 @@ def obtenir_gabarit() -> GabaritResponse:
 
 
 @router.post("/extraction", response_model=FicheResponse,
-             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
              summary="Extraire les compétences d'une fiche de poste structurée")
 def extraire_fiche(req: FicheRequest, db: Session = Depends(get_db)) -> FicheResponse:
     """À partir des rubriques d'une fiche (selon le gabarit), extrait les métadonnées

@@ -28,6 +28,7 @@ class AuditEventType:
     USER_CREATED = "USER_CREATED"
     SENSITIVE_READ = "SENSITIVE_READ"      # accès à un profil / données RH
     EXPORT = "EXPORT"
+    RATE_LIMITED = "RATE_LIMITED"          # 429 (abus / saturation des endpoints IA)
 
 
 class AuditLog(Base):

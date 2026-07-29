@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import get_current_user
+from app.core.rate_limit import ia_rate_limit
 from app.models.user import User
 from app.schemas.recommendation import (RecommendationRequest, RecommendationResponse,
                                         RecoJobLaunched, RecoJobStatus)
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/competences", tags=["Compétences"])
 
 
 @router.post("/recommandations", response_model=RecommendationResponse,
-             dependencies=[Depends(get_current_user)],
+             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
              summary="Recommander formations & parcours pour un poste visé")
 def recommandations(req: RecommendationRequest, db: Session = Depends(get_db)) -> RecommendationResponse:
     """À partir du profil et du poste visé, renvoie les compétences à développer
@@ -34,6 +35,7 @@ def recommandations(req: RecommendationRequest, db: Session = Depends(get_db)) -
 
 
 @router.get("/ma-reco", response_model=RecommendationResponse,
+            dependencies=[Depends(ia_rate_limit)],
             summary="Ma recommandation (profil du compte connecté vs son poste visé)")
 def ma_reco(user: User = Depends(get_current_user),
             db: Session = Depends(get_db)) -> RecommendationResponse:
@@ -44,6 +46,7 @@ def ma_reco(user: User = Depends(get_current_user),
 
 
 @router.post("/ma-reco/async", response_model=RecoJobLaunched, status_code=202,
+             dependencies=[Depends(ia_rate_limit)],
              summary="Lancer ma reco en tâche de fond (renvoie un job_id à interroger)")
 def lancer_ma_reco(user: User = Depends(get_current_user)) -> RecoJobLaunched:
     """Non-bloquant : démarre le pipeline Ollama en arrière-plan et renvoie

@@ -109,6 +109,15 @@ class Settings:
         self.LOGIN_LOCKOUT_MINUTES = int(os.getenv("LOGIN_LOCKOUT_MINUTES", "15"))
         self.MAX_REQUEST_SIZE_BYTES = int(os.getenv("MAX_REQUEST_SIZE_MB", "25")) * 1024 * 1024
 
+        # --- Rate-limit des endpoints IA (protège le GPU sérialisé de l'abus) ---
+        # Le GPU ne fait qu'UNE génération à la fois (VRAM 8 Go, cf. _GPU_LOCK) :
+        # sans borne, un utilisateur qui enchaîne les appels remplit la file et prive
+        # les autres. On borne PAR UTILISATEUR : débit (fenêtre glissante) + concurrence.
+        self.IA_RATE_LIMIT_ENABLED = os.getenv("IA_RATE_LIMIT_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+        self.IA_RATE_MAX_PER_WINDOW = int(os.getenv("IA_RATE_MAX_PER_WINDOW", "15"))
+        self.IA_RATE_WINDOW_SECONDS = int(os.getenv("IA_RATE_WINDOW_SECONDS", "60"))
+        self.IA_RATE_MAX_CONCURRENT = int(os.getenv("IA_RATE_MAX_CONCURRENT", "2"))
+
         # --- CORS — JAMAIS "*" (combiné à allow_credentials = faille CSRF) ---
         _origins_raw = os.getenv("ALLOWED_ORIGINS", "").strip()
         if not _origins_raw or _origins_raw == "*":
