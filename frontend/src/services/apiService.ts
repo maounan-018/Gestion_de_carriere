@@ -12,10 +12,10 @@ import {
 } from '@/data/manager'
 import type { TeamMember, Vacancy, SouhaitRecu, KpiCard } from '@/types/manager'
 import {
-  RH_PEOPLE, CARTO_POLES, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
+  RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoPole, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role,
@@ -25,12 +25,12 @@ import { useSessionStore } from '@/stores/session'
 import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
-  mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapReco,
+  mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
   type CandidatureMineOut, type RhOffreOut, type OffreCandidatOut, type VacancyOut,
-  type RecommendationOut,
+  type RecommendationOut, type CartoMatrixOut,
 } from './mappers'
 
 /**
@@ -243,13 +243,19 @@ export const apiService = {
       return undefined
     }
   },
-  async getCarto(): Promise<CartoPole[]> {
-    await delay()
-    return CARTO_POLES
-  },
-  async getCartoPole(name: string): Promise<CartoPole | undefined> {
-    await delay(160)
-    return CARTO_POLES.find((p) => p.name === name)
+  async getCarto(): Promise<CartoMatrix> {
+    if (MODE === 'mock') {
+      await delay()
+      return {
+        familles: [...CARTO_SKILLS],
+        lignes: CARTO_POLES.map((p) => ({
+          departementKey: p.name, label: p.name, effectif: p.people.length,
+          niveauMoyen: p.levels.length ? p.levels.reduce((a, b) => a + b, 0) / p.levels.length : null,
+          niveaux: p.levels, people: p.people,
+        })),
+      }
+    }
+    return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/cartographie'))
   },
   async getRhKpis(): Promise<RhKpi[]> {
     if (MODE === 'mock') {

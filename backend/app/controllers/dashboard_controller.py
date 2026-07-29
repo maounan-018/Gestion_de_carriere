@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
-from app.schemas.dashboard import DashboardKpis, CartoDepartement, HautPotentielItem
+from app.schemas.dashboard import DashboardKpis, CartoMatrix, HautPotentielItem
 from app.services import dashboard_service
 
 router = APIRouter(prefix="/api/dashboards", tags=["Tableaux de bord"])
@@ -41,10 +41,10 @@ def kpis(scope: str = Query("rh", pattern="^(rh|manager)$"),
     return DashboardKpis(scope="rh", kpis=dashboard_service.kpis_rh(db))
 
 
-@router.get("/cartographie", response_model=list[CartoDepartement],
+@router.get("/cartographie", response_model=CartoMatrix,
             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
             summary="Cartographie des compétences par département")
-def cartographie(db: Session = Depends(get_db)) -> list[CartoDepartement]:
+def cartographie(db: Session = Depends(get_db)) -> CartoMatrix:
     return dashboard_service.cartographie(db)
 
 

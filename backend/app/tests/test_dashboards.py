@@ -35,9 +35,14 @@ def test_cartographie_rh(client):
     r = client.get("/api/dashboards/cartographie")
     assert r.status_code == 200
     data = r.json()
-    assert isinstance(data, list) and data
-    d0 = data[0]
-    assert {"departement_key", "effectif", "niveau_moyen", "top_competences"} <= set(d0)
+    # Matrice data-driven : familles (colonnes) + lignes (pôles), niveaux alignés.
+    assert {"familles", "lignes"} <= set(data)
+    assert isinstance(data["familles"], list)
+    if data["lignes"]:
+        ligne = data["lignes"][0]
+        assert {"departement_key", "label", "effectif", "niveaux"} <= set(ligne)
+        # `niveaux` est aligné sur `familles` (une cellule par colonne).
+        assert len(ligne["niveaux"]) == len(data["familles"])
 
 
 def test_cartographie_interdite_au_collab(client):

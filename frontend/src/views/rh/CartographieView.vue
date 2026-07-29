@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { LayoutGrid } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import type { CartoPole } from '@/types/rh'
+import type { CartoMatrix } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
@@ -11,7 +11,7 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import Heatmap from '@/components/shared/Heatmap.vue'
 
 const router = useRouter()
-const carto = ref<CartoPole[]>([])
+const carto = ref<CartoMatrix>({ familles: [], lignes: [] })
 const loading = ref(true)
 const error = ref('')
 
@@ -59,7 +59,7 @@ const legend: [string, string][] = [
         Lignes = pôles · colonnes = familles de compétences · le chiffre indique le niveau moyen
         (1→5). Cliquez un pôle pour son analyse détaillée.
       </p>
-      <Heatmap :poles="carto" @pole="goPole" />
+      <Heatmap :familles="carto.familles" :lignes="carto.lignes" @pole="goPole" />
       <div class="mt-4 flex flex-wrap gap-3">
         <span
           v-for="[label, cl] in legend"

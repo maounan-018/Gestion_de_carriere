@@ -497,6 +497,59 @@ def _seed_entretiens(db: Session) -> int:
     return created
 
 
+# --- Cartographie : profils répartis sur plusieurs pôles, compétences par famille -
+# (departement_key, nom, poste, [(libellé, famille/catégorie, niveau)]). Peuple la
+# heatmap (pôles × familles) de façon variée. Familles = metier / comportementale /
+# transversale / outil_technologie / leadership / data — extensibles librement.
+_CARTO_POLES = [
+    ("risque_credit", "Fatima Ouali", "Analyste risque crédit",
+     [("Modélisation du risque", "metier", 4), ("Bâle III", "metier", 3),
+      ("Esprit d'analyse", "comportementale", 4), ("Python", "outil_technologie", 3),
+      ("Reporting réglementaire", "transversale", 4), ("Data science", "data", 3)]),
+    ("conformite", "Rachid Amrani", "Chargé de conformité",
+     [("LCB-FT", "metier", 4), ("Contrôle interne", "metier", 3),
+      ("Rigueur", "comportementale", 5), ("Veille réglementaire", "transversale", 4),
+      ("Pilotage d'équipe", "leadership", 2)]),
+    ("it_digital", "Sophia Benjelloun", "Ingénieure SI",
+     [("Cybersécurité", "metier", 4), ("Cloud", "outil_technologie", 4),
+      ("Gestion de projet", "transversale", 4), ("Data engineering", "data", 3),
+      ("Communication", "comportementale", 3)]),
+    ("corporate", "Omar Fassi", "Chargé d'affaires corporate",
+     [("Financement structuré", "metier", 4), ("Analyse financière", "data", 4),
+      ("Négociation", "comportementale", 4), ("Relation grands comptes", "metier", 5),
+      ("Management d'équipe", "leadership", 3)]),
+    ("international", "Leïla Sekkat", "Responsable international",
+     [("Trade finance", "metier", 4), ("Anglais des affaires", "transversale", 5),
+      ("Management interculturel", "leadership", 4), ("Analyse de marché", "data", 3),
+      ("Adaptabilité", "comportementale", 4)]),
+    ("operations", "Yassine Tahiri", "Gestionnaire back-office",
+     [("Gestion des flux", "metier", 4), ("Excel avancé", "outil_technologie", 4),
+      ("Rigueur opérationnelle", "comportementale", 4),
+      ("Optimisation de process", "transversale", 3), ("Data quality", "data", 3)]),
+]
+
+
+def _seed_carto(db: Session) -> int:
+    """Profils synthétiques répartis sur plusieurs pôles, compétences taguées par
+    famille → cartographie (heatmap) pleine et variée. Idempotent par matricule."""
+    created = 0
+    for i, (dept, nom_complet, poste, comps) in enumerate(_CARTO_POLES):
+        matricule = f"DEMO-CARTO-{i + 1}"
+        if db.scalar(select(Profil).where(Profil.matricule == matricule)):
+            continue
+        prenom, nom = (nom_complet.split(" ", 1) + [""])[:2]
+        p = Profil(user_id=None, nom=nom or nom_complet, prenom=prenom, matricule=matricule,
+                   poste_actuel=poste, departement_key=dept, synthetique=True)
+        db.add(p)
+        db.flush()
+        for libelle, categorie, niveau in comps:
+            db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=categorie,
+                                    niveau=niveau, source=CompetenceSource.DECLARATIF))
+        created += 1
+    db.commit()
+    return created
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
              password: str, synthetic_offers: bool = True) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
@@ -507,7 +560,7 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
                "candidats_created": [], "candidats_existing": [],
                "candidatures_created": 0, "candidatures_existing": 0,
                "formations_created": [], "notifications_created": 0, "souhaits_created": 0,
-               "carriere_created": 0, "entretiens_created": 0}
+               "carriere_created": 0, "entretiens_created": 0, "carto_created": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -583,6 +636,7 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["notifications_created"] = _seed_notifications(db, users_by_email)
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
         summary["carriere_created"] = _seed_carriere(db, users_by_email)
+        summary["carto_created"] = _seed_carto(db)
         summary["entretiens_created"] = _seed_entretiens(db)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
@@ -617,6 +671,7 @@ def main() -> None:
     print("Notifications   :", summary["notifications_created"], "créées")
     print("Souhaits        :", summary["souhaits_created"], "créés")
     print("Carrière        :", summary["carriere_created"], "éléments (stations + avis)")
+    print("Cartographie    :", summary["carto_created"], "profils (pôles × familles)")
     print("Entretiens      :", summary["entretiens_created"], "créés")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)

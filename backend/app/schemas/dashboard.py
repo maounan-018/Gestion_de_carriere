@@ -42,6 +42,26 @@ class CartoDepartement(BaseModel):
     top_competences: list[CartoTopCompetence] = []
 
 
+class CartoLigne(BaseModel):
+    """Une ligne de la heatmap = un pôle/département. `niveaux` est ALIGNÉ sur
+    `familles` (même ordre) : `niveaux[i]` = niveau moyen du pôle pour la famille i
+    (None si aucune compétence de cette famille dans ce pôle)."""
+    departement_key: str
+    label: str
+    effectif: int
+    niveau_moyen: float | None
+    niveaux: list[float | None] = []
+    people: list[str] = []     # noms des profils du pôle (aperçu, pour le détail)
+
+
+class CartoMatrix(BaseModel):
+    """Cartographie sous forme de MATRICE data-driven : N pôles × M familles, sans
+    taxonomie figée. Le front rend `lignes` × `familles` tel quel — ajouter un pôle
+    ou une famille en base l'affiche automatiquement."""
+    familles: list[str] = []   # colonnes (catégories de compétences présentes)
+    lignes: list[CartoLigne] = []
+
+
 class HautPotentielItem(BaseModel):
     profil_id: int
     nom: str

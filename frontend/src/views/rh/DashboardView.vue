@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
-import type { RhKpi, RhAlert, CartoPole } from '@/types/rh'
+import type { RhKpi, RhAlert, CartoMatrix } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -17,7 +17,7 @@ const session = useSessionStore()
 const router = useRouter()
 const kpis = ref<RhKpi[]>([])
 const alerts = ref<RhAlert[]>([])
-const carto = ref<CartoPole[]>([])
+const carto = ref<CartoMatrix>({ familles: [], lignes: [] })
 const loading = ref(true)
 const error = ref('')
 
@@ -81,7 +81,7 @@ function goPole(name: string) {
           <template #actions>
             <RouterLink :to="{ name: 'rh.cartographie' }" class="text-xs font-semibold text-green-deep hover:underline">Voir en grand</RouterLink>
           </template>
-          <Heatmap :poles="carto" @pole="goPole" />
+          <Heatmap :familles="carto.familles" :lignes="carto.lignes" @pole="goPole" />
           <p class="mt-3 text-[11px] text-ink-3">
             Le niveau (1→5) est indiqué en chiffre dans chaque case · l'information ne repose pas que
             sur la couleur (accessibilité WCAG). Cliquez un pôle pour son analyse.
