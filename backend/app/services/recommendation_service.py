@@ -23,7 +23,9 @@ EMPLACEMENT MVC
 
 import hashlib
 import logging
+import threading
 import time
+import uuid
 
 from sqlalchemy import text, select
 from sqlalchemy.orm import Session
@@ -59,6 +61,58 @@ def clear_reco_cache() -> None:
     """Purge complète du cache de reco (utilitaire ; l'invalidation par clé suffit
     normalement, la clé changeant dès que le profil évolue)."""
     _reco_cache.clear()
+
+
+# --- Reco ASYNCHRONE : le pipeline Ollama est lent (~85 s) → on ne tient pas une
+#     requête HTTP aussi longtemps (risque de timeout proxy). On lance en tâche de
+#     fond (thread + session dédiée) et le client interroge un job_id. Le cache rend
+#     un job « déjà calculé » quasi instantané. Store PROCESS-LOCAL (démo mono-worker).
+_JOB_TTL_S = 600  # 10 min — durée de rétention des jobs terminés (le temps du polling)
+_jobs: dict[str, dict] = {}
+_jobs_lock = threading.Lock()
+
+
+def _prune_jobs(now: float) -> None:
+    for k in [k for k, j in _jobs.items() if now - j["created_at"] > _JOB_TTL_S]:
+        _jobs.pop(k, None)
+
+
+def launch_reco_job(user_id: int) -> str:
+    """Lance la reco du user en tâche de fond et renvoie un job_id à interroger."""
+    job_id = uuid.uuid4().hex
+    now = time.time()
+    with _jobs_lock:
+        _prune_jobs(now)
+        _jobs[job_id] = {"status": "pending", "user_id": user_id,
+                         "result": None, "error": None, "created_at": now}
+
+    def _run() -> None:
+        from app.database.session import SessionLocal
+        db = SessionLocal()
+        try:
+            res = recommander_pour_user(db, user_id)
+            with _jobs_lock:
+                if job_id in _jobs:
+                    _jobs[job_id].update(status="done", result=res)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Job reco %s échoué : %s", job_id, e)
+            with _jobs_lock:
+                if job_id in _jobs:
+                    _jobs[job_id].update(status="error", error=str(e))
+        finally:
+            db.close()
+
+    threading.Thread(target=_run, name=f"reco-{job_id[:8]}", daemon=True).start()
+    return job_id
+
+
+def get_reco_job(job_id: str, user_id: int) -> dict | None:
+    """État d'un job (RÉSERVÉ à son propriétaire). None si inconnu ou autre user."""
+    with _jobs_lock:
+        j = _jobs.get(job_id)
+        if not j or j["user_id"] != user_id:
+            return None
+        return {"status": j["status"], "result": j["result"], "error": j["error"]}
 
 _SYSTEM = (
     "Tu es un coach carrière d'une banque (BMCI, groupe BNP Paribas). On te fournit "
