@@ -112,7 +112,8 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   MANAGER à SON équipe (`manager_id`), RH/ADMIN global — appliqué aux souhaits/notifications ET désormais aux
   **profils** (liste bornée + lecture unitaire) et **candidatures** (dépôt + liste + lecture) ; 5 tests e2e.
   Reste ⬜ : périmètre par **OFFRE** sur decision/réévaluation (nécessite un ownership d'offre)
-- ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
+- 🅿️ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning — **ABANDONNÉ (décision utilisateur, hors scope)** :
+  l'auth locale + RBAC + sessions + audit couvre le besoin de la maquette ; aucun IdP à brancher
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
 - ✅ **Sécurité applicative** : **rate-limit des endpoints IA** (débit + concurrence, 429 + `Retry-After`,
   audité — `core/rate_limit.py`, 12 routes IA) ; **durcissement HTTP** (`core/http_hardening.py`, middleware
