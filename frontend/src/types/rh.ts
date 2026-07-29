@@ -30,6 +30,21 @@ export interface CartoPole {
   analyse: { text: string; criticite: Criticite; focus?: string }
 }
 
+/* Cartographie DATA-DRIVEN (matrice flexible N pôles × M familles). Les colonnes
+ * `familles` et les lignes viennent du backend — aucune taxonomie figée côté front. */
+export interface CartoLigne {
+  departementKey: string
+  label: string
+  effectif: number
+  niveauMoyen: number | null
+  niveaux: (number | null)[] // aligné sur `familles` (une cellule par colonne)
+  people: string[]
+}
+export interface CartoMatrix {
+  familles: string[] // colonnes (libellés de familles, déjà humanisés)
+  lignes: CartoLigne[]
+}
+
 /* ---------------------------------------------------------------------- KPI */
 export interface RhKpi {
   icon: IconKey

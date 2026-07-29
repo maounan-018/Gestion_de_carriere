@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiService } from '@/services/apiService'
-import type { CartoPole } from '@/types/rh'
+import type { CartoMatrix } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseBreadcrumb from '@/components/ui/BaseBreadcrumb.vue'
@@ -11,7 +11,7 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import Heatmap from '@/components/shared/Heatmap.vue'
 
 const router = useRouter()
-const carto = ref<CartoPole[]>([])
+const carto = ref<CartoMatrix>({ familles: [], lignes: [] })
 const loading = ref(true)
 const error = ref('')
 
@@ -48,7 +48,7 @@ function goPole(name: string) {
       <ErrorState v-else-if="error" :message="error">
         <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
       </ErrorState>
-      <Heatmap v-else :poles="carto" big @pole="goPole" />
+      <Heatmap v-else :familles="carto.familles" :lignes="carto.lignes" big @pole="goPole" />
     </BaseCard>
   </div>
 </template>

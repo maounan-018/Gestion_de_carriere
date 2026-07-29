@@ -13,7 +13,7 @@ import type {
   RecoData, RecoSkill, Passerelle,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
-import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson } from '@/types/rh'
+import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix } from '@/types/rh'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 
 /* ------------------------------------------------------------------ Backend */
@@ -644,5 +644,38 @@ export function mapVacancy(v: VacancyOut): Vacancy {
     openSince: `Ouvert ${relativeTime(v.created_at)}`,
     status: VAC_STATUT[v.statut] ?? 'ouvert',
     recos: v.recos.map(mapVacancyReco),
+  }
+}
+
+/* ===================================================================== */
+/*  Cartographie — matrice data-driven (pôles × familles)                */
+/* ===================================================================== */
+export interface CartoMatrixOut {
+  familles: string[]
+  lignes: {
+    departement_key: string; label: string; effectif: number
+    niveau_moyen: number | null; niveaux: (number | null)[]; people: string[]
+  }[]
+}
+
+const FAMILLE_LABEL: Record<string, string> = {
+  metier: 'Métier', comportementale: 'Comportementale', transversale: 'Transversale',
+  outil_technologie: 'Outils & Tech', leadership: 'Leadership', data: 'Data & Analyse',
+}
+function humanizeFamille(k: string): string {
+  return FAMILLE_LABEL[k] ?? k.charAt(0).toUpperCase() + k.slice(1)
+}
+
+export function mapCartoMatrix(m: CartoMatrixOut): CartoMatrix {
+  return {
+    familles: m.familles.map(humanizeFamille),
+    lignes: m.lignes.map((l) => ({
+      departementKey: l.departement_key,
+      label: l.label,
+      effectif: l.effectif,
+      niveauMoyen: l.niveau_moyen,
+      niveaux: l.niveaux,
+      people: l.people ?? [],
+    })),
   }
 }

@@ -27,7 +27,7 @@ from app.models.souhait import Souhait
 from app.models.user import User
 from app.models.formation import Formation
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
-from app.schemas.dashboard import (KpiItem, CartoDepartement, CartoTopCompetence,
+from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne,
                                     HautPotentielItem, VeilleItem, AlerteItem)
 
 
@@ -73,49 +73,63 @@ def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
 
 
 # ------------------------------------------------------------- Cartographie
-def cartographie(db: Session) -> list[CartoDepartement]:
-    """Cartographie des compétences par département (effectif, niveau moyen,
-    compétences les plus répandues)."""
-    # Effectif par département.
+# Famille par défaut quand la compétence détenue n'a pas de catégorie renseignée.
+_FAM_DEFAUT = "transversale"
+
+
+def _humanize(key: str) -> str:
+    """Clé de département → libellé lisible ('retail_banking' → 'Retail Banking')."""
+    return key.replace("_", " ").title()
+
+
+def cartographie(db: Session) -> CartoMatrix:
+    """Cartographie en MATRICE data-driven : pôles (lignes) × familles de compétences
+    (colonnes = catégories présentes en base). Aucune taxonomie figée — tout pôle ou
+    toute famille présent apparaît automatiquement (N × M variables)."""
+    fam = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
+
+    # Colonnes : familles distinctes réellement présentes (triées).
+    familles = [r[0] for r in db.execute(
+        select(fam).join(Profil, Profil.id == ProfilCompetence.profil_id)
+        .where(Profil.departement_key.isnot(None))
+        .distinct().order_by(fam)).all()]
+
+    # Effectif + niveau moyen global par pôle.
     effectifs = dict(db.execute(
         select(Profil.departement_key, func.count(Profil.id))
+        .where(Profil.departement_key.isnot(None))
+        .group_by(Profil.departement_key)).all())
+    moy_globales = dict(db.execute(
+        select(Profil.departement_key, func.avg(ProfilCompetence.niveau))
+        .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
         .group_by(Profil.departement_key)).all())
 
-    # Niveau moyen + nb de compétences distinctes par département.
-    niveau_rows = db.execute(
-        select(Profil.departement_key, func.avg(ProfilCompetence.niveau),
-               func.count(func.distinct(ProfilCompetence.libelle)))
-        .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
-        .group_by(Profil.departement_key)).all()
-    niveaux = {k: (moy, ncomp) for k, moy, ncomp in niveau_rows}
+    # Cellules : niveau moyen par (pôle, famille).
+    cells: dict[tuple[str, str], float | None] = {}
+    for dept, f, moy in db.execute(
+            select(Profil.departement_key, fam, func.avg(ProfilCompetence.niveau))
+            .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
+            .group_by(Profil.departement_key, fam)).all():
+        cells[(dept, f)] = round(moy, 2) if moy is not None else None
 
-    # Compétences phares (top 5) par département : nb de profils la détenant + niveau moyen.
-    top_rows = db.execute(
-        select(Profil.departement_key, ProfilCompetence.libelle,
-               func.count(func.distinct(ProfilCompetence.profil_id)),
-               func.avg(ProfilCompetence.niveau))
-        .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
-        .group_by(Profil.departement_key, ProfilCompetence.libelle)
-        .order_by(Profil.departement_key,
-                  func.count(func.distinct(ProfilCompetence.profil_id)).desc())).all()
-    tops: dict[str, list[CartoTopCompetence]] = {}
-    for dept, libelle, eff, moy in top_rows:
-        bucket = tops.setdefault(dept, [])
-        if len(bucket) < 5:
-            bucket.append(CartoTopCompetence(
-                libelle=libelle, effectif=eff,
-                niveau_moyen=round(moy, 2) if moy is not None else None))
+    # Noms des profils par pôle (aperçu pour le détail).
+    people: dict[str, list[str]] = {}
+    for dept, nom, prenom in db.execute(
+            select(Profil.departement_key, Profil.nom, Profil.prenom)
+            .where(Profil.departement_key.isnot(None))
+            .order_by(Profil.nom)).all():
+        people.setdefault(dept, []).append(f"{prenom or ''} {nom}".strip())
 
-    out: list[CartoDepartement] = []
-    for dept, eff in sorted(effectifs.items(), key=lambda kv: (kv[0] or "")):
-        if dept is None:
-            continue
-        moy, ncomp = niveaux.get(dept, (None, 0))
-        out.append(CartoDepartement(
-            departement_key=dept, effectif=eff,
+    # Lignes triées par effectif décroissant (pôles les plus fournis en tête).
+    lignes: list[CartoLigne] = []
+    for dept, eff in sorted(effectifs.items(), key=lambda kv: -kv[1]):
+        moy = moy_globales.get(dept)
+        lignes.append(CartoLigne(
+            departement_key=dept, label=_humanize(dept), effectif=eff,
             niveau_moyen=round(moy, 2) if moy is not None else None,
-            nb_competences=ncomp or 0, top_competences=tops.get(dept, [])))
-    return out
+            niveaux=[cells.get((dept, f)) for f in familles],
+            people=people.get(dept, [])[:12]))
+    return CartoMatrix(familles=familles, lignes=lignes)
 
 
 # --------------------------------------------------------- Hauts potentiels
