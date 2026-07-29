@@ -62,6 +62,17 @@ class CartoMatrix(BaseModel):
     lignes: list[CartoLigne] = []
 
 
+class FamilleCompetence(BaseModel):
+    """Vue par FAMILLE de compétences (catégorie) : offre interne détenue vs demande
+    des offres ouvertes, avec un signal de tension INDICATIF (heuristique documentée)."""
+    famille: str
+    detenues: int              # nb de compétences détenues (volume) dans la famille
+    profils_couverts: int      # nb de profils ayant ≥1 compétence de la famille
+    niveau_moyen: float | None  # niveau moyen (compétences niveautées)
+    demande: int               # nb d'attendus des offres OUVERTES dans la famille
+    tension: str               # "faible" | "moyenne" | "forte" (demande vs couverture interne)
+
+
 class HautPotentielItem(BaseModel):
     profil_id: int
     nom: str

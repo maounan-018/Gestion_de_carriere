@@ -19,7 +19,8 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
-from app.schemas.dashboard import DashboardKpis, CartoMatrix, HautPotentielItem
+from app.schemas.dashboard import (DashboardKpis, CartoMatrix, FamilleCompetence,
+                                    HautPotentielItem)
 from app.services import dashboard_service
 
 router = APIRouter(prefix="/api/dashboards", tags=["Tableaux de bord"])
@@ -46,6 +47,13 @@ def kpis(scope: str = Query("rh", pattern="^(rh|manager)$"),
             summary="Cartographie des compétences par département")
 def cartographie(db: Session = Depends(get_db)) -> CartoMatrix:
     return dashboard_service.cartographie(db)
+
+
+@router.get("/familles", response_model=list[FamilleCompetence],
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+            summary="Cartographie par famille de compétences (couverture interne vs demande, tensions)")
+def familles(db: Session = Depends(get_db)) -> list[FamilleCompetence]:
+    return dashboard_service.familles(db)
 
 
 @router.get("/hauts-potentiels", response_model=list[HautPotentielItem],

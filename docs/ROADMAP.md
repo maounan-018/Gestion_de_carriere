@@ -85,10 +85,12 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ✅ **Dashboards RH — cartographie des compétences** (`/api/dashboards/cartographie` : effectif, niveau
   moyen, compétences phares par département) + **KPIs** RH/manager + **veille entretiens** + **alertes RH**
   dérivées de signaux réels — endpoints livrés
-- ⬜ Enrichir la cartographie (familles de compétences, couverture/tensions par famille) au-delà de l'agrégation par département
+- ✅ Enrichir la cartographie — **vue par FAMILLE de compétences** (`GET /api/dashboards/familles`, RH/ADMIN) :
+  offre interne détenue (profils / compétences / niveau moyen) confrontée à la DEMANDE des offres ouvertes
+  → **signal de tension** par famille (indicatif), au-delà de l'agrégation par département
 - 🅿️ **Mini-jeux** de détection de compétences par thème (plus tard, recherches approfondies)
 
-## IV bis. API applicative (endpoints alimentant le front) — ~57 routes déclarées
+## IV bis. API applicative (endpoints alimentant le front) — ~62 routes déclarées
 - ✅ **Notifications** : `GET /api/notifications`, `PATCH /{id}/lu`, `POST /lues` (filtré par utilisateur)
 - ✅ **Souhaits d'évolution** : `GET/POST/PATCH /api/souhaits` (ownership) + `GET /api/souhaits/recus` (manager)
 - ✅ **Formations** : `GET /api/formations` (catalogue synthétique filtrable domaine/texte)
