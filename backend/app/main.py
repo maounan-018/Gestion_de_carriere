@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.core.http_hardening import SecurityHeadersMiddleware
 from app.services import ai_router
 from app.controllers import (skill_extraction_controller, skill_matching_controller,
                              recommendation_controller, fiche_controller, auth_controller,
@@ -54,6 +55,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*", settings.CSRF_HEADER],
 )
+
+# Durcissement HTTP — ajouté APRÈS le CORS => couche la PLUS EXTERNE (Starlette
+# applique les middlewares dans l'ordre inverse d'ajout) : en-têtes de sécurité
+# sur chaque réponse + rejet des corps trop volumineux (413).
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Un routeur par fonctionnalité (MVC : contrôleurs séparés).
 app.include_router(auth_controller.router)
