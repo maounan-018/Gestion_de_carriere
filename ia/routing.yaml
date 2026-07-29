@@ -40,6 +40,12 @@ taches:
     temperature: 0.3
     num_ctx: 4096
 
+  coach:                        # Coach Carrière conversationnel (chat contextualisé)
+    model: mistral-nemo         # meilleur FR ; réponses concises -> latence tenable
+    fallback: llama3.1:8b       # repli rapide (53 tok/s) si mistral-nemo indisponible
+    temperature: 0.4            # un peu de chaleur conversationnelle
+    num_ctx: 4096
+
   redaction:                    # reformulations, résumés d'entretien (FR/EN)
     model: mistral-nemo
     fallback: llama3.1:8b
