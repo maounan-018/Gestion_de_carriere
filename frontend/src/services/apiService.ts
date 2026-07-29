@@ -18,7 +18,7 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
-  Souhait, RecoData, Formation, Colleague, Role,
+  Souhait, RecoData, Formation, Colleague, Role, ChatMessage,
 } from '@/types/domain'
 import { apiFetch } from './http'
 import { useSessionStore } from '@/stores/session'
@@ -45,6 +45,13 @@ const delay = (ms = 260): Promise<void> => new Promise((resolve) => setTimeout(r
 
 /** Rôle courant (pour la résolution des routes de notification). */
 const currentRole = (): Role => useSessionStore().role ?? 'collab'
+
+/** Échappe le HTML d'une réponse LLM (rendue en v-html) et préserve les sauts de ligne. */
+function coachReplyToHtml(s: string): string {
+  const esc = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return esc.replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>')
+}
+const stripHtml = (s: string): string => s.replace(/<[^>]*>/g, '')
 
 /** Reco en mode ASYNCHRONE : lance le job puis interroge jusqu'à complétion.
  *  Requêtes courtes (plus de HTTP tenu ~85 s) → robuste aux timeouts proxy ;
@@ -121,6 +128,21 @@ export const apiService = {
     }
     // ⚠️ Ollama : extraction + reranker + conseil (peut prendre quelques secondes).
     return fetchRecoLive()
+  },
+  /** Coach Carrière : envoie un message (+ historique) et renvoie la réponse (HTML sûr). */
+  async sendCoachMessage(message: string, history: ChatMessage[]): Promise<string> {
+    if (MODE === 'mock') {
+      await delay(600)
+      return "D'après votre profil, un levier clé est de combler l'écart « Diriger une équipe » : mentorat + formation management. Voulez-vous un plan détaillé ?"
+    }
+    const hist = history
+      .filter((m) => (m.text || '').trim())
+      .map((m) => ({ role: m.from === 'me' ? 'user' : 'assistant', content: stripHtml(m.text) }))
+    const r = await apiFetch<{ reply: string }>('/coach', {
+      method: 'POST',
+      body: { message, history: hist },
+    })
+    return coachReplyToHtml(r.reply)
   },
   async getFormations(): Promise<Formation[]> {
     if (MODE === 'mock') {

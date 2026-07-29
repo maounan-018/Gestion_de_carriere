@@ -4,7 +4,10 @@ import { useSessionStore } from '@/stores/session'
 import ChatPanel from '@/components/shared/ChatPanel.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
+import { apiService } from '@/services/apiService'
 
+const askCoach = (message: string, history: ChatMessage[]) =>
+  apiService.sendCoachMessage(message, history)
 const session = useSessionStore()
 const messages: ChatMessage[] = [
   {
@@ -29,7 +32,7 @@ const suggestions: ChatSuggestion[] = [
       :messages="messages"
       :suggestions="suggestions"
       placeholder="Posez votre question au Coach…"
-      bot-reply="Je m'appuie sur votre profil et votre équipe pour vous répondre. Précisez l'objectif visé et je vous propose un plan concret."
+      :on-send="askCoach"
     />
     <div class="space-y-4">
       <BaseCard>

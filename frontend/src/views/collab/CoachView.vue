@@ -4,6 +4,10 @@ import ChatPanel from '@/components/shared/ChatPanel.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
+import { apiService } from '@/services/apiService'
+
+const askCoach = (message: string, history: ChatMessage[]) =>
+  apiService.sendCoachMessage(message, history)
 
 const messages: ChatMessage[] = [
   { from: 'bot', text: 'Bonjour Marc 👋 Je suis votre <b>Coach Carrière</b>. Je connais votre parcours, vos compétences et vos souhaits : posez-moi vos questions sur votre évolution, en toute confidentialité.' },
@@ -30,7 +34,7 @@ const topics = [
         :messages="messages"
         :suggestions="suggestions"
         placeholder="Posez votre question au Coach…"
-        bot-reply="D'après votre profil, votre principal levier est de combler l'écart « Diriger une équipe » — je vous suggère le mentorat et la formation management. Voulez-vous que je détaille un plan ?"
+        :on-send="askCoach"
       />
       <p class="text-center text-[11px] text-ink-3">
         <Shield :size="12" class="inline" /> Échanges 100 % confidentiels · ni votre manager ni les RH n'y ont accès.
