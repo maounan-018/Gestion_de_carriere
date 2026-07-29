@@ -87,12 +87,18 @@ def test_collab_lit_offres(client):
     assert client.get("/api/offres").status_code == 200
 
 
-def test_collab_atteint_candidature_puis_400(client):
-    # collab est autorisé (rôle) -> passe le guard -> 400 (offre bidon), PAS 403
+def test_collab_candidate_seulement_pour_son_profil(client):
+    """B2 (ownership) : un COLLAB ne candidate que pour SON profil.
+    - profil d'autrui -> 403 (ownership) ;
+    - son propre profil (offre bidon) -> 400 (guard passé, offre inexistante)."""
     csrf = auth(client, "collab")
-    r = client.post("/api/candidatures", json={"offre_id": 999999, "profil_id": 999999},
-                    headers=hdr(csrf))
-    assert r.status_code == 400
+    autrui = client.post("/api/candidatures", json={"offre_id": 999999, "profil_id": 999999},
+                         headers=hdr(csrf))
+    assert autrui.status_code == 403, autrui.text
+    mon_profil = client.get("/api/profils/me/carriere").json()["profil_id"]
+    mien = client.post("/api/candidatures", json={"offre_id": 999999, "profil_id": mon_profil},
+                       headers=hdr(csrf))
+    assert mien.status_code == 400, mien.text
 
 
 # ---- 5. CSRF obligatoire sur les mutations ------------------------------------
@@ -115,11 +121,11 @@ def test_decided_by_vient_de_la_session(client):
     assert prof.status_code == 201, prof.text
     rh_id = client.get("/api/auth/me").json()["id"]
 
-    # collab dépose la candidature
-    csrf_c = auth(client, "collab")
+    # la RH dépose la candidature pour ce profil synthétique (le COLLAB ne pourrait
+    # candidater que pour SON profil — cf. ownership B2)
     cand = client.post("/api/candidatures",
                        json={"offre_id": off.json()["id"], "profil_id": prof.json()["id"]},
-                       headers=hdr(csrf_c))
+                       headers=hdr(csrf_rh))
     assert cand.status_code == 201, cand.text
     cid = cand.json()["id"]
 

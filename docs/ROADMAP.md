@@ -105,8 +105,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   **ownership** (souhaits/notifications filtrés par utilisateur) ; **testé** (403/401 vérifiés)
 - ✅ **Audit trail** — écrit (créations de comptes, accès refusés) ; **émis après commit** (verrou SQLite un seul writer)
 - ✅ **CSRF** double-submit (cookie non-HttpOnly ↔ en-tête `X-CSRF-Token`) branché sur les méthodes mutantes
-- ⏳ **B2 — row-level ownership généralisé** : COLLAB à SON profil / MANAGER à SON équipe (`manager_id`) —
-  fait pour souhaits/notifications ; à généraliser à profils/candidatures
+- ✅ **B2 — row-level ownership généralisé** (`auth/ownership.py`) : COLLAB à SON profil / SES candidatures,
+  MANAGER à SON équipe (`manager_id`), RH/ADMIN global — appliqué aux souhaits/notifications ET désormais aux
+  **profils** (liste bornée + lecture unitaire) et **candidatures** (dépôt + liste + lecture) ; 5 tests e2e.
+  Reste ⬜ : périmètre par **OFFRE** sur decision/réévaluation (nécessite un ownership d'offre)
 - ⬜ **SSO SAML 2.0** (ADFS / Entra ID) + JIT provisioning + mode simulation (dev) — **placeholder documenté seulement**
 - ⬜ **Répertoire des comptes** : réels (JIT) · service (connecteurs) · synthétiques (personas démo) — non seedé
 - ⏳ **Sécurité applicative** : ✅ **rate-limit des endpoints IA** par utilisateur (débit fenêtre glissante +

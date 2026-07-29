@@ -6,13 +6,13 @@ RÔLE
     Expose le CRUD du profil en API REST. Sans logique métier : valide l'entrée
     (schemas), délègue au service, traduit l'absence en 404.
 
-SÉCURITÉ (RBAC branché — Bloc C)
-    Écriture (créer / éditer / ajouter des compétences) réservée à RH/ADMIN ;
-    liste réservée à RH/ADMIN/MANAGER ; lecture unitaire ouverte à tout utilisateur
-    authentifié. Le CSRF est vérifié par get_current_user sur les méthodes mutantes.
-    TODO B2 (row-level ownership) : un COLLAB ne devrait voir/éditer que SON profil,
-    un MANAGER que son équipe (manager_id) — à ajouter une fois `current_user` porté
-    dans le service.
+SÉCURITÉ (RBAC + ownership B2)
+    Écriture (créer / éditer / ajouter des compétences) réservée à RH/ADMIN.
+    Ownership ligne-à-ligne (cf. `auth/ownership.py`) : la LISTE est bornée au
+    périmètre (MANAGER = son équipe ; RH/ADMIN = global) et la LECTURE unitaire d'un
+    profil est réservée au propriétaire (COLLAB), à son manager, ou à RH/ADMIN.
+    L'annuaire reste un répertoire LIMITÉ ouvert à tout authentifié. Le CSRF est
+    vérifié par get_current_user sur les méthodes mutantes.
 
 EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
+from app.auth import ownership
 from app.models.user import Role, User
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry)
@@ -48,8 +49,13 @@ def lister_profils(
     manager_id: int | None = Query(None, description="Équipe d'un manager (profils dont le compte a ce manager)."),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[ProfilOut]:
+    # Ownership B2 : un MANAGER est borné à SON équipe (on force son périmètre,
+    # quel que soit le manager_id demandé). RH/ADMIN : périmètre global (libre).
+    if user.role == Role.MANAGER:
+        manager_id = user.id
     return profil_service.list_profils(db, departement_key=departement_key,
                                        synthetique=synthetique, manager_id=manager_id,
                                        limit=limit, offset=offset)
@@ -89,9 +95,10 @@ def annuaire(departement_key: str | None = Query(None),
 
 
 @router.get("/{profil_id}/carriere", response_model=ProfilCarriereOut,
-            dependencies=[Depends(get_current_user)],
             summary="Vue carrière enrichie (aspirations, compétences, stations, avis des pairs)")
-def carriere_profil(profil_id: int, db: Session = Depends(get_db)) -> ProfilCarriereOut:
+def carriere_profil(profil_id: int, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)) -> ProfilCarriereOut:
+    ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
     out = profil_service.get_carriere(db, profil_id)
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
@@ -99,9 +106,10 @@ def carriere_profil(profil_id: int, db: Session = Depends(get_db)) -> ProfilCarr
 
 
 @router.get("/{profil_id}", response_model=ProfilOut,
-            dependencies=[Depends(get_current_user)],
             summary="Consulter un profil et ses compétences")
-def consulter_profil(profil_id: int, db: Session = Depends(get_db)) -> ProfilOut:
+def consulter_profil(profil_id: int, user: User = Depends(get_current_user),
+                     db: Session = Depends(get_db)) -> ProfilOut:
+    ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
     out = profil_service.get_profil(db, profil_id)
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
