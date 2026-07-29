@@ -67,3 +67,45 @@ def test_coach_historique_dans_le_prompt(db, monkeypatch):
     cs.chat(db, u.id, "Quelles sont mes forces ?", history)
     assert "Bonjour" in cap["prompt"]
     assert "Quelles sont mes forces ?" in cap["prompt"]
+
+
+# ---------------------------------------------------------------- Agentique
+
+def test_coach_agentique_appelle_un_outil(db, monkeypatch):
+    """Le coach agentique exécute un outil (données réelles) puis répond."""
+    u, _ = _make_collab(db, "coach4@bmci.local", aspirations="Manager")
+    db.commit()
+
+    calls: list[int] = []
+    responses = [
+        # Tour 1 : le modèle demande un outil.
+        {"tool_calls": [{"function": {"name": "chercher_offres_compatibles", "arguments": {}}}]},
+        # Tour 2 : après l'observation, il répond.
+        {"content": "D'après les offres internes, voici mon conseil."},
+    ]
+
+    def fake_chat_call(model, messages, tools=None, num_ctx=8192, temperature=0):
+        calls.append(len(messages))
+        return responses[len(calls) - 1]
+
+    monkeypatch.setattr(cs, "chat_call", fake_chat_call)
+    out = cs.chat_agent(db, u.id, "Quelles offres pour moi ?", [])
+
+    assert out["reply"] == "D'après les offres internes, voici mon conseil."
+    assert "chercher_offres_compatibles" in out["outils"]
+    assert len(calls) == 2                 # appel outil, puis réponse
+    assert calls[1] > calls[0]             # l'observation (role tool) a été ajoutée aux messages
+
+
+def test_coach_agentique_repli_mono_coup(db, monkeypatch):
+    """Si le tool-calling échoue (Ollama down), on retombe sur le mono-coup."""
+    u, _ = _make_collab(db, "coach5@bmci.local")
+    db.commit()
+
+    def boom(*a, **k):
+        raise RuntimeError("ollama indisponible")
+
+    monkeypatch.setattr(cs, "chat_call", boom)
+    monkeypatch.setattr(cs, "generate", lambda *a, **k: "Conseil de repli mono-coup.")
+    out = cs.chat_agent(db, u.id, "Bonjour", [])
+    assert out["reply"] == "Conseil de repli mono-coup."

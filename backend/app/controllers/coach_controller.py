@@ -30,4 +30,4 @@ router = APIRouter(prefix="/api/coach", tags=["Coach"])
 def coach(req: CoachRequest, user: User = Depends(get_current_user),
           db: Session = Depends(get_db)) -> CoachResponse:
     """⚠️ Utilise Ollama (mistral-nemo) : quelques secondes par réponse."""
-    return CoachResponse(**coach_service.chat(db, user.id, req.message, req.history))
+    return CoachResponse(**coach_service.chat_agent(db, user.id, req.message, req.history))
