@@ -96,6 +96,15 @@ class ProfilOut(BaseModel):
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)
 
 
+class MobiliteItem(BaseModel):
+    """Passerelle de mobilité : métier du référentiel proche du profil (partage de
+    compétences détenues ancrées au graphe)."""
+    occupation_id: int
+    metier: str
+    source: str                # esco | onet | sfia
+    competences_partagees: int
+
+
 class AnnuaireEntry(BaseModel):
     """Vue ANNUAIRE (répertoire limité, sans champ sensible) : accessible à tout
     utilisateur authentifié, y compris COLLAB. Pas de user_id/matricule/manager_id."""

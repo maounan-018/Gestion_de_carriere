@@ -75,12 +75,15 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ✅ **Extraction de compétences d'un CV / profil** (symétrique du poste) — `POST /api/profils/{id}/extraction-cv`
   (`cv_extraction_service`) : extraction IA (hermes3, CV fencé) + ancrage graphe, persiste les compétences
   DÉTENUES (`source=cv`, niveau estimé, idempotent via remplacement) ; ownership propriétaire / RH-ADMIN, rate-limité
-- ⬜ **Matching candidat ↔ offre** (sur entités persistées) + pondération essentiel/souhaité
-  + prise en compte du **niveau** + logique « < 100 % peut être retenu »
+- ✅ **Matching candidat ↔ offre** (sur entités persistées) — `candidature_service.evaluer` : **pondération**
+  essentiel(1.0)/souhaité(0.5), prise en compte du **niveau** (`niveau_insuffisant`), logique « < 100 % peut être
+  retenu » (décision humaine `PATCH /decision`). `skill_matching_service` pondère aussi (matching profil↔texte).
 - ✅ **Recommandation de candidats internes** pour une offre (sens inverse du matching) — `GET /api/offres/{id}/candidats`
 - ✅ **Succession / hauts potentiels** — `/api/dashboards/hauts-potentiels` (proxy = niveau moyen) + **plan de
   succession raisonné dédié** `POST /api/rh/succession` (qwen3.6, cartographie réelle fencée) ; viviers formalisés ⬜
-- ⬜ **Passerelles de mobilité** intégrées au profil (déjà ébauché via vec_occupations)
+- ✅ **Passerelles de mobilité** intégrées au profil — `GET /api/profils/{id}/mobilite`
+  (`occupation_service.suggest_occupations`, pondéré par rareté type-IDF, pur graphe sans LLM) : métiers ESCO/O*NET
+  mobilisant le plus les compétences détenues ancrées, hors poste actuel ; ownership propriétaire / manager / RH-ADMIN
 - ⬜ Extraction depuis **évaluations de mission (managers)** et **évaluations de performance**
 - ✅ **Dashboards RH — cartographie des compétences** (`/api/dashboards/cartographie` : effectif, niveau
   moyen, compétences phares par département) + **KPIs** RH/manager + **veille entretiens** + **alertes RH**

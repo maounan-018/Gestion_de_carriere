@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.user import User
 from app.models.carriere import ProfilStation, PeerReview
+from app.services import occupation_service
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, ProfilCompetenceOut, AnnuaireEntry)
 from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
@@ -174,6 +175,21 @@ def add_competences(db: Session, profil_id: int,
     _add_competences(db, profil_id, comps)
     db.commit()
     return _to_out(db, p)
+
+
+def passerelles_mobilite(db: Session, profil_id: int, *, k: int = 5) -> list[dict] | None:
+    """Passerelles de mobilité d'un profil : métiers du référentiel (ESCO/O*NET) qui
+    mobilisent le plus ses compétences détenues ANCRÉES au graphe (skill_id). Exclut
+    son poste actuel. None si le profil est introuvable ; [] si compétences non ancrées."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        return None
+    skill_ids = list({sid for (sid,) in db.execute(
+        select(ProfilCompetence.skill_id).where(
+            ProfilCompetence.profil_id == profil_id,
+            ProfilCompetence.skill_id.isnot(None))).all()})
+    exclude = {p.poste_actuel} if p.poste_actuel else set()
+    return occupation_service.suggest_occupations(db, skill_ids, k=k, exclude_labels=exclude)
 
 
 def enregistrer_competences_cv(db: Session, profil_id: int, comps: list[dict],
