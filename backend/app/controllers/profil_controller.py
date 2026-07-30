@@ -27,7 +27,8 @@ from app.auth import ownership
 from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role, User
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
-                                 ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest)
+                                 ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
+                                 MobiliteItem)
 from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service, cv_extraction_service
 
@@ -115,6 +116,17 @@ def consulter_profil(profil_id: int, user: User = Depends(get_current_user),
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
+
+
+@router.get("/{profil_id}/mobilite", response_model=list[MobiliteItem],
+            summary="Passerelles de mobilité (métiers proches des compétences détenues)")
+def mobilite_profil(profil_id: int, k: int = Query(5, ge=1, le=15),
+                    user: User = Depends(get_current_user),
+                    db: Session = Depends(get_db)) -> list[MobiliteItem]:
+    """Métiers du référentiel (ESCO/O*NET) mobilisant le plus les compétences détenues
+    ancrées du profil (graphe, sans LLM). Ownership : propriétaire / manager / RH-ADMIN."""
+    ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
+    return profil_service.passerelles_mobilite(db, profil_id, k=k)
 
 
 @router.patch("/{profil_id}", response_model=ProfilOut,
