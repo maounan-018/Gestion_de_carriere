@@ -18,7 +18,7 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
-  Souhait, RecoData, Formation, Colleague, Role, ChatMessage,
+  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
 import { apiFetch, getCsrf, ApiError } from './http'
 import { formatCoachReply } from './coachFormat'
@@ -27,6 +27,8 @@ import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
+  mapMobilite,
+  type MobiliteOut,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
@@ -83,6 +85,13 @@ async function fetchRecoLive(): Promise<RecoData> {
   throw new Error('La recommandation a expiré (délai dépassé).')
 }
 
+/** Passerelles de mobilité (mock hors backend). */
+const MOBILITE_MOCK: MobiliteItem[] = [
+  { id: 1, metier: 'Chargé de clientèle patrimoniale', source: 'ESCO', partagees: 6 },
+  { id: 2, metier: 'Analyste crédit corporate', source: 'ESCO', partagees: 5 },
+  { id: 3, metier: 'Conseiller en investissements financiers', source: 'O*NET', partagees: 4 },
+]
+
 export const apiService = {
   async getOffers(): Promise<Offer[]> {
     if (MODE === 'mock') {
@@ -123,6 +132,17 @@ export const apiService = {
       return COLLAB_PROFILE
     }
     return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
+  },
+  /** Passerelles de mobilité du collaborateur connecté (métiers proches de ses
+   *  compétences détenues ancrées). Résout le profil via /profils/me/carriere. */
+  async getMyMobilite(): Promise<MobiliteItem[]> {
+    if (MODE === 'mock') {
+      await delay(200)
+      return MOBILITE_MOCK
+    }
+    const me = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
+    const rows = await apiFetch<MobiliteOut[]>(`/profils/${me.profil_id}/mobilite`)
+    return rows.map(mapMobilite)
   },
   async getSouhaits(): Promise<Souhait[]> {
     if (MODE === 'mock') {

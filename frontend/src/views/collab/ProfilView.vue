@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
 import { apiService } from '@/services/apiService'
-import type { CollabProfile } from '@/types/domain'
+import type { CollabProfile, MobiliteItem } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
@@ -17,6 +17,7 @@ import { Sparkles } from '@lucide/vue'
 const session = useSessionStore()
 const { toast } = useToast()
 const profile = ref<CollabProfile | null>(null)
+const mobilite = ref<MobiliteItem[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -25,6 +26,8 @@ async function load() {
   error.value = ''
   try {
     profile.value = await apiService.getCollabProfile()
+    // Passerelles de mobilité : best-effort (n'empêche pas l'affichage du profil).
+    apiService.getMyMobilite().then((m) => { mobilite.value = m }).catch(() => { mobilite.value = [] })
   } catch {
     error.value = 'Impossible de charger votre profil.'
   } finally {
@@ -105,6 +108,20 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
           <RouterLink :to="{ name: 'collab.souhaits' }" class="mt-3 block">
             <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Gérer mes souhaits d'évolution</BaseButton>
           </RouterLink>
+        </BaseCard>
+
+        <BaseCard v-if="mobilite.length" title="Passerelles de mobilité">
+          <p class="mb-2.5 text-xs text-ink-3">Métiers proches de vos compétences détenues (graphe ESCO/O*NET).</p>
+          <ul class="space-y-2">
+            <li v-for="m in mobilite" :key="m.id"
+                class="flex items-center justify-between gap-2 rounded-xl border border-border bg-panel-2 px-3 py-2">
+              <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-ink">{{ m.metier }}</p>
+                <p class="text-xs text-ink-3">{{ m.source }}</p>
+              </div>
+              <BaseChip tone="green">{{ m.partagees }} en commun</BaseChip>
+            </li>
+          </ul>
         </BaseCard>
 
         <div class="flex gap-3 rounded-2xl border border-green-line bg-green-ghost p-4">

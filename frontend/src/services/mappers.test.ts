@@ -17,6 +17,7 @@ import {
   mapVeille,
   mapAlerte,
   mapReco,
+  mapMobilite,
   mapRhOffre,
   mapRhCandidate,
   mapVacancy,
@@ -487,5 +488,15 @@ describe('mapVacancy + mapVacancyReco', () => {
   it('mapVacancyReco : seuil « bonne adéquation »', () => {
     const rr: VacancyRecoOut = { profil_id: 5, nom: 'X', prenom: null, poste_actuel: null, score: 55, matched: ['A'], gaps: [] }
     expect(mapVacancyReco(rr)).toMatchObject({ memberId: '5', score: 55, label: 'Bonne adéquation', tone: 'ai', why: 'Points forts : A' })
+  })
+})
+
+describe('mapMobilite', () => {
+  it('mappe une passerelle et libelle la source', () => {
+    const m = mapMobilite({ occupation_id: 42, metier: 'Analyste crédit', source: 'esco', competences_partagees: 5 })
+    expect(m).toMatchObject({ id: 42, metier: 'Analyste crédit', source: 'ESCO', partagees: 5 })
+  })
+  it('conserve une source inconnue telle quelle', () => {
+    expect(mapMobilite({ occupation_id: 1, metier: 'X', source: 'maison', competences_partagees: 2 }).source).toBe('maison')
   })
 })
