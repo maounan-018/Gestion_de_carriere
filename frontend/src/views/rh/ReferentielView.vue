@@ -1,41 +1,123 @@
 <script setup lang="ts">
-import { Sparkles, BookOpen } from '@lucide/vue'
-import { CARTO_SKILLS } from '@/data/rh'
+import { ref, onMounted } from 'vue'
+import { BookOpen } from '@lucide/vue'
+import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
+import type { GabaritDoc, GabaritKind, CartoDoc } from '@/types/referentiel'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
-import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseBreadcrumb from '@/components/ui/BaseBreadcrumb.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import LoadingState from '@/components/ui/LoadingState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
 
 const { toast } = useToast()
 
-// Référentiels ouverts mobilisés (attributions détaillées dans les mentions légales).
+const KINDS: GabaritKind[] = ['metadata', 'freetext', 'skill_list', 'languages', 'kpi']
+const CATEGORIES = ['metier', 'comportementale', 'transversale', 'outil_technologie']
+const needsCategorie = (k: GabaritKind) => k === 'freetext' || k === 'skill_list'
+const inputCls =
+  'w-full rounded-lg border border-border bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-green-line'
+
+// Référentiels ouverts mobilisés (attribution légale — statique, informatif).
 const referentiels = [
-  { code: 'ESCO', name: 'Skills, Competences & Occupations', role: 'Compétences & métiers', mapped: '1 240 compétences mappées', licence: 'CC BY 4.0' },
-  { code: 'O*NET', name: 'Occupational Information Network', role: 'Aptitudes & activités', mapped: '620 aptitudes de référence', licence: 'CC BY 4.0' },
-  { code: 'SFIA', name: 'Skills Framework for the Information Age', role: 'Niveaux de responsabilité (1→7)', mapped: 'Échelle appliquée au pôle IT & Digital', licence: 'Licence SFIA' },
+  { code: 'ESCO', name: 'Skills, Competences & Occupations', role: 'Compétences & métiers', licence: 'CC BY 4.0' },
+  { code: 'O*NET', name: 'Occupational Information Network', role: 'Aptitudes & activités', licence: 'CC BY 4.0' },
+  { code: 'SFIA', name: 'Skills Framework for the Information Age', role: 'Niveaux 1→7', licence: 'Licence SFIA' },
 ]
 
-// Familles du Groupe (colonnes de la cartographie) reliées à leur source.
-const familleMeta: Record<string, { source: string; scale: string }> = {
-  Analyse: { source: 'ESCO', scale: '1 → 5' },
-  Risque: { source: 'ESCO · SFIA', scale: '1 → 5' },
-  Digital: { source: 'SFIA', scale: '1 → 7' },
-  Compliance: { source: 'ESCO · O*NET', scale: '1 → 5' },
-  Leadership: { source: 'O*NET', scale: '1 → 5' },
-  Data: { source: 'SFIA', scale: '1 → 7' },
+// ---- État -----------------------------------------------------------------
+const loading = ref(true)
+const loadError = ref('')
+
+const gabarit = ref<GabaritDoc>({ version: null, sections: [] })
+const gabError = ref('')
+const gabBusy = ref(false)
+
+interface DeptEdit { key: string; nom: string; pole: string; metiersText: string }
+const depts = ref<DeptEdit[]>([])
+const cartoVersion = ref<number | null>(null)
+const cartoError = ref('')
+const cartoBusy = ref(false)
+
+async function load() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const [g, c] = await Promise.all([apiService.getGabarit(), apiService.getCartographie()])
+    gabarit.value = g
+    cartoVersion.value = c.version ?? null
+    depts.value = c.departements.map((d) => ({
+      key: d.key, nom: d.nom, pole: d.pole ?? '', metiersText: (d.metiers ?? []).join('\n'),
+    }))
+  } catch {
+    loadError.value = 'Impossible de charger les référentiels.'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(load)
+
+// ---- Gabarit --------------------------------------------------------------
+function addSection() {
+  gabarit.value.sections.push({ key: '', label: '', kind: 'metadata', categorie: null, aide: '' })
+}
+function removeSection(i: number) {
+  gabarit.value.sections.splice(i, 1)
+}
+async function saveGabarit() {
+  gabError.value = ''
+  gabBusy.value = true
+  try {
+    const doc: GabaritDoc = {
+      version: gabarit.value.version ?? null,
+      sections: gabarit.value.sections.map((s) => ({
+        key: s.key.trim(),
+        label: s.label.trim(),
+        kind: s.kind,
+        categorie: needsCategorie(s.kind) ? (s.categorie || null) : null,
+        aide: (s.aide ?? '').trim() || null,
+      })),
+    }
+    gabarit.value = await apiService.saveGabarit(doc)
+    toast('Gabarit enregistré', 'ok')
+  } catch (e) {
+    gabError.value = (e as Error)?.message || 'Enregistrement refusé.'
+  } finally {
+    gabBusy.value = false
+  }
 }
 
-// Structure type imposée à toute fiche de poste (source de la Fiche → Offre → Candidature).
-const gabarit = [
-  { n: 1, title: 'Intitulé & rattachement', desc: 'Libellé normalisé, pôle, ligne métier, niveau hiérarchique.' },
-  { n: 2, title: 'Finalité de la fonction', desc: 'Mission en une phrase + principales responsabilités.' },
-  { n: 3, title: 'Compétences requises', desc: 'Issues du référentiel ESCO, avec un niveau attendu sur l’échelle (SFIA).' },
-  { n: 4, title: 'Prérequis', desc: 'Diplôme, séniorité, habilitations réglementaires.' },
-  { n: 5, title: 'Passerelles & évolutions', desc: 'Postes amont/aval possibles — alimente les recommandations de mobilité.' },
-  { n: 6, title: 'Critères de matching', desc: 'Compétences pondérées → score de compatibilité interprétable (jamais un filtre).' },
-]
+// ---- Cartographie ---------------------------------------------------------
+function addDept() {
+  depts.value.push({ key: '', nom: '', pole: '', metiersText: '' })
+}
+function removeDept(i: number) {
+  depts.value.splice(i, 1)
+}
+async function saveCarto() {
+  cartoError.value = ''
+  cartoBusy.value = true
+  try {
+    const doc: CartoDoc = {
+      version: cartoVersion.value,
+      departements: depts.value.map((d) => ({
+        key: d.key.trim(),
+        nom: d.nom.trim(),
+        pole: d.pole.trim() || null,
+        metiers: d.metiersText.split('\n').map((m) => m.trim()).filter(Boolean),
+      })),
+    }
+    const saved = await apiService.saveCartographie(doc)
+    cartoVersion.value = saved.version ?? cartoVersion.value
+    toast('Cartographie enregistrée', 'ok')
+  } catch (e) {
+    cartoError.value = (e as Error)?.message || 'Enregistrement refusé.'
+  } finally {
+    cartoBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -50,19 +132,17 @@ const gabarit = [
           <BookOpen :size="18" />
         </div>
         <div class="min-w-0">
-          <h1 class="font-display text-lg font-bold text-ink">Référentiel de compétences & gabarit de fiche</h1>
+          <h1 class="font-display text-lg font-bold text-ink">Référentiel & gabarit — édition</h1>
           <p class="text-sm text-ink-3">
-            Le socle qui structure les fiches de poste, la cartographie et le matching du Groupe.
+            Le socle qui structure les fiches de poste, la cartographie et le matching. Édition réservée RH/Admin ;
+            chaque enregistrement est validé côté serveur (un référentiel invalide est refusé).
           </p>
         </div>
       </div>
-      <p class="mt-3 rounded-lg bg-gold-soft/50 px-3 py-2 text-[11px] text-gold">
-        ⚠️ Données de démonstration synthétiques — les volumes affichés sont illustratifs.
-      </p>
     </BaseCard>
 
     <h2 class="mb-2 font-display text-sm font-bold text-ink">Référentiels ouverts mobilisés</h2>
-    <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="mb-5 grid gap-3 sm:grid-cols-3">
       <BaseCard v-for="r in referentiels" :key="r.code" class="min-w-0">
         <div class="flex items-center gap-2">
           <h3 class="font-display text-base font-bold text-ink">{{ r.code }}</h3>
@@ -71,45 +151,85 @@ const gabarit = [
         <p class="mt-0.5 text-xs text-ink-3">{{ r.name }}</p>
         <div class="mt-2 space-y-1 text-xs text-ink-2">
           <div><b class="text-ink-3">Apporte :</b> {{ r.role }}</div>
-          <div><b class="text-ink-3">Couverture :</b> {{ r.mapped }}</div>
           <div><b class="text-ink-3">Licence :</b> {{ r.licence }}</div>
         </div>
       </BaseCard>
     </div>
 
-    <div class="grid gap-5 lg:grid-cols-2">
-      <BaseCard title="Familles de compétences du Groupe" class="min-w-0">
+    <LoadingState v-if="loading" label="Chargement des référentiels…" />
+    <ErrorState v-else-if="loadError" :message="loadError">
+      <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
+    </ErrorState>
+
+    <div v-else class="space-y-5">
+      <!-- Gabarit -->
+      <BaseCard title="Gabarit de fiche de poste">
         <template #actions>
-          <BaseButton size="sm" variant="ghost" @click="toast('Édition du référentiel — réservé à l’admin RH (à venir)', 'info')">
-            Ajouter une famille
-          </BaseButton>
+          <BaseButton size="sm" variant="ghost" @click="addSection">+ Ajouter une section</BaseButton>
         </template>
-        <div class="divide-y divide-border">
-          <div v-for="f in CARTO_SKILLS" :key="f" class="flex flex-wrap items-center gap-2 py-2.5">
-            <b class="text-sm text-ink">{{ f }}</b>
-            <BaseChip tone="green">{{ familleMeta[f]?.source }}</BaseChip>
-            <span class="ml-auto text-xs text-ink-3">Échelle {{ familleMeta[f]?.scale }}</span>
+        <p class="mb-3 text-xs text-ink-3">
+          Structure imposée à toute fiche. <b>kind</b> pilote le traitement ; <b>catégorie</b> requise pour
+          freetext / skill_list.
+        </p>
+        <div class="space-y-2">
+          <div v-for="(s, i) in gabarit.sections" :key="i" class="rounded-xl border border-border bg-panel p-2.5">
+            <div class="grid gap-2 sm:grid-cols-[130px_1fr_140px]">
+              <input v-model="s.key" placeholder="clé" :class="inputCls" />
+              <input v-model="s.label" placeholder="Libellé" :class="inputCls" />
+              <select v-model="s.kind" :class="inputCls">
+                <option v-for="k in KINDS" :key="k" :value="k">{{ k }}</option>
+              </select>
+            </div>
+            <div class="mt-2 grid items-center gap-2 sm:grid-cols-[150px_1fr_auto]">
+              <select v-if="needsCategorie(s.kind)" v-model="s.categorie" :class="inputCls">
+                <option :value="null" disabled>catégorie…</option>
+                <option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
+              </select>
+              <span v-else class="text-xs text-ink-3">— (pas de catégorie)</span>
+              <input v-model="s.aide" placeholder="Aide (optionnel)" :class="inputCls" />
+              <BaseButton size="sm" variant="ghost" @click="removeSection(i)">Retirer</BaseButton>
+            </div>
           </div>
+        </div>
+        <p v-if="gabError" class="mt-3 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning">
+          {{ gabError }}
+        </p>
+        <div class="mt-3 flex justify-end">
+          <BaseButton :disabled="gabBusy" @click="saveGabarit">
+            <AppIcon name="check" :size="15" /> {{ gabBusy ? 'Enregistrement…' : 'Enregistrer le gabarit' }}
+          </BaseButton>
         </div>
       </BaseCard>
 
-      <BaseCard title="Gabarit de fiche de poste" class="min-w-0">
-        <template #actions><BasePill tone="ai"><Sparkles :size="12" /> Standard Groupe</BasePill></template>
+      <!-- Cartographie -->
+      <BaseCard title="Cartographie départements → métiers">
+        <template #actions>
+          <BaseButton size="sm" variant="ghost" @click="addDept">+ Ajouter un département</BaseButton>
+        </template>
         <p class="mb-3 text-xs text-ink-3">
-          Toute fiche suit cette structure. C'est la <b>fiche de référence</b> dont dérivent les
-          offres et missions (voir modèle Fiche → Offre → Candidature).
+          Chaque département : clé (unique), nom, pôle (optionnel), et la liste des métiers (un par ligne).
         </p>
-        <ol class="space-y-2.5">
-          <li v-for="s in gabarit" :key="s.n" class="flex gap-3">
-            <span class="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-green-soft text-xs font-bold text-green-deep">
-              {{ s.n }}
-            </span>
-            <div class="min-w-0">
-              <div class="text-sm font-semibold text-ink">{{ s.title }}</div>
-              <div class="text-xs text-ink-3">{{ s.desc }}</div>
+        <div class="space-y-2">
+          <div v-for="(d, i) in depts" :key="i" class="rounded-xl border border-border bg-panel p-2.5">
+            <div class="grid gap-2 sm:grid-cols-[150px_1fr_1fr]">
+              <input v-model="d.key" placeholder="clé" :class="inputCls" />
+              <input v-model="d.nom" placeholder="Nom du département" :class="inputCls" />
+              <input v-model="d.pole" placeholder="Pôle (optionnel)" :class="inputCls" />
             </div>
-          </li>
-        </ol>
+            <div class="mt-2 flex gap-2">
+              <textarea v-model="d.metiersText" rows="3" placeholder="Un métier par ligne" :class="[inputCls, 'flex-1']" />
+              <BaseButton size="sm" variant="ghost" @click="removeDept(i)">Retirer</BaseButton>
+            </div>
+          </div>
+        </div>
+        <p v-if="cartoError" class="mt-3 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning">
+          {{ cartoError }}
+        </p>
+        <div class="mt-3 flex justify-end">
+          <BaseButton :disabled="cartoBusy" @click="saveCarto">
+            <AppIcon name="check" :size="15" /> {{ cartoBusy ? 'Enregistrement…' : 'Enregistrer la cartographie' }}
+          </BaseButton>
+        </div>
       </BaseCard>
     </div>
   </div>

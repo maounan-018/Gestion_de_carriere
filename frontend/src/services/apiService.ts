@@ -20,6 +20,7 @@ import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
+import type { GabaritDoc, CartoDoc } from '@/types/referentiel'
 import { apiFetch, getCsrf, ApiError } from './http'
 import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
@@ -107,6 +108,24 @@ const SUCCESSION_MOCK = {
     '3. Écarts à combler : management d’équipe, pilotage budgétaire.\n' +
     '4. Risques : 1 poste critique sans relève identifiée — vivier à constituer.',
   model: 'mock',
+}
+
+/** Référentiels éditables (mocks hors backend). */
+const GABARIT_MOCK: GabaritDoc = {
+  version: 1,
+  sections: [
+    { key: 'intitule_poste', label: 'Intitulé du poste', kind: 'metadata' },
+    { key: 'mission', label: 'Mission', kind: 'freetext', categorie: 'metier' },
+    { key: 'competences_metiers', label: 'Compétences métiers', kind: 'skill_list', categorie: 'metier' },
+    { key: 'langues', label: 'Langues', kind: 'languages' },
+  ],
+}
+const CARTO_MOCK: CartoDoc = {
+  version: 2,
+  departements: [
+    { key: 'risques', nom: 'Risques', pole: 'Fonctions support', metiers: ['Analyste risques', 'Credit officer'] },
+    { key: 'corporate_banking', nom: 'Corporate Banking', pole: 'Lignes métiers commerciales', metiers: ["Chargé d'affaires entreprises"] },
+  ],
 }
 
 export const apiService = {
@@ -500,6 +519,38 @@ export const apiService = {
       { method: 'POST', body: { departement_key: departementKey } },
     )
     return { effectif: r.effectif, plan: r.plan, model: r.model }
+  },
+  /** Gabarit de fiche (référentiel éditable). */
+  async getGabarit(): Promise<GabaritDoc> {
+    if (MODE === 'mock') {
+      await delay(150)
+      return structuredClone(GABARIT_MOCK)
+    }
+    return apiFetch<GabaritDoc>('/fiches/gabarit')
+  },
+  /** Enregistre le gabarit (RH/ADMIN). Rejette (ApiError 400) si invalide. */
+  async saveGabarit(doc: GabaritDoc): Promise<GabaritDoc> {
+    if (MODE === 'mock') {
+      await delay(300)
+      return doc
+    }
+    return apiFetch<GabaritDoc>('/fiches/gabarit', { method: 'PUT', body: doc })
+  },
+  /** Cartographie départements→métiers (référentiel éditable). */
+  async getCartographie(): Promise<CartoDoc> {
+    if (MODE === 'mock') {
+      await delay(150)
+      return structuredClone(CARTO_MOCK)
+    }
+    return apiFetch<CartoDoc>('/fiches/cartographie')
+  },
+  /** Enregistre la cartographie (RH/ADMIN). Rejette (ApiError 400) si invalide. */
+  async saveCartographie(doc: CartoDoc): Promise<CartoDoc> {
+    if (MODE === 'mock') {
+      await delay(300)
+      return doc
+    }
+    return apiFetch<CartoDoc>('/fiches/cartographie', { method: 'PUT', body: doc })
   },
 
   // ============================================================ Écritures
