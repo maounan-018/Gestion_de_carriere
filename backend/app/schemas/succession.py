@@ -14,6 +14,8 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -27,3 +29,16 @@ class SuccessionResponse(BaseModel):
     effectif: int                 # nb de collaborateurs pris en compte
     plan: str                     # plan de succession rédigé (raisonnement)
     model: str
+
+
+class SuccessionJobLaunched(BaseModel):
+    """Accusé de lancement du job (le client interroge ensuite /succession/jobs/{id})."""
+    job_id: str
+    status: str = "pending"
+
+
+class SuccessionJobStatus(BaseModel):
+    """État d'un job de succession : `result` peuplé quand `status == done`."""
+    status: Literal["pending", "done", "error"]
+    result: SuccessionResponse | None = None
+    error: str | None = None

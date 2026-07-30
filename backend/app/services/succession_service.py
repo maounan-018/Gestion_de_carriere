@@ -84,3 +84,18 @@ def plan_succession(db: Session, departement_key: str) -> dict:
         plan = "Plan de succession indisponible (service IA momentanément indisponible)."
     return {"departement_key": departement_key, "effectif": effectif,
             "plan": plan, "model": model}
+
+
+# --- Version ASYNCHRONE : qwen3.6 (~4 min) ne doit pas tenir une requête HTTP ni
+#     bloquer le verrou GPU pendant l'attente du client → thread de fond + polling.
+def launch_succession_job(user_id: int, departement_key: str) -> str:
+    """Lance le plan de succession en tâche de fond ; renvoie un job_id à interroger."""
+    from app.services import async_job
+    return async_job.submit(
+        user_id, lambda db: plan_succession(db, departement_key), label="succession")
+
+
+def get_succession_job(job_id: str, user_id: int) -> dict | None:
+    """État du job de succession (réservé à son propriétaire). None si inconnu/autre user."""
+    from app.services import async_job
+    return async_job.get(job_id, user_id)
