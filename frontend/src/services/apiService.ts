@@ -92,6 +92,23 @@ const MOBILITE_MOCK: MobiliteItem[] = [
   { id: 3, metier: 'Conseiller en investissements financiers', source: 'O*NET', partagees: 4 },
 ]
 
+/** Départements + plan de succession (mocks hors backend). */
+const DEPTS_MOCK: { key: string; nom: string }[] = [
+  { key: 'risques', nom: 'Risques' },
+  { key: 'corporate_banking', nom: 'Corporate Banking' },
+  { key: 'ressources_humaines', nom: 'Ressources Humaines' },
+]
+const SUCCESSION_MOCK = {
+  effectif: 8,
+  plan:
+    'PLAN DE SUCCESSION — synthèse (démonstration)\n\n' +
+    '1. Rôles clés et successeurs internes potentiels : le poste de Directeur de pôle a 2 successeurs pressentis.\n' +
+    '2. Préparation : 1 prêt à 12 mois, 1 à développer sur 24 mois.\n' +
+    '3. Écarts à combler : management d’équipe, pilotage budgétaire.\n' +
+    '4. Risques : 1 poste critique sans relève identifiée — vivier à constituer.',
+  model: 'mock',
+}
+
 export const apiService = {
   async getOffers(): Promise<Offer[]> {
     if (MODE === 'mock') {
@@ -462,6 +479,28 @@ export const apiService = {
     }
     return mapCollabProfile(await apiFetch<ProfilCarriereOut>('/profils/me/carriere'))
   },
+  /** Liste des départements (cartographie) — pour les sélecteurs RH. */
+  async getDepartements(): Promise<{ key: string; nom: string }[]> {
+    if (MODE === 'mock') {
+      await delay(120)
+      return DEPTS_MOCK
+    }
+    const rows = await apiFetch<{ key: string; nom: string }[]>('/fiches/departements')
+    return rows.map((d) => ({ key: d.key, nom: d.nom }))
+  },
+  /** Plan de succession raisonné d'un département (RH). ⚠️ En live : IA de
+   *  raisonnement lourde (qwen3.6) — peut prendre plus d'une minute. */
+  async getSuccession(departementKey: string): Promise<{ effectif: number; plan: string; model: string }> {
+    if (MODE === 'mock') {
+      await delay(800)
+      return SUCCESSION_MOCK
+    }
+    const r = await apiFetch<{ departement_key: string; effectif: number; plan: string; model: string }>(
+      '/rh/succession',
+      { method: 'POST', body: { departement_key: departementKey } },
+    )
+    return { effectif: r.effectif, plan: r.plan, model: r.model }
+  },
 
   // ============================================================ Écritures
   /** Postuler à une offre (collab). `offerKey` = id backend (mapOffre). Le profil
@@ -545,5 +584,24 @@ export const apiService = {
       return
     }
     await apiFetch(`/profils/${id}`, { method: 'PATCH', body: patch })
+  },
+  /** Extraire les compétences DÉMONTRÉES d'une évaluation (manager/RH) et les
+   *  ajouter au profil (source=evaluation_mission|performance). Renvoie le nombre
+   *  de compétences détectées pour ce type. ⚠️ Utilise Ollama en live. */
+  async extraireEvaluation(
+    profilId: string,
+    texte: string,
+    type: 'mission' | 'performance' = 'mission',
+  ): Promise<number> {
+    if (MODE === 'mock') {
+      await delay(500)
+      return 3
+    }
+    const p = await apiFetch<ProfilOut>(`/profils/${profilId}/extraction-evaluation`, {
+      method: 'POST',
+      body: { texte, type },
+    })
+    const src = type === 'mission' ? 'evaluation_mission' : 'evaluation_performance'
+    return (p.competences ?? []).filter((c) => c.source === src).length
   },
 }
