@@ -26,9 +26,10 @@ from app.auth.dependencies import require_roles, get_current_user
 from app.auth import ownership
 from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role, User
+from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
-                                 MobiliteItem)
+                                 EvaluationExtractionRequest, MobiliteItem)
 from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service, cv_extraction_service
 
@@ -161,7 +162,28 @@ def extraire_cv_vers_profil(profil_id: int, data: CvExtractionRequest,
     `source=cv` ; par défaut on remplace les précédentes issues d'un CV (idempotent)."""
     ownership.require_profil_edit(db, user, profil_id)          # 404 si absent, 403 hors périmètre
     comps = cv_extraction_service.extraire_cv(db, data.texte, data.top_k)
-    out = profil_service.enregistrer_competences_cv(db, profil_id, comps, remplacer=data.remplacer)
+    out = profil_service.enregistrer_competences_extraites(
+        db, profil_id, comps, CompetenceSource.CV, remplacer=data.remplacer)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    return out
+
+
+@router.post("/{profil_id}/extraction-evaluation", response_model=ProfilOut,
+             dependencies=[Depends(ia_rate_limit)],
+             summary="Extraire les compétences démontrées d'une évaluation (manager/RH)")
+def extraire_evaluation_vers_profil(profil_id: int, data: EvaluationExtractionRequest,
+                                    user: User = Depends(get_current_user),
+                                    db: Session = Depends(get_db)) -> ProfilOut:
+    """⚠️ Utilise Ollama. Ownership : RH/ADMIN ou le MANAGER du profil (l'évaluation
+    vient de la hiérarchie). Les compétences DÉMONTRÉES sont ajoutées avec
+    `source=evaluation_mission|evaluation_performance` (idempotent par type)."""
+    ownership.require_profil_evaluation(db, user, profil_id)    # 404/403 (RH-ADMIN ou manager)
+    source = (CompetenceSource.EVAL_MISSION if data.type == "mission"
+              else CompetenceSource.EVAL_PERF)
+    comps = cv_extraction_service.extraire_evaluation(db, data.texte, data.top_k)
+    out = profil_service.enregistrer_competences_extraites(
+        db, profil_id, comps, source, remplacer=data.remplacer)
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out

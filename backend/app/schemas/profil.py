@@ -17,6 +17,7 @@ EMPLACEMENT MVC
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -47,6 +48,15 @@ class CvExtractionRequest(BaseModel):
                        description="Compétences canoniques rapprochées par compétence extraite.")
     remplacer: bool = Field(True, description="Remplacer les compétences déjà issues d'un CV "
                                               "(source=cv) avant d'ajouter les nouvelles.")
+
+
+class EvaluationExtractionRequest(BaseModel):
+    """Entrée de l'extraction évaluation → profil (compétences DÉMONTRÉES)."""
+    texte: str = Field(..., min_length=10, description="Compte-rendu d'évaluation à analyser.")
+    type: Literal["mission", "performance"] = Field(
+        "mission", description="Nature de l'évaluation (source = evaluation_mission | evaluation_performance).")
+    top_k: int = Field(1, ge=1, le=5)
+    remplacer: bool = Field(True, description="Remplacer les compétences déjà issues de ce type d'évaluation.")
 
 
 class ProfilCreate(BaseModel):

@@ -84,7 +84,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ✅ **Passerelles de mobilité** intégrées au profil — `GET /api/profils/{id}/mobilite`
   (`occupation_service.suggest_occupations`, pondéré par rareté type-IDF, pur graphe sans LLM) : métiers ESCO/O*NET
   mobilisant le plus les compétences détenues ancrées, hors poste actuel ; ownership propriétaire / manager / RH-ADMIN
-- ⬜ Extraction depuis **évaluations de mission (managers)** et **évaluations de performance**
+- ✅ Extraction depuis **évaluations de mission (managers)** et **évaluations de performance** —
+  `POST /api/profils/{id}/extraction-evaluation` (`cv_extraction_service.extraire_evaluation`) : compétences
+  DÉMONTRÉES ancrées, `source=evaluation_mission|evaluation_performance` (idempotent par type) ;
+  ownership RH/ADMIN **ou manager du profil** (jamais l'auto-déclaration), rate-limité
 - ✅ **Dashboards RH — cartographie des compétences** (`/api/dashboards/cartographie` : effectif, niveau
   moyen, compétences phares par département) + **KPIs** RH/manager + **veille entretiens** + **alertes RH**
   dérivées de signaux réels — endpoints livrés

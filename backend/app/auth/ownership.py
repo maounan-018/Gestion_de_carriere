@@ -96,6 +96,18 @@ def require_profil_edit(db: Session, user: User, profil_id: int) -> Profil:
     raise HTTPException(status_code=403, detail="Ce profil est hors de votre périmètre.")
 
 
+def require_profil_evaluation(db: Session, user: User, profil_id: int) -> Profil:
+    """Enrichir un profil depuis une ÉVALUATION : réservé à RH/ADMIN ou au MANAGER
+    du profil. L'évaluation vient de la hiérarchie, jamais de l'auto-déclaration —
+    le propriétaire (COLLAB) n'est donc PAS autorisé ici. 404 si absent, 403 sinon."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    if _is_global(user) or (user.role == Role.MANAGER and is_manager_of_profil(db, user.id, p)):
+        return p
+    raise HTTPException(status_code=403, detail="Ce profil est hors de votre périmètre.")
+
+
 # --------------------------------------------------------------- Candidatures
 
 def require_own_profil_for_candidature(db: Session, user: User, profil_id: int) -> None:
