@@ -35,8 +35,10 @@ taches:
     num_ctx: 4096
 
   conseil:                      # recommandations mobilité / mentor / formation
-    model: mistral-nemo         # meilleur FR (21 tok/s, léger offload accepté)
-    fallback: llama3.1:8b       # bascule si on veut la vitesse (53 tok/s)
+    model: llama3.1:8b          # 8B tenant 100% GPU (~53 tok/s), SANS thinking :
+                                # évite l'offload du 12B mistral-nemo (~5 tok/s) et
+                                # les raisonnements longs de qwen3 qui plombaient la reco.
+    fallback: mistral-nemo      # repli qualité FR si besoin
     temperature: 0.3
     num_ctx: 4096
 
