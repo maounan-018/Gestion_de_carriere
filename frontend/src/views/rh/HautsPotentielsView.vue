@@ -17,6 +17,12 @@ const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
 
+// Plan de succession (IA de raisonnement, POST /rh/succession).
+const depts = ref<{ key: string; nom: string }[]>([])
+const selectedDept = ref('')
+const succBusy = ref(false)
+const succPlan = ref<{ effectif: number; plan: string; model: string } | null>(null)
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -25,6 +31,13 @@ async function load() {
       apiService.getHautsPotentiels(),
       apiService.getRhPeople(),
     ])
+    apiService
+      .getDepartements()
+      .then((d) => {
+        depts.value = d
+        if (d[0] && !selectedDept.value) selectedDept.value = d[0].key
+      })
+      .catch(() => { depts.value = [] })
   } catch {
     error.value = 'Impossible de charger les hauts potentiels.'
   } finally {
@@ -35,6 +48,19 @@ onMounted(load)
 
 function person(id: string) {
   return people.value.find((p) => p.id === id)
+}
+
+async function generateSuccession() {
+  if (!selectedDept.value || succBusy.value) return
+  succBusy.value = true
+  succPlan.value = null
+  try {
+    succPlan.value = await apiService.getSuccession(selectedDept.value)
+  } catch {
+    toast('Analyse de succession indisponible pour le moment.', 'error')
+  } finally {
+    succBusy.value = false
+  }
 }
 </script>
 
@@ -67,15 +93,38 @@ function person(id: string) {
       </BaseCard>
 
       <BaseCard title="Postes critiques · succession">
-        <div class="flex flex-wrap items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-3">
+        <div class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-3">
           <AppIcon name="flag" :size="18" class="text-warning" />
           <div class="min-w-0 flex-1">
             <h4 class="text-sm font-bold text-ink">Directeur Asset Management</h4>
             <p class="text-xs text-ink-2">Poste clé sans successeur désigné · vivier à constituer.</p>
           </div>
-          <BaseButton size="sm" @click="toast('Analyse de succession lancée', 'info')">
-            Lancer une analyse
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label class="mb-1 block text-xs font-semibold text-ink-2">Département à analyser</label>
+            <select
+              v-model="selectedDept"
+              class="rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+            >
+              <option v-for="d in depts" :key="d.key" :value="d.key">{{ d.nom }}</option>
+            </select>
+          </div>
+          <BaseButton :disabled="succBusy || !selectedDept" @click="generateSuccession">
+            <AppIcon name="route" :size="15" />
+            {{ succBusy ? 'Analyse en cours…' : 'Générer le plan de succession' }}
           </BaseButton>
+        </div>
+        <p v-if="succBusy" class="mt-2 text-xs text-ink-3">
+          Raisonnement IA en cours — cela peut prendre plus d'une minute.
+        </p>
+
+        <div v-if="succPlan" class="mt-4 rounded-xl border border-border bg-panel p-4">
+          <p class="mb-2 text-xs text-ink-3">
+            Effectif analysé : {{ succPlan.effectif }} · modèle {{ succPlan.model }}
+          </p>
+          <div class="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{{ succPlan.plan }}</div>
         </div>
       </BaseCard>
     </template>

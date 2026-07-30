@@ -39,10 +39,33 @@ watch(() => route.params.id, load)
 const showEval = ref(false)
 const evalScore = ref('4')
 const evalComment = ref('')
-function submitEval() {
-  showEval.value = false
-  toast('Évaluation transmise')
-  evalComment.value = ''
+const evalBusy = ref(false)
+
+async function submitEval() {
+  const texte = evalComment.value.trim()
+  evalBusy.value = true
+  try {
+    // L'appréciation nourrit l'extraction des compétences DÉMONTRÉES (source=éval).
+    if (texte.length >= 10) {
+      const n = await apiService.extraireEvaluation(route.params.id as string, texte, 'mission')
+      toast(
+        n > 0
+          ? `Évaluation transmise · ${n} compétence(s) détectée(s) et ajoutée(s) au profil`
+          : 'Évaluation transmise',
+        'ok',
+      )
+      await load() // rafraîchit la fiche (compétences mises à jour)
+    } else {
+      toast('Évaluation transmise')
+    }
+    showEval.value = false
+    evalComment.value = ''
+  } catch {
+    toast("Évaluation transmise (extraction des compétences indisponible)", 'info')
+    showEval.value = false
+  } finally {
+    evalBusy.value = false
+  }
 }
 </script>
 
@@ -166,8 +189,10 @@ function submitEval() {
         </div>
       </div>
       <template #footer>
-        <BaseButton variant="secondary" size="sm" @click="showEval = false">Annuler</BaseButton>
-        <BaseButton size="sm" @click="submitEval"><AppIcon name="send" :size="14" /> Transmettre</BaseButton>
+        <BaseButton variant="secondary" size="sm" :disabled="evalBusy" @click="showEval = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="evalBusy" @click="submitEval">
+          <AppIcon name="send" :size="14" /> {{ evalBusy ? 'Analyse…' : 'Transmettre' }}
+        </BaseButton>
       </template>
     </BaseModal>
   </div>
