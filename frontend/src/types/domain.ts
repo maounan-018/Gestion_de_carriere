@@ -160,6 +160,14 @@ export interface RecoData {
   plan: string
 }
 
+/** Passerelle de mobilité fondée sur les compétences détenues (graphe ESCO/O*NET). */
+export interface MobiliteItem {
+  id: number
+  metier: string
+  source: string       // esco | onet | sfia
+  partagees: number    // nb de compétences détenues partagées avec ce métier
+}
+
 /* ------------------------------------------------------------- Formations */
 export type FormationStatus = 'recommended' | 'in-progress' | 'done'
 export interface Formation {

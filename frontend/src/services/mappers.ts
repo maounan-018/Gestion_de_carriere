@@ -10,7 +10,7 @@ import type {
   IconKey, NotificationItem, Formation, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
   Offer, OfferType, MetaItem, Candidature, CandidatureStatus,
-  RecoData, RecoSkill, Passerelle,
+  RecoData, RecoSkill, Passerelle, MobiliteItem,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix } from '@/types/rh'
@@ -677,5 +677,24 @@ export function mapCartoMatrix(m: CartoMatrixOut): CartoMatrix {
       niveaux: l.niveaux,
       people: l.people ?? [],
     })),
+  }
+}
+
+/* ------------------------------------------------------- Mobilité (passerelles) */
+export interface MobiliteOut {
+  occupation_id: number
+  metier: string
+  source: string
+  competences_partagees: number
+}
+
+const SOURCE_LABEL: Record<string, string> = { esco: 'ESCO', onet: 'O*NET', sfia: 'SFIA' }
+
+export function mapMobilite(m: MobiliteOut): MobiliteItem {
+  return {
+    id: m.occupation_id,
+    metier: m.metier,
+    source: SOURCE_LABEL[(m.source ?? '').toLowerCase()] ?? m.source,
+    partagees: m.competences_partagees,
   }
 }
