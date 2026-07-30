@@ -525,17 +525,32 @@ export const apiService = {
     return rows.map((d) => ({ key: d.key, nom: d.nom }))
   },
   /** Plan de succession raisonné d'un département (RH). ⚠️ En live : IA de
-   *  raisonnement lourde (qwen3.6) — peut prendre plus d'une minute. */
+   *  raisonnement lourde (qwen3.6, ~4 min) → mode ASYNCHRONE (job + polling),
+   *  comme la reco : requêtes courtes, pas de HTTP tenu (timeout proxy) ni de
+   *  verrou GPU maintenu pendant l'attente du client. */
   async getSuccession(departementKey: string): Promise<{ effectif: number; plan: string; model: string }> {
     if (MODE === 'mock') {
       await delay(800)
       return SUCCESSION_MOCK
     }
-    const r = await apiFetch<{ departement_key: string; effectif: number; plan: string; model: string }>(
-      '/rh/succession',
-      { method: 'POST', body: { departement_key: departementKey } },
-    )
-    return { effectif: r.effectif, plan: r.plan, model: r.model }
+    const { job_id } = await apiFetch<{ job_id: string }>('/rh/succession/async', {
+      method: 'POST',
+      body: { departement_key: departementKey },
+    })
+    for (let i = 0; i < 180; i++) {
+      // ~180 × 2 s = 6 min de marge (le raisonnement qwen3.6 dure ~4 min).
+      await delay(2000)
+      const s = await apiFetch<{
+        status: string
+        result?: { departement_key: string; effectif: number; plan: string; model: string }
+        error?: string
+      }>(`/rh/succession/jobs/${job_id}`)
+      if (s.status === 'done' && s.result) {
+        return { effectif: s.result.effectif, plan: s.result.plan, model: s.result.model }
+      }
+      if (s.status === 'error') throw new Error(s.error || 'Échec du plan de succession.')
+    }
+    throw new Error('Le plan de succession a expiré (délai dépassé).')
   },
   /** Gabarit de fiche (référentiel éditable). */
   async getGabarit(): Promise<GabaritDoc> {
