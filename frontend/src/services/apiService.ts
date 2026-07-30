@@ -15,7 +15,7 @@ import {
   RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
@@ -28,8 +28,8 @@ import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
-  mapMobilite,
-  type MobiliteOut,
+  mapMobilite, mapFamille,
+  type MobiliteOut, type FamilleOut,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
@@ -91,6 +91,13 @@ const MOBILITE_MOCK: MobiliteItem[] = [
   { id: 1, metier: 'Chargé de clientèle patrimoniale', source: 'ESCO', partagees: 6 },
   { id: 2, metier: 'Analyste crédit corporate', source: 'ESCO', partagees: 5 },
   { id: 3, metier: 'Conseiller en investissements financiers', source: 'O*NET', partagees: 4 },
+]
+
+/** Tensions par famille de compétences (mock hors backend). */
+const FAMILLES_MOCK: FamilleTension[] = [
+  { famille: 'Métier', detenues: 62, profilsCouverts: 25, niveauMoyen: 3.4, demande: 30, tension: 'forte' },
+  { famille: 'Comportementale', detenues: 40, profilsCouverts: 12, niveauMoyen: 3.1, demande: 12, tension: 'moyenne' },
+  { famille: 'Outils & Tech', detenues: 18, profilsCouverts: 8, niveauMoyen: 2.8, demande: 2, tension: 'faible' },
 ]
 
 /** Départements + plan de succession (mocks hors backend). */
@@ -428,6 +435,16 @@ export const apiService = {
       }
     }
     return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/cartographie'))
+  },
+  /** Tensions par famille de compétences (offre interne détenue vs demande des
+   *  offres ouvertes). Complète la cartographie par pôle. */
+  async getFamilles(): Promise<FamilleTension[]> {
+    if (MODE === 'mock') {
+      await delay()
+      return FAMILLES_MOCK
+    }
+    const rows = await apiFetch<FamilleOut[]>('/dashboards/familles')
+    return rows.map(mapFamille)
   },
   async getRhKpis(): Promise<RhKpi[]> {
     if (MODE === 'mock') {

@@ -93,7 +93,8 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   dérivées de signaux réels — endpoints livrés
 - ✅ Enrichir la cartographie — **vue par FAMILLE de compétences** (`GET /api/dashboards/familles`, RH/ADMIN) :
   offre interne détenue (profils / compétences / niveau moyen) confrontée à la DEMANDE des offres ouvertes
-  → **signal de tension** par famille (indicatif), au-delà de l'agrégation par département
+  → **signal de tension** par famille (indicatif), au-delà de l'agrégation par département.
+  **Surfacé** : panneau « Tensions par famille » sous la heatmap dans `rh/CartographieView.vue`
 - 🅿️ **Mini-jeux** de détection de compétences par thème (plus tard, recherches approfondies)
 
 ## IV bis. API applicative (endpoints alimentant le front) — ~62 routes déclarées
