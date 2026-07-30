@@ -13,7 +13,7 @@ import type {
   RecoData, RecoSkill, Passerelle, MobiliteItem,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
-import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix } from '@/types/rh'
+import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix, FamilleTension, TensionLevel } from '@/types/rh'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 
 /* ------------------------------------------------------------------ Backend */
@@ -677,6 +677,29 @@ export function mapCartoMatrix(m: CartoMatrixOut): CartoMatrix {
       niveaux: l.niveaux,
       people: l.people ?? [],
     })),
+  }
+}
+
+/* --------------------------------------------------- Familles & tensions */
+export interface FamilleOut {
+  famille: string
+  detenues: number
+  profils_couverts: number
+  niveau_moyen: number | null
+  demande: number
+  tension: string
+}
+
+export function mapFamille(f: FamilleOut): FamilleTension {
+  const tension: TensionLevel =
+    f.tension === 'forte' || f.tension === 'moyenne' ? f.tension : 'faible'
+  return {
+    famille: humanizeFamille(f.famille),
+    detenues: f.detenues,
+    profilsCouverts: f.profils_couverts,
+    niveauMoyen: f.niveau_moyen,
+    demande: f.demande,
+    tension,
   }
 }
 

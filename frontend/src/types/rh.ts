@@ -45,6 +45,17 @@ export interface CartoMatrix {
   lignes: CartoLigne[]
 }
 
+export type TensionLevel = 'faible' | 'moyenne' | 'forte'
+/** Vue par FAMILLE : offre interne détenue vs demande des offres ouvertes → tension. */
+export interface FamilleTension {
+  famille: string // libellé humanisé
+  detenues: number
+  profilsCouverts: number
+  niveauMoyen: number | null
+  demande: number
+  tension: TensionLevel
+}
+
 /* ---------------------------------------------------------------------- KPI */
 export interface RhKpi {
   icon: IconKey

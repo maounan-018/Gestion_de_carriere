@@ -18,6 +18,7 @@ import {
   mapAlerte,
   mapReco,
   mapMobilite,
+  mapFamille,
   mapRhOffre,
   mapRhCandidate,
   mapVacancy,
@@ -498,5 +499,15 @@ describe('mapMobilite', () => {
   })
   it('conserve une source inconnue telle quelle', () => {
     expect(mapMobilite({ occupation_id: 1, metier: 'X', source: 'maison', competences_partagees: 2 }).source).toBe('maison')
+  })
+})
+
+describe('mapFamille', () => {
+  it('mappe et humanise la famille', () => {
+    const f = mapFamille({ famille: 'outil_technologie', detenues: 18, profils_couverts: 8, niveau_moyen: 2.8, demande: 2, tension: 'faible' })
+    expect(f).toMatchObject({ famille: 'Outils & Tech', profilsCouverts: 8, demande: 2, tension: 'faible' })
+  })
+  it('replie une tension inconnue sur faible', () => {
+    expect(mapFamille({ famille: 'metier', detenues: 1, profils_couverts: 1, niveau_moyen: null, demande: 0, tension: 'bizarre' }).tension).toBe('faible')
   })
 })
