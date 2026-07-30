@@ -192,23 +192,24 @@ def passerelles_mobilite(db: Session, profil_id: int, *, k: int = 5) -> list[dic
     return occupation_service.suggest_occupations(db, skill_ids, k=k, exclude_labels=exclude)
 
 
-def enregistrer_competences_cv(db: Session, profil_id: int, comps: list[dict],
-                               *, remplacer: bool = True) -> ProfilOut | None:
-    """Persiste les compétences issues d'un CV (source=cv), avec leur ancrage graphe
-    (skill_id/skill_label_fr). `comps` = dicts {libelle, categorie, niveau, skill_id,
-    skill_label_fr}. Si `remplacer`, purge d'abord les compétences source=cv du profil
-    (ré-extraction idempotente). None si le profil est introuvable."""
+def enregistrer_competences_extraites(db: Session, profil_id: int, comps: list[dict],
+                                      source: str, *, remplacer: bool = True) -> ProfilOut | None:
+    """Persiste des compétences DÉTENUES issues d'une extraction (CV, évaluation…),
+    avec leur ancrage graphe (skill_id/skill_label_fr), sous la provenance `source`.
+    `comps` = dicts {libelle, categorie, niveau, skill_id, skill_label_fr}. Si
+    `remplacer`, purge d'abord les compétences de CETTE MÊME source (ré-extraction
+    idempotente, sans toucher aux autres provenances). None si profil introuvable."""
     p = db.get(Profil, profil_id)
     if not p:
         return None
     if remplacer:
         db.execute(delete(ProfilCompetence).where(
             ProfilCompetence.profil_id == profil_id,
-            ProfilCompetence.source == CompetenceSource.CV))
+            ProfilCompetence.source == source))
     for c in comps:
         db.add(ProfilCompetence(
             profil_id=profil_id, libelle=c["libelle"], categorie=c.get("categorie"),
             niveau=c.get("niveau"), skill_id=c.get("skill_id"),
-            skill_label_fr=c.get("skill_label_fr"), source=CompetenceSource.CV))
+            skill_label_fr=c.get("skill_label_fr"), source=source))
     db.commit()
     return _to_out(db, p)
