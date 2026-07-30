@@ -134,7 +134,8 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 - ⬜ **RGPD / CNDP** : consentement, minimisation, droit de regard du collaborateur
 - ⏳ **Édition gabarit + cartographie** — **API RBAC livrée** (`PUT /api/fiches/gabarit`,
   `GET/PUT /api/fiches/cartographie`, RH/ADMIN) : validation AVANT écriture (400 si cassé, fichier intact),
-  persistance atomique, rechargement à chaud, audité (`CONFIG_CHANGED`) ; reste ⬜ : l'écran d'édition côté UI
+  persistance atomique, rechargement à chaud, audité (`CONFIG_CHANGED`) ; **écran d'édition RH livré** ✅
+  (`rh/ReferentielView.vue` : édition des sections du gabarit + des départements/métiers, validation, retour d'erreur)
 
 ## VI. Intégrations
 - 🅿️ Connecteurs **SIRH HCM** (Workday / SAP…) : différés — **prévoir un point d'intégration/
@@ -153,7 +154,8 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   (tous les endpoints back existent désormais, cf. IV bis)
 - ⏳ Composants transversaux : présents en mock ; **gestion d'erreurs HTTP** (401→connexion, 403→accès refusé, 429→lockout) à finaliser
 - ⬜ **Dashboards analytiques** RH branchés sur `/api/dashboards/*` + `/api/rh/*` (endpoints prêts)
-- ⬜ Écran **édition gabarit / cartographie** (accès autorisé)
+- ✅ Écran **édition gabarit / cartographie** (RH) — `rh/ReferentielView.vue` : éditeur live (GET/PUT), catégorie
+  conditionnelle au kind, métiers par ligne, toast + affichage d'erreur de validation. Vérifié dans le preview.
 - ⬜ **Mentions légales & crédits** (attributions ESCO/O*NET/SFIA — obligation légale)
 - ⬜ **Photos réelles** (4 portraits déjà intégrés dans la maquette) + **blanc/vert, jamais de sombre**
 
