@@ -8,25 +8,29 @@ import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
- * Entretien annuel piloté par l'IA, étape par étape.
+ * Préparation guidée de l'entretien annuel — l'IA en CO-PILOTE, section par section.
  *
- * Le Coach agentique n'a pas de « mode entretien » côté backend (system-prompt
- * fixe). On le pilote donc DEPUIS le front : chaque tour envoie une CONSIGNE
- * d'intervieweur (invisible à l'écran) + l'étape courante. Toute la logique de
- * framing est centralisée dans `frameOpen` / `frameAnswer` : le jour où le
- * backend expose un vrai mode « entretien » (mode + step), il suffira de
- * remplacer ces deux helpers par le passage du `step` au service.
+ * Ici l'IA n'est PAS le manager qui interroge : c'est un coach RH qui accompagne
+ * le concerné à préparer SON propre entretien annuel. À chaque section, la personne
+ * s'exprime, l'IA réagit / conseille / relance. Le Coach agentique n'a pas de « mode
+ * entretien » côté backend (system-prompt fixe) : on le pilote donc DEPUIS le front
+ * via une CONSIGNE (invisible à l'écran) + l'étape courante. Toute la logique de
+ * framing est centralisée dans `frameOpen` / `frameAnswer` : le jour où le backend
+ * expose un vrai mode « entretien » (mode + step), il suffira de remplacer ces deux
+ * helpers par le passage du `step` au service.
  */
 
 const session = useSessionStore()
 
 const STEPS: { label: string; focus: string }[] = [
-  { label: 'Introduction', focus: "accueille chaleureusement et rappelle en une phrase le cadre bienveillant de l'entretien annuel" },
-  { label: 'Bilan des réussites', focus: "ses principales réussites de l'année (encourage la méthode STAR et les résultats chiffrés)" },
-  { label: 'Objectifs 2026', focus: "ses objectifs et priorités pour l'année à venir" },
-  { label: 'Compétences & soft skills', focus: "les compétences développées et ses axes de progression (savoir-être inclus)" },
-  { label: 'Souhaits de formation', focus: "ses besoins et souhaits de formation / développement" },
-  { label: 'Synthèse finale', focus: "récapitule l'entretien en 4-5 puces (réussites, objectifs, formations retenues) et conclus positivement" },
+  { label: 'Introduction', focus: "le cadre de l'entretien annuel" },
+  { label: 'Objectifs & missions', focus: "ses objectifs et missions de l'année écoulée" },
+  { label: 'Réussites', focus: 'ses principales réussites (méthode STAR, résultats chiffrés)' },
+  { label: 'Échecs & difficultés', focus: "ses difficultés ou échecs de l'année et ce qu'il en a appris" },
+  { label: 'Compétences', focus: 'les compétences développées et ses axes de progression (savoir-être inclus)' },
+  { label: 'Souhaits & perspectives', focus: "ses souhaits d'évolution, de mobilité et de formation" },
+  { label: "Conseils de l'agent", focus: 'des conseils personnalisés pour réussir son entretien' },
+  { label: 'Synthèse finale', focus: "récapitule objectifs, réussites, axes de progrès et formations souhaitées, puis conclus positivement" },
 ]
 
 const currentStep = ref(0)
@@ -49,36 +53,53 @@ watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => 
   if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
 })
 
-/* ---- Framing intervieweur (centralisé : point de bascule backend futur) ---- */
+/* ---- Framing co-pilote (centralisé : point de bascule backend futur) ---- */
 function persona(): string {
   const nom = session.user?.name || 'le collaborateur'
   const poste = session.user?.title ? ` (${session.user.title})` : ''
   return `${nom}${poste}`
 }
+function isConseils(i: number): boolean {
+  return i === STEPS.length - 2
+}
+function isLast(i: number): boolean {
+  return i >= STEPS.length - 1
+}
 function consigne(stepIdx: number): string {
   return (
-    `[Tu es le MANAGER qui mène l'entretien annuel de ${persona()}. ` +
-    `Étape en cours : « ${STEPS[stepIdx].label} ». Reste STRICTEMENT dans ce rôle d'intervieweur RH ` +
-    `bienveillant. Ne parle ni d'offres internes ni du catalogue de formations. ` +
+    `[Tu es un COACH RH bienveillant qui aide ${persona()} à PRÉPARER son entretien annuel ` +
+    `(tu n'es pas son manager). Section en cours : « ${STEPS[stepIdx].label} ». Reste STRICTEMENT ` +
+    `dans ce rôle d'accompagnateur. Ne parle ni d'offres internes ni du catalogue de formations. ` +
     `Réponds en français, 2 à 3 phrases maximum.]`
   )
 }
 function frameOpen(stepIdx: number): string {
   const s = STEPS[stepIdx]
-  const consigneFin = atLastStepIdx(stepIdx)
-    ? `Fais la synthèse : ${s.focus}.`
-    : `Ouvre cette étape : ${s.focus}. Termine par UNE seule question ouverte.`
-  return `${consigne(stepIdx)}\n\n${consigneFin}`
+  let task: string
+  if (stepIdx === 0) {
+    task =
+      `Accueille ${persona()} et explique en 1-2 phrases que tu vas l'accompagner, section par ` +
+      `section, à préparer son entretien annuel. Invite-le à démarrer par ses objectifs et missions. ` +
+      `Termine par UNE seule question ouverte.`
+  } else if (isConseils(stepIdx)) {
+    task =
+      `Donne à ${persona()} 2-3 conseils personnalisés pour réussir son entretien (posture, points à ` +
+      `valoriser, formulations), en t'appuyant sur ce qu'il a partagé. Termine en lui demandant s'il ` +
+      `souhaite ajuster un point.`
+  } else if (isLast(stepIdx)) {
+    task = `Fais la synthèse de la préparation : ${s.focus}.`
+  } else {
+    task = `Ouvre la section « ${s.label} » : invite ${persona()} à préparer ${s.focus}. Termine par UNE seule question ouverte.`
+  }
+  return `${consigne(stepIdx)}\n\n${task}`
 }
 function frameAnswer(stepIdx: number, userText: string): string {
   return (
     `${consigne(stepIdx)}\n\n` +
-    `Réagis brièvement à sa réponse (1 phrase), puis pose UNE seule question pour approfondir ` +
-    `« ${STEPS[stepIdx].label} ».\n\nRéponse du collaborateur : ${userText}`
+    `Réagis brièvement (1 phrase de feedback ou de conseil) à ce que ${persona()} vient de dire, ` +
+    `puis pose UNE seule question pour l'aider à approfondir « ${STEPS[stepIdx].label} ».\n\n` +
+    `Ce que ${persona()} a dit : ${userText}`
   )
-}
-function atLastStepIdx(i: number): boolean {
-  return i >= STEPS.length - 1
 }
 
 /* ---- Cœur : un tour streamé (la consigne n'est jamais affichée) ---- */
@@ -91,7 +112,7 @@ async function runTurn(framed: string) {
   const history = [...chat.value] // messages affichés uniquement (sans consignes)
   try {
     await apiService.streamCoachMessage(framed, history, {
-      onTool: () => { streamStatus.value = 'Le manager consulte votre dossier…' },
+      onTool: () => { streamStatus.value = 'Le coach consulte votre dossier…' },
       onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
       onReset: () => { raw = ''; streamingHtml.value = '' },
     })
@@ -119,7 +140,7 @@ async function nextStep() {
   await runTurn(frameOpen(currentStep.value))
 }
 
-// Démarrage : le manager ouvre l'introduction avec une vraie question.
+// Démarrage : le coach ouvre l'introduction.
 onMounted(() => runTurn(frameOpen(0)))
 </script>
 
@@ -160,17 +181,18 @@ onMounted(() => runTurn(frameOpen(0)))
           Passer à l'étape suivante <ArrowRight :size="15" />
         </BaseButton>
         <p v-else class="mt-4 rounded-lg bg-green-soft px-3 py-2 text-xs font-semibold text-green-deep">
-          Dernière étape — le manager rédige la synthèse.
+          Dernière étape — le coach rédige la synthèse.
         </p>
       </div>
 
       <div class="rounded-2xl border border-green-line bg-green-ghost p-4">
         <div class="mb-1 inline-flex items-center gap-1.5 text-xs font-bold text-green-deep">
-          <Sparkles :size="13" /> Entretien IA en direct
+          <Sparkles :size="13" /> Préparation guidée · IA
         </div>
         <p class="text-xs text-ink-2">
-          Votre manager (IA) mène l'entretien étape par étape et réagit à vos réponses réelles. Répondez
-          naturellement, puis avancez avec « Passer à l'étape suivante ».
+          Votre coach IA vous accompagne section par section pour préparer votre entretien annuel.
+          Exprimez-vous : il réagit, vous conseille et vous aide à structurer, puis avancez avec
+          « Passer à l'étape suivante ».
         </p>
       </div>
     </div>
@@ -197,7 +219,7 @@ onMounted(() => runTurn(frameOpen(0)))
             </template>
             <span v-else class="inline-flex items-center gap-1.5 text-ink-3">
               <Sparkles :size="14" class="animate-pulse text-green-deep" />
-              {{ streamStatus || 'Le manager prépare l’entretien…' }}
+              {{ streamStatus || 'Le coach prépare la section…' }}
             </span>
           </div>
         </div>
@@ -207,7 +229,7 @@ onMounted(() => runTurn(frameOpen(0)))
         <MessageSquare :size="16" class="shrink-0 text-green-deep" />
         <input
           v-model="input"
-          :placeholder="atLastStep ? 'Un dernier mot avant de clôturer…' : 'Répondez au manager…'"
+          :placeholder="atLastStep ? 'Un dernier mot avant de clôturer…' : 'Écrivez votre réponse…'"
           :disabled="busy"
           class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
           @keydown.enter="answer()"
