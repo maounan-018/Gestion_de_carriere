@@ -74,6 +74,13 @@ taches:
     format: json
     num_ctx: 8192
 
+  generation_formation:         # génération d'une formation synthétique (LMS) ciblant une compétence
+    model: mistral-nemo         # meilleur français pour un contenu pédagogique réaliste
+    fallback: hermes3:8b
+    temperature: 0.4
+    format: json
+    num_ctx: 4096
+
   raisonnement_batch:           # planification talents / succession (hors-ligne)
     model: qwen3.6              # 23 Go — CPU + RAM, pas de temps réel
     temperature: 0.2

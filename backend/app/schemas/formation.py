@@ -12,7 +12,7 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FormationOut(BaseModel):
@@ -36,3 +36,24 @@ class FormationOut(BaseModel):
         if isinstance(v, str):
             return [t.strip() for t in v.split(",") if t.strip()]
         return v
+
+
+class FormationGenerationRequest(BaseModel):
+    competence: str = Field(..., min_length=2,
+                            description="Compétence à développer (cible de la formation).")
+    persister: bool = Field(False, description="Ajouter la formation générée au catalogue.")
+
+
+class FormationGeneree(BaseModel):
+    """Formation SYNTHÉTIQUE générée (proposition pédagogique). `id` présent si persistée."""
+    titre: str
+    organisme: str | None = None
+    duree: str | None = None
+    niveau: str | None = None
+    domaine: str | None = None
+    skill_cible: str | None = None
+    objectifs: list[str] = []
+    modules: list[str] = []
+    tags: list[str] = []
+    synthetique: bool = True
+    id: int | None = None
