@@ -21,6 +21,21 @@ maquette UI/UX initiale (voir `design/`).
 
 ---
 
+## 🚀 Démarrage rapide (Windows)
+
+Double-cliquez sur **`Lancer-BMCI.bat`** (à la racine) : il démarre toute la stack
+locale — **Ollama** (IA, `:11434`), **backend FastAPI** (`:5001`, env conda
+`bmci-carrieres`), **frontend Vite** (`:3001`, en mode **live** vers le backend) —
+puis ouvre le navigateur sur l'application. Chaque service tourne dans sa fenêtre
+(fermer la fenêtre = arrêter le service).
+
+*Prérequis (une fois)* : conda + env `bmci-carrieres`, Node.js/npm, Ollama +
+modèles (`scripts/pull_models.sh`), et la base `backend/bmci_carrieres.db`
+(migrations `alembic upgrade head` + seed). Pour la maquette **sans** backend :
+`VITE_API_MODE=mock` dans `frontend/.env.local`.
+
+---
+
 ## Où en est-on ? *(màj 2026-07-21)*
 
 | Volet | État |
