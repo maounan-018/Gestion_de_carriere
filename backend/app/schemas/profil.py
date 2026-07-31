@@ -106,6 +106,13 @@ class ProfilOut(BaseModel):
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)
 
 
+class ImportResult(BaseModel):
+    """Bilan d'un import Excel de profils."""
+    importes: int
+    ignorees: int
+    erreurs: list[str] = []
+
+
 class MobiliteItem(BaseModel):
     """Passerelle de mobilité : métier du référentiel proche du profil (partage de
     compétences détenues ancrées au graphe)."""
