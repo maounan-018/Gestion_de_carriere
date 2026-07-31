@@ -145,7 +145,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   + 10 seedées ; **génération IA** d'une formation ciblant une compétence — `POST /api/formations/generer`
   (RH/ADMIN, `formation_generation_service`, mistral-nemo, compétence ancrée au référentiel, option `persister`
   au catalogue, contenu `synthetique=True`). Suivi/avancement = optionnel. (« recherche internet » sans objet : 100 % local.)
-- ⬜ **Import Excel** (fiches, profils réels traités localement) — pattern smart-objective
+- ✅ **Import Excel** de **profils** (openpyxl, 100 % local) — `POST /api/profils/import-excel` (RH/ADMIN) :
+  en-têtes tolérants (nom obligatoire + prenom/matricule/poste/departement/competences), compétences → détenues,
+  savepoint par ligne (une ligne fautive n'arrête pas l'import), fichier illisible → 400, bilan {importes, ignorees, erreurs}.
+  (Import de fiches : même socle réutilisable si besoin.)
 - 🅿️ Comptes de **service** + tokens : différés (partent avec les connecteurs)
 
 ## VII. Frontend (Vue 3, haut de gamme)

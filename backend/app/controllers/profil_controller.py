@@ -18,7 +18,7 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -29,11 +29,27 @@ from app.models.user import Role, User
 from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
-                                 EvaluationExtractionRequest, MobiliteItem, AncrageResult)
+                                 EvaluationExtractionRequest, MobiliteItem, AncrageResult,
+                                 ImportResult)
 from app.schemas.carriere import ProfilCarriereOut
-from app.services import profil_service, cv_extraction_service
+from app.services import profil_service, cv_extraction_service, profil_import_service
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
+
+
+@router.post("/import-excel", response_model=ImportResult,
+             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+             summary="Importer des profils depuis un classeur Excel (RH/ADMIN)")
+async def importer_excel(fichier: UploadFile = File(...),
+                         db: Session = Depends(get_db)) -> ImportResult:
+    """Traité 100 % localement (openpyxl). 1re ligne = en-têtes ; colonnes reconnues :
+    nom (obligatoire), prenom, matricule, poste_actuel, departement_key, competences
+    (séparées par des virgules). Une ligne fautive n'interrompt pas l'import."""
+    data = await fichier.read()
+    try:
+        return ImportResult(**profil_import_service.importer_profils(db, data))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("", response_model=ProfilOut, status_code=201,
