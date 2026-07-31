@@ -34,13 +34,27 @@ def _poids(importance: str | None) -> float:
     return 1.0 if str(importance or "").lower().startswith("essent") else 0.5
 
 
-def build_exigences(extraction: dict) -> list[dict]:
+def _confiance_ancrage(match: dict) -> float:
+    """Confiance d'un ancrage au graphe : rerank_score (cross-encoder ∈[0,1]) si
+    présent, sinon le score de proximité embeddings."""
+    return float(match.get("rerank_score", match.get("score", 0.0)) or 0.0)
+
+
+def build_exigences(extraction: dict, min_ancrage: float = 0.0) -> list[dict]:
     """Transforme la sortie d'extraction en liste d'exigences ancrées au graphe.
     Chaque exigence : {competence (libellé canonique), requete (phrase brute),
-    importance, skill_id, skill_type}."""
+    importance, skill_id, skill_type}.
+
+    `min_ancrage` (GATE de confiance) : si le meilleur match a une confiance sous
+    ce seuil, on le REJETTE (ancrage jugé peu fiable) et on garde le libellé BRUT
+    extrait — évite qu'un libellé vague s'ancre sur une compétence hors-sujet
+    (« Analyse situation » → « évaluer l'état de navires »). Défaut 0.0 = pas de
+    gate (rétrocompat) ; la reco l'active."""
     exigences = []
     for s in extraction.get("skills", []):
         match = s["matches"][0] if s.get("matches") else None
+        if match is not None and _confiance_ancrage(match) < min_ancrage:
+            match = None   # ancrage trop faible -> on retombe sur le libellé brut, fidèle
         exigences.append({
             "competence": (match["label_fr"] if match else s["raw"]),
             "requete": s["raw"] or (match["label_fr"] if match else ""),

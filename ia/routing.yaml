@@ -79,4 +79,13 @@ taches:
     temperature: 0.2
     num_ctx: 8192
 
+  normalisation_entree:         # nettoie une saisie libre bruitée (fautes, annotations,
+                                # franglais) en un intitulé canonique + drapeau de confiance
+    model: qwen3:8b            # le + « compréhensif » sur 8 Go ; raisonnement = atout ici
+    fallback: llama3.1:8b       # repli sans thinking si qwen3 indisponible
+    temperature: 0
+    format: json
+    num_ctx: 2048
+    think: false                # capacité de qwen3 SANS la lenteur des chaînes <think>
+
 # Pool complet : voir scripts/pull_models.sh — Méthode : docs/IA-MODELES-LOCAUX.md

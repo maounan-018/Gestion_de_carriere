@@ -91,10 +91,14 @@ def fence(data: str, tag: str = "donnee") -> str:
 # ============================ Appel Ollama ============================
 
 def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
-                   temperature: float, as_json: bool) -> str:
+                   temperature: float, as_json: bool, think: bool | None = None) -> str:
     """Un appel HTTP à /api/generate ; renvoie le texte brut de 'response'.
     Les erreurs d'infrastructure (Ollama éteint/timeout) lèvent une HTTPException
-    et ne sont pas réessayées (inutile)."""
+    et ne sont pas réessayées (inutile).
+
+    `think` : pour un modèle à raisonnement (qwen3…), `False` coupe le mode
+    « thinking » de façon FIABLE (paramètre Ollama), là où le hack texte `/no_think`
+    n'est pas garanti. `None` = ne rien imposer (défaut du modèle)."""
     payload = {
         "model": model,
         "system": system or "",
@@ -107,6 +111,8 @@ def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
             "seed": settings.AI_SEED,
         },
     }
+    if think is not None:
+        payload["think"] = think        # interrupteur fiable du raisonnement (qwen3…)
     if as_json:
         payload["format"] = "json"
     try:
@@ -139,6 +145,7 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
     as_json = cfg.get("format") == "json"
     num_ctx = int(cfg.get("num_ctx", 4096))
     temperature = float(cfg.get("temperature", 0))
+    think = cfg.get("think")   # None si absent ; False pour couper le thinking (qwen3…)
     models = [cfg["model"]] + ([cfg["fallback"]] if cfg.get("fallback") else [])
     attempts = max(1, settings.AI_MAX_ATTEMPTS)
 
@@ -147,7 +154,7 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
     for model in models:
         for attempt in range(1, attempts + 1):
             try:
-                text = _post_generate(model, prompt, system, num_ctx, temperature, as_json)
+                text = _post_generate(model, prompt, system, num_ctx, temperature, as_json, think)
             except HTTPException as e:
                 # Erreur d'infra (503/504/500 d'Ollama) : inutile de réessayer CE
                 # modèle -> on bascule sur le suivant (fallback défini dans routing.yaml).

@@ -36,10 +36,12 @@ from app.models.profil import Profil, ProfilCompetence
 from app.services import (skill_extraction_service, skill_matching_service,
                           occupation_service)
 from app.services.ai_router import generate, fence
+from app.services.input_normalization_service import normaliser_cible
 
 logger = logging.getLogger(__name__)
 
-_TASK = "conseil"   # -> mistral-nemo (meilleur FR) via routing.yaml
+_TASK = "conseil"   # -> llama3.1:8b via routing.yaml
+_MIN_ANCRAGE = 0.35  # GATE : en-deçà, un ancrage au graphe est jugé peu fiable (écarté)
 
 # --- Cache de reco -----------------------------------------------------------
 # La reco « ma-reco » est LENTE (~85 s, pipeline Ollama sur 8 Go VRAM). Elle est
@@ -122,7 +124,10 @@ _SYSTEM = (
     "Rédige, en français, un PLAN DE DÉVELOPPEMENT concis et actionnable (3 à 5 axes "
     "priorisés) pour aider le collaborateur à atteindre ce poste. Appuie-toi "
     "UNIQUEMENT sur les compétences fournies : n'invente aucune formation, "
-    "certification, ni compétence hors de cette liste. Ton concret et bienveillant."
+    "certification, ni compétence hors de cette liste. Ton concret et bienveillant.\n"
+    "NE REFUSE JAMAIS de répondre : même si les informations sont limitées ou "
+    "imparfaites, produis un plan utile à partir des compétences fournies. Ne "
+    "commente pas la cohérence des données, ne demande pas de précisions : rédige le plan."
 )
 
 
@@ -174,9 +179,10 @@ def _plan_llm(poste_texte: str, score: int, a_developper: list[dict]) -> str:
 def recommander(db: Session, profil_competences: list[str], poste_texte: str,
                 seuil: float = 0.5, max_parcours: int = 5, max_axes: int = 6) -> dict:
     """Produit la recommandation formation & parcours (conforme à RecommendationResponse)."""
-    # 1) Exigences du poste + couverture (réutilise le matching).
+    # 1) Exigences du poste + couverture (réutilise le matching). Le GATE d'ancrage
+    #    écarte les correspondances au graphe peu fiables (évite les écarts hors-sujet).
     extraction = skill_extraction_service.extract_skills(db, poste_texte, top_k=1)
-    exigences = skill_matching_service.build_exigences(extraction)
+    exigences = skill_matching_service.build_exigences(extraction, min_ancrage=_MIN_ANCRAGE)
     score, _couvertes, ecarts = skill_matching_service.evaluate_coverage(
         profil_competences, exigences, seuil)
 
@@ -210,6 +216,22 @@ def recommander(db: Session, profil_competences: list[str], poste_texte: str,
     }
 
 
+def _reco_a_preciser(intitule: str) -> dict:
+    """Réponse DÉGRADÉE (déterministe) quand l'objectif est trop vague pour un plan
+    fiable : on demande de préciser, au lieu de laisser le LLM produire un refus ou
+    des écarts hors-sujet. Même forme que RecommendationResponse."""
+    return {
+        "poste_vise": intitule or None, "score_actuel": 0,
+        "modele_extraction": "-", "modele_conseil": "-",
+        "competences_a_developper": [], "passerelles_metiers": [],
+        "plan_developpement": (
+            "Votre objectif de carrière n'est pas assez précis pour établir un plan "
+            "fiable. Indiquez un poste visé plus explicite (par exemple « Manager "
+            "d'équipe Risques » ou « Chargé d'affaires professionnels ») dans votre "
+            "profil, puis relancez la recommandation."),
+    }
+
+
 def recommander_pour_user(db: Session, user_id: int) -> dict:
     """Recommandation pour le profil LIÉ au compte connecté : compétences détenues
     vs POSTE VISÉ = aspirations du profil (repli : poste actuel). Renvoie une reco
@@ -223,7 +245,15 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
         select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
     ).all()
     labels = [c.skill_label_fr or c.libelle for c in comps] or ["(profil sans compétence)"]
-    poste_texte = (p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
+    poste_brut = (p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
+
+    # Normalise la saisie libre (fautes, annotations parasites…) EN TÊTE du pipeline,
+    # pour que l'extraction voie une entrée propre. Si l'objectif est trop vague
+    # ('ambigu') → on demande de préciser (dégradation gracieuse, pas de refus LLM).
+    norm = normaliser_cible(poste_brut)
+    if norm["confiance"] == "ambigu":
+        return _reco_a_preciser(norm["intitule"])
+    poste_texte = norm["intitule"] or poste_brut   # 'clair' -> normalisé ; 'indisponible' -> brut
     if len(poste_texte) < 10:
         poste_texte = f"Évolution professionnelle vers : {poste_texte}"
 
