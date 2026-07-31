@@ -23,6 +23,22 @@ function goCandidats(key: string) {
   router.push({ name: 'rh.revueCandidats', params: { key } })
 }
 
+// Cycle de vie : transition de statut d'une offre (PATCH /offres/{id}).
+const busyKey = ref<string | null>(null)
+async function changeStatut(o: RhOffer, statut: 'ouverte' | 'pourvue' | 'fermee', label: string) {
+  if (busyKey.value) return
+  busyKey.value = o.key
+  try {
+    await apiService.updateOffreStatut(o.key, statut)
+    toast(label, 'ok')
+    await load()
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la transition', 'error')
+  } finally {
+    busyKey.value = null
+  }
+}
+
 // Publier une offre (RH) — la RH peut publier tous les types, POSTES inclus.
 const showPublish = ref(false)
 const publishing = ref(false)
@@ -98,12 +114,42 @@ const statusLabel: Record<string, string> = {
               <span v-if="o.retenu">Retenu : <b class="text-ink">{{ o.retenu }}</b></span>
             </div>
           </div>
-          <BaseButton v-if="o.retenu" size="sm" variant="secondary" @click="goCandidats(o.key)">
-            Candidat retenu
-          </BaseButton>
-          <BaseButton v-else-if="o.candidates > 0" size="sm" variant="secondary" @click="goCandidats(o.key)">
-            Voir les candidats
-          </BaseButton>
+          <div class="flex flex-wrap items-center gap-2">
+            <!-- Cycle de vie -->
+            <BaseButton
+              v-if="o.status === 'brouillon'"
+              size="sm"
+              :disabled="busyKey === o.key"
+              @click="changeStatut(o, 'ouverte', 'Offre diffusée')"
+            >
+              <AppIcon name="send" :size="14" /> Diffuser
+            </BaseButton>
+            <template v-else-if="o.status === 'ouvert'">
+              <BaseButton
+                size="sm"
+                variant="secondary"
+                :disabled="busyKey === o.key"
+                @click="changeStatut(o, 'pourvue', 'Offre marquée pourvue')"
+              >
+                Marquer pourvue
+              </BaseButton>
+              <BaseButton
+                size="sm"
+                variant="ghost"
+                :disabled="busyKey === o.key"
+                @click="changeStatut(o, 'fermee', 'Offre clôturée')"
+              >
+                Clôturer
+              </BaseButton>
+            </template>
+            <!-- Candidats -->
+            <BaseButton v-if="o.retenu" size="sm" variant="secondary" @click="goCandidats(o.key)">
+              Candidat retenu
+            </BaseButton>
+            <BaseButton v-else-if="o.candidates > 0" size="sm" variant="secondary" @click="goCandidats(o.key)">
+              Voir les candidats
+            </BaseButton>
+          </div>
         </div>
       </BaseCard>
     </div>

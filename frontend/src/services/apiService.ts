@@ -700,6 +700,18 @@ export const apiService = {
       body: { titre: input.titre, type: typeMap[input.type], statut: 'brouillon', synthetique: true },
     })
   },
+  /** Transition de statut d'une offre (RH/manager). Les dates d'ouverture/clôture
+   *  sont posées automatiquement côté serveur. `id` = id backend. */
+  async updateOffreStatut(
+    id: string,
+    statut: 'brouillon' | 'ouverte' | 'pourvue' | 'fermee' | 'annulee',
+  ): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(200)
+      return
+    }
+    await apiFetch(`/offres/${id}`, { method: 'PATCH', body: { statut } })
+  },
   /** Éditer un profil (RH/ADMIN). `id` = profil_id backend. Champs éditables :
    *  poste actuel + aspirations. (Un collaborateur ne peut PAS éditer son propre
    *  profil : PATCH /profils/{id} est réservé RH/ADMIN — pas d'endpoint self-service.) */
