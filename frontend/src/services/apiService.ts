@@ -707,4 +707,19 @@ export const apiService = {
     const src = type === 'mission' ? 'evaluation_mission' : 'evaluation_performance'
     return (p.competences ?? []).filter((c) => c.source === src).length
   },
+  /** Self-service collab : extraire MES compétences détenues depuis mon CV et les
+   *  ajouter à mon profil (source=cv, remplace les précédentes issues d'un CV).
+   *  Résout mon profil via /profils/me/carriere. Renvoie le nb de compétences. */
+  async extraireMonCv(texte: string): Promise<number> {
+    if (MODE === 'mock') {
+      await delay(500)
+      return 4
+    }
+    const me = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
+    const p = await apiFetch<ProfilOut>(`/profils/${me.profil_id}/extraction-cv`, {
+      method: 'POST',
+      body: { texte, remplacer: true },
+    })
+    return (p.competences ?? []).filter((c) => c.source === 'cv').length
+  },
 }

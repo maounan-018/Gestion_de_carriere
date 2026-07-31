@@ -9,6 +9,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ProgressionCurve from '@/components/shared/ProgressionCurve.vue'
@@ -36,6 +37,32 @@ async function load() {
 }
 onMounted(load)
 
+// Self-service : mettre à jour ses compétences détenues depuis son CV.
+const showCv = ref(false)
+const cvText = ref('')
+const cvBusy = ref(false)
+async function submitCv() {
+  const texte = cvText.value.trim()
+  if (texte.length < 10 || cvBusy.value) return
+  cvBusy.value = true
+  try {
+    const n = await apiService.extraireMonCv(texte)
+    toast(
+      n > 0
+        ? `${n} compétence(s) extraite(s) de votre CV et ajoutée(s) à votre profil`
+        : 'Aucune compétence détectée dans ce texte',
+      'ok',
+    )
+    showCv.value = false
+    cvText.value = ''
+    await load() // recharge le profil (compétences mises à jour)
+  } catch {
+    toast('Extraction indisponible pour le moment. Réessayez.', 'error')
+  } finally {
+    cvBusy.value = false
+  }
+}
+
 const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n)
 </script>
 
@@ -54,9 +81,14 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
           <p class="mt-2 max-w-2xl text-sm text-ink-2">{{ profile.description }}</p>
         </div>
-        <BaseButton variant="secondary" @click="toast('La mise à jour de votre profil se fait avec votre RH (poste, aspirations).', 'info')">
-          <AppIcon name="user" :size="15" /> Éditer
-        </BaseButton>
+        <div class="flex flex-wrap gap-2">
+          <BaseButton variant="ai" @click="showCv = true">
+            <Sparkles :size="15" /> Depuis mon CV
+          </BaseButton>
+          <BaseButton variant="secondary" @click="toast('La mise à jour de votre profil se fait avec votre RH (poste, aspirations).', 'info')">
+            <AppIcon name="user" :size="15" /> Éditer
+          </BaseButton>
+        </div>
       </div>
     </BaseCard>
 
@@ -134,5 +166,26 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
         </div>
       </div>
     </div>
+
+    <BaseModal v-model="showCv" title="Mettre à jour mes compétences depuis mon CV">
+      <div class="space-y-3">
+        <p class="text-xs text-ink-3">
+          Collez le texte de votre CV ou un résumé de votre parcours. L'IA en extrait vos compétences
+          détenues et les ajoute à votre profil (source « CV »).
+        </p>
+        <textarea
+          v-model="cvText"
+          rows="8"
+          placeholder="Collez ici votre CV ou un résumé de votre parcours…"
+          class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+        />
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" :disabled="cvBusy" @click="showCv = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="cvBusy || cvText.trim().length < 10" @click="submitCv">
+          <Sparkles :size="14" /> {{ cvBusy ? 'Analyse…' : 'Extraire mes compétences' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
