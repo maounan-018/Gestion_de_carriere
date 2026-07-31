@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import type { TeamMember } from '@/types/manager'
-import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
-import ChatPanel from '@/components/shared/ChatPanel.vue'
 import GuidedInterview from '@/components/shared/GuidedInterview.vue'
+import TeamInterview from '@/components/shared/TeamInterview.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -28,17 +27,6 @@ async function load() {
   }
 }
 onMounted(load)
-
-const memberMessages = computed<ChatMessage[]>(() =>
-  selected.value
-    ? [
-        {
-          from: 'bot',
-          text: `Préparons l'entretien annuel de <b>${selected.value.name}</b> (${selected.value.role}). Points clés : aspiration « ${selected.value.aspiration} », à développer : ${selected.value.gaps.join(', ')}. Par quoi commençons-nous ?`,
-        },
-      ]
-    : [],
-)
 </script>
 
 <template>
@@ -88,12 +76,8 @@ const memberMessages = computed<ChatMessage[]>(() =>
         <button class="text-sm font-semibold text-green-deep hover:underline" @click="selected = null">
           ← Retour à l'équipe
         </button>
-        <ChatPanel
-          :key="selected.id"
-          :messages="memberMessages"
-          placeholder="Conduisez l'entretien…"
-          :bot-reply="`Notez les engagements de ${selected.name} et proposez un plan de développement sur ses écarts.`"
-        />
+        <!-- Vrai entretien IA : le manager mène, l'IA incarne le collaborateur (ancré profil). -->
+        <TeamInterview :key="selected.id" :member="selected" />
       </div>
     </template>
   </div>
