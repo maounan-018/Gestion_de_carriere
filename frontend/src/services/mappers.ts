@@ -484,6 +484,7 @@ export interface RecommendationOut {
   competences_a_developper: EtapeFormationOut[]
   passerelles_metiers: PasserelleOut[]
   plan_developpement: string
+  confiance?: 'clair' | 'ambigu' | 'indisponible'
 }
 
 const RECO_ICON: Record<string, IconKey> = {
@@ -521,6 +522,7 @@ export function mapReco(r: RecommendationOut): RecoData {
     skills,
     passerelles,
     plan: r.plan_developpement || 'Plan de développement personnalisé en cours.',
+    confiance: r.confiance ?? 'clair',
   }
 }
 

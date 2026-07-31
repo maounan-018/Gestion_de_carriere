@@ -28,4 +28,5 @@ export const RECO: RecoData = {
   ],
   plan:
     "Pour viser Manager d'équipe Risques : (1) combler l'écart « Diriger une équipe » via le mentorat ; (2) développer la conduite d'entretien ; (3) monter sur le pilotage du coût du risque.",
+  confiance: 'clair',
 }
