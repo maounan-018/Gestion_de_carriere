@@ -45,6 +45,23 @@ onMounted(load)
       </div>
     </BaseCard>
 
+    <BaseCard>
+      <div class="flex flex-wrap items-center gap-4">
+        <div class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-green-soft text-green-deep">
+          <AppIcon name="chat" :size="20" />
+        </div>
+        <div class="min-w-0 flex-1">
+          <h3 class="font-display text-base font-bold text-ink">Préparer mon entretien annuel</h3>
+          <p class="text-sm text-ink-3">
+            Un coach IA vous accompagne, section par section, pour préparer votre entretien avec votre hiérarchie.
+          </p>
+        </div>
+        <RouterLink :to="{ name: 'rh.monEntretien' }">
+          <BaseButton variant="ai"><AppIcon name="spark" :size="15" /> Démarrer</BaseButton>
+        </RouterLink>
+      </div>
+    </BaseCard>
+
     <LoadingState v-if="loading" label="Chargement de votre espace…" />
     <ErrorState v-else-if="error" :message="error">
       <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>

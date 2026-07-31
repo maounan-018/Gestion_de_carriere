@@ -191,6 +191,12 @@ const rhDetailRoutes: RouteRecordRaw[] = [
     component: () => import('@/views/rh/ReferentielView.vue'),
     meta: { roles: ['rh'], title: 'Référentiel & gabarit de fiche' },
   },
+  {
+    path: 'rh/mon-entretien',
+    name: 'rh.monEntretien',
+    component: () => import('@/views/rh/MonEntretienView.vue'),
+    meta: { roles: ['rh'], title: 'Mon entretien annuel' },
+  },
 ]
 
 const routes: RouteRecordRaw[] = [
