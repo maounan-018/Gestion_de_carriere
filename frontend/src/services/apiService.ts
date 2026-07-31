@@ -457,6 +457,15 @@ export const apiService = {
     const rows = await apiFetch<FamilleOut[]>('/dashboards/familles')
     return rows.map(mapFamille)
   },
+  /** Enrichissement RH : ancre au graphe les compétences détenues non ancrées.
+   *  ⚠️ Peut prendre ~1-2 min au 1er lancement (embeddings + reranker). */
+  async ancrerCompetences(): Promise<{ examinees: number; ancrees: number; categorisees: number }> {
+    if (MODE === 'mock') {
+      await delay(1200)
+      return { examinees: 45, ancrees: 39, categorisees: 6 }
+    }
+    return apiFetch('/profils/ancrer-competences', { method: 'POST' })
+  },
   async getRhKpis(): Promise<RhKpi[]> {
     if (MODE === 'mock') {
       await delay(120)

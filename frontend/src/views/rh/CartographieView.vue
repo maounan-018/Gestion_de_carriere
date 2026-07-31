@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { LayoutGrid } from '@lucide/vue'
+import { LayoutGrid, Anchor } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { CartoMatrix, FamilleTension } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -36,6 +36,30 @@ function goPole(name: string) {
   router.push({ name: 'rh.cartoDetail', params: { pole: name } })
 }
 
+// Enrichissement : ancre au graphe les compétences détenues non ancrées (rare, RH).
+const ancring = ref(false)
+const ancrageMsg = ref('')
+const ancrageOk = ref(false)
+async function ancrer() {
+  if (ancring.value) return
+  ancring.value = true
+  ancrageOk.value = false
+  ancrageMsg.value = 'Ancrage en cours (jusqu’à ~2 min au 1er lancement)…'
+  try {
+    const r = await apiService.ancrerCompetences()
+    ancrageOk.value = true
+    ancrageMsg.value =
+      `${r.ancrees} compétence(s) ancrée(s) sur ${r.examinees} examinée(s)` +
+      (r.categorisees ? `, dont ${r.categorisees} catégorisée(s)` : '') + '.'
+    await load() // la catégorie a pu changer → recharge la cartographie
+  } catch {
+    ancrageOk.value = false
+    ancrageMsg.value = "Échec de l'ancrage. Réessayez."
+  } finally {
+    ancring.value = false
+  }
+}
+
 const legend: [string, string][] = [
   ['Aucune donnée', 'bg-heat-0'],
   ['Émergent (1·2)', 'bg-heat-1'],
@@ -55,8 +79,22 @@ const tone = (t: FamilleTension['tension']) =>
 
 <template>
   <div class="space-y-5">
+    <div
+      v-if="ancrageMsg"
+      class="rounded-xl border px-3.5 py-2 text-sm"
+      :class="ancring ? 'border-green-line bg-green-ghost text-ink-2'
+        : ancrageOk ? 'border-green-line bg-green-soft text-green-deep'
+        : 'border-warning/30 bg-warning-soft/50 text-ink-2'"
+    >
+      {{ ancrageMsg }}
+    </div>
+
     <BaseCard title="Cartographie des compétences par pôle">
       <template #actions>
+        <BaseButton size="sm" variant="secondary" :disabled="ancring" @click="ancrer"
+                    title="Relie les compétences détenues déclaratives aux compétences du référentiel (graphe)">
+          <Anchor :size="15" /> {{ ancring ? 'Ancrage…' : 'Ancrer les compétences' }}
+        </BaseButton>
         <RouterLink :to="{ name: 'rh.cartoPlein' }">
           <BaseButton size="sm" variant="secondary"><LayoutGrid :size="15" /> Voir en grand</BaseButton>
         </RouterLink>
