@@ -25,6 +25,9 @@ def test_reco_cache_evite_le_recalcul(db, monkeypatch):
         return {"poste_vise": poste, "score_actuel": 42, "plan_developpement": "plan", "labels": labels}
 
     monkeypatch.setattr(rs, "recommander", fake_recommander)
+    # Normalisation d'entrée mockée (passthrough) : pas d'appel Ollama en test.
+    monkeypatch.setattr(rs, "normaliser_cible",
+                        lambda t: {"intitule": t, "confiance": "clair", "model": "test"})
 
     r1 = rs.recommander_pour_user(db, u.id)
     r2 = rs.recommander_pour_user(db, u.id)
