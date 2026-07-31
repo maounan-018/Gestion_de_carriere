@@ -703,6 +703,14 @@ export const apiService = {
   /** Éditer un profil (RH/ADMIN). `id` = profil_id backend. Champs éditables :
    *  poste actuel + aspirations. (Un collaborateur ne peut PAS éditer son propre
    *  profil : PATCH /profils/{id} est réservé RH/ADMIN — pas d'endpoint self-service.) */
+  /** Éditer MON profil (collab, auto-service) : poste actuel + aspirations. */
+  async updateMyProfil(patch: { poste_actuel?: string; aspirations?: string }): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(200)
+      return
+    }
+    await apiFetch('/profils/me', { method: 'PATCH', body: patch })
+  },
   async updateProfil(
     id: string,
     patch: { poste_actuel?: string; aspirations?: string },
