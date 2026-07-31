@@ -177,6 +177,49 @@ def add_competences(db: Session, profil_id: int,
     return _to_out(db, p)
 
 
+_MIN_ANCRAGE = 0.35  # même esprit que la reco : en-deçà, l'ancrage est jugé peu fiable
+# Correspondance type de compétence (graphe) -> famille canonique. Seuls 3 types
+# donnent un signal fiable ; 'skill' (majoritaire) et 'other' : on NE force PAS la
+# catégorie (éviter de polluer la cartographie « familles »).
+_TYPE2FAMILLE = {"knowledge": "metier", "digital": "outil_technologie",
+                 "transversal": "transversale"}
+
+
+def ancrer_competences_detenues(db: Session, profil_id: int | None = None,
+                                min_confiance: float = _MIN_ANCRAGE) -> dict:
+    """Ancre au graphe les compétences DÉTENUES non encore ancrées (skill_id null).
+
+    Pour chaque libellé : recherche sémantique (embeddings bge-m3 + reranker) → si la
+    confiance du meilleur match ≥ `min_confiance`, on fixe `skill_id` + `skill_label_fr`
+    (+ `categorie` déduite du type quand c'est fiable). Sinon on LAISSE non ancré
+    (pas de faux ancrage). Idempotent (ne touche que `skill_id` nul). `profil_id`
+    None = toute la base. Renvoie {examinees, ancrees, categorisees}."""
+    from app.services import skill_search_service
+    stmt = select(ProfilCompetence).where(ProfilCompetence.skill_id.is_(None))
+    if profil_id is not None:
+        stmt = stmt.where(ProfilCompetence.profil_id == profil_id)
+    rows = db.scalars(stmt).all()
+
+    ancrees = categorisees = 0
+    for pc in rows:
+        matches = skill_search_service.search_skills(db, pc.libelle, k=1)
+        if not matches:
+            continue
+        m = matches[0]
+        conf = float(m.get("rerank_score", m.get("score", 0.0)) or 0.0)
+        if conf < min_confiance:
+            continue                       # gate : ancrage trop faible -> on s'abstient
+        pc.skill_id = m["skill_id"]
+        pc.skill_label_fr = m.get("label_fr")
+        ancrees += 1
+        fam = _TYPE2FAMILLE.get(m.get("skill_type"))
+        if fam and not pc.categorie:
+            pc.categorie = fam
+            categorisees += 1
+    db.commit()
+    return {"examinees": len(rows), "ancrees": ancrees, "categorisees": categorisees}
+
+
 def passerelles_mobilite(db: Session, profil_id: int, *, k: int = 5) -> list[dict] | None:
     """Passerelles de mobilité d'un profil : métiers du référentiel (ESCO/O*NET) qui
     mobilisent le plus ses compétences détenues ANCRÉES au graphe (skill_id). Exclut

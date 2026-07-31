@@ -29,7 +29,7 @@ from app.models.user import Role, User
 from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
-                                 EvaluationExtractionRequest, MobiliteItem)
+                                 EvaluationExtractionRequest, MobiliteItem, AncrageResult)
 from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service, cv_extraction_service
 
@@ -117,6 +117,17 @@ def consulter_profil(profil_id: int, user: User = Depends(get_current_user),
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
+
+
+@router.post("/ancrer-competences", response_model=AncrageResult,
+             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
+             summary="Ancrer au graphe les compétences détenues non ancrées (enrichissement RH)")
+def ancrer_competences(db: Session = Depends(get_db)) -> AncrageResult:
+    """Backfill (batch) : relie les compétences détenues déclaratives non ancrées à
+    leurs compétences canoniques (ESCO/O*NET/SFIA) par recherche sémantique + gate de
+    confiance ; déduit aussi la famille (categorie) quand c'est fiable. Idempotent.
+    ⚠️ Utilise les embeddings (bge-m3) — pas de LLM génératif."""
+    return AncrageResult(**profil_service.ancrer_competences_detenues(db))
 
 
 @router.get("/{profil_id}/mobilite", response_model=list[MobiliteItem],
