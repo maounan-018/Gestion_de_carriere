@@ -63,6 +63,34 @@ async function submitCv() {
   }
 }
 
+// Auto-service : éditer mon propre profil (poste actuel + aspirations) — PATCH /profils/me.
+const showEdit = ref(false)
+const savingEdit = ref(false)
+const editPoste = ref('')
+const editAspi = ref('')
+function openEdit() {
+  editPoste.value = session.user?.title ?? ''
+  editAspi.value = profile.value?.description ?? ''
+  showEdit.value = true
+}
+async function saveEdit() {
+  if (savingEdit.value) return
+  savingEdit.value = true
+  try {
+    await apiService.updateMyProfil({
+      poste_actuel: editPoste.value.trim(),
+      aspirations: editAspi.value.trim(),
+    })
+    showEdit.value = false
+    toast('Profil mis à jour', 'ok')
+    await load()
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
+  } finally {
+    savingEdit.value = false
+  }
+}
+
 const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n)
 </script>
 
@@ -85,7 +113,7 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
           <BaseButton variant="ai" @click="showCv = true">
             <Sparkles :size="15" /> Depuis mon CV
           </BaseButton>
-          <BaseButton variant="secondary" @click="toast('La mise à jour de votre profil se fait avec votre RH (poste, aspirations).', 'info')">
+          <BaseButton variant="secondary" @click="openEdit">
             <AppIcon name="user" :size="15" /> Éditer
           </BaseButton>
         </div>
@@ -184,6 +212,36 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
         <BaseButton variant="secondary" size="sm" :disabled="cvBusy" @click="showCv = false">Annuler</BaseButton>
         <BaseButton size="sm" :disabled="cvBusy || cvText.trim().length < 10" @click="submitCv">
           <Sparkles :size="14" /> {{ cvBusy ? 'Analyse…' : 'Extraire mes compétences' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
+
+    <BaseModal v-model="showEdit" title="Éditer mon profil">
+      <div class="space-y-4">
+        <div>
+          <label for="me-poste" class="mb-1.5 block text-xs font-semibold text-ink-2">Poste actuel</label>
+          <input
+            id="me-poste"
+            v-model="editPoste"
+            placeholder="Ex : Conseiller clientèle particuliers"
+            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+        <div>
+          <label for="me-aspi" class="mb-1.5 block text-xs font-semibold text-ink-2">Aspirations / poste visé</label>
+          <textarea
+            id="me-aspi"
+            v-model="editAspi"
+            rows="3"
+            placeholder="Ex : Chargé d'affaires professionnels"
+            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showEdit = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="savingEdit" @click="saveEdit">
+          <AppIcon name="check" :size="14" /> {{ savingEdit ? 'Enregistrement…' : 'Enregistrer' }}
         </BaseButton>
       </template>
     </BaseModal>
