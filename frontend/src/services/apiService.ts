@@ -20,7 +20,7 @@ import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
-import type { GabaritDoc, CartoDoc } from '@/types/referentiel'
+import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
 import { apiFetch, getCsrf, ApiError } from './http'
 import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
@@ -568,6 +568,27 @@ export const apiService = {
     }
     const rows = await apiFetch<{ key: string; nom: string }[]>('/fiches/departements')
     return rows.map((d) => ({ key: d.key, nom: d.nom }))
+  },
+  /** Générer une fiche de poste via IA (RH/ADMIN). ⚠️ Ollama : quelques secondes.
+   *  Contenu SYNTHÉTIQUE (compétences inférées du graphe + rédaction FR). */
+  async genererFiche(input: { metier: string; departementKey: string }): Promise<FicheGeneree> {
+    if (MODE === 'mock') {
+      await delay(400)
+      return {
+        metier: input.metier,
+        departement: input.departementKey,
+        synthetique: true,
+        sections: {
+          finalite: `Fiche de démonstration pour « ${input.metier} » (générée localement, mock).`,
+          competences_requises: 'Compétences inférées du référentiel ESCO/O*NET/SFIA.',
+        },
+        competences_reference: ['Analyse', 'Communication', 'Rigueur'],
+      }
+    }
+    return apiFetch<FicheGeneree>('/fiches/generation', {
+      method: 'POST',
+      body: { metier: input.metier, departement_key: input.departementKey },
+    })
   },
   /** Plan de succession raisonné d'un département (RH). ⚠️ En live : IA de
    *  raisonnement lourde (qwen3.6, ~4 min) → mode ASYNCHRONE (job + polling),
