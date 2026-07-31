@@ -124,3 +124,10 @@ class AnnuaireEntry(BaseModel):
     poste_actuel: str | None
     departement_key: str | None
     competences: list[str] = Field(default_factory=list)
+
+
+class AncrageResult(BaseModel):
+    """Résumé du backfill d'ancrage des compétences détenues au graphe."""
+    examinees: int        # compétences non ancrées examinées
+    ancrees: int          # nouvellement reliées à une compétence canonique
+    categorisees: int     # dont la famille (categorie) a aussi été déduite
