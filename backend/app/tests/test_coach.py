@@ -157,3 +157,24 @@ def test_coach_agentique_stream_repli(db, monkeypatch):
     text = "".join(e["text"] for e in events if e["type"] == "token")
     assert text == "Repli mono-coup streamé."
     assert events[-1]["type"] == "done"
+
+
+# ---------------------------------------------------- Outils graphe / mobilité
+
+def test_coach_tools_dispatch_alignes():
+    """Invariant : chaque schéma d'outil a un handler, et réciproquement."""
+    noms = {t["function"]["name"] for t in cs._TOOLS}
+    assert {"passerelles_mobilite", "definir_competence"} <= noms
+    assert set(cs._DISPATCH) == noms
+
+
+def test_tool_mobilite_sans_profil(db):
+    import json
+    out = cs._tool_passerelles_mobilite(db, 999999, {})
+    assert "info" in json.loads(out)          # aucun profil -> message, pas d'exception
+
+
+def test_tool_definir_competence_terme_vide(db):
+    import json
+    out = cs._tool_definir_competence(db, 1, {})
+    assert "info" in json.loads(out)          # terme vide -> message (pas d'appel graphe)

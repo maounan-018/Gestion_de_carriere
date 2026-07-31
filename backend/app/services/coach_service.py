@@ -129,6 +129,40 @@ def _tool_formations(db: Session, _user_id: int, args: dict) -> str:
         for f in rows], ensure_ascii=False)
 
 
+def _tool_passerelles_mobilite(db: Session, user_id: int, _args: dict) -> str:
+    """Métiers de MOBILITÉ proches (référentiel ESCO/O*NET) fondés sur les compétences
+    DÉTENUES du collaborateur via le graphe (déterministe, pas d'Ollama)."""
+    from app.services import profil_service
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    if p is None:
+        return json.dumps({"info": "Aucun profil rattaché à ce compte."}, ensure_ascii=False)
+    passerelles = profil_service.passerelles_mobilite(db, p.id, k=5) or []
+    if not passerelles:
+        return json.dumps({"info": "Aucune passerelle : compétences détenues trop peu "
+                           "ancrées au référentiel."}, ensure_ascii=False)
+    return json.dumps([
+        {"metier": m["metier"], "source": m["source"],
+         "competences_partagees": m["competences_partagees"]}
+        for m in passerelles], ensure_ascii=False)
+
+
+def _tool_definir_competence(db: Session, _user_id: int, args: dict) -> str:
+    """Définition + type d'une compétence depuis le graphe (ESCO/O*NET/SFIA)."""
+    from app.services import skill_search_service
+    terme = (args.get("competence") or "").strip() if isinstance(args, dict) else ""
+    if not terme:
+        return json.dumps({"info": "Préciser la compétence à définir."}, ensure_ascii=False)
+    matches = skill_search_service.search_skills(db, terme, k=1)
+    if not matches:
+        return json.dumps({"info": f"Compétence « {terme} » introuvable au référentiel."},
+                          ensure_ascii=False)
+    m = matches[0]
+    return json.dumps({
+        "competence": m.get("label_fr"), "type": m.get("skill_type"),
+        "definition": (m.get("description_fr") or "")[:400] or None},
+        ensure_ascii=False)
+
+
 _TOOLS = [
     {"type": "function", "function": {
         "name": "chercher_offres_compatibles",
@@ -145,15 +179,33 @@ _TOOLS = [
         "parameters": {"type": "object", "properties": {
             "mot_cle": {"type": "string", "description": "filtre optionnel (compétence, thème)"}},
             "required": []}}},
+    {"type": "function", "function": {
+        "name": "passerelles_mobilite",
+        "description": ("Renvoie les métiers de MOBILITÉ INTERNE proches du profil du "
+                        "collaborateur connecté (fondés sur ses compétences détenues et le "
+                        "graphe ESCO/O*NET). Utilise-le pour suggérer des TRAJECTOIRES "
+                        "concrètes (« vers quel métier évoluer ? »)."),
+        "parameters": {"type": "object", "properties": {}, "required": []}}},
+    {"type": "function", "function": {
+        "name": "definir_competence",
+        "description": ("Renvoie la définition et le type d'une compétence depuis le "
+                        "référentiel (ESCO/O*NET/SFIA). Utilise-le pour EXPLIQUER précisément "
+                        "une compétence ou clarifier son périmètre."),
+        "parameters": {"type": "object", "properties": {
+            "competence": {"type": "string", "description": "libellé de la compétence à définir"}},
+            "required": ["competence"]}}},
 ]
 _DISPATCH = {"chercher_offres_compatibles": _tool_offres_compatibles,
-             "lister_formations": _tool_formations}
+             "lister_formations": _tool_formations,
+             "passerelles_mobilite": _tool_passerelles_mobilite,
+             "definir_competence": _tool_definir_competence}
 
 _SYSTEM_AGENT = (
     _SYSTEM + "\n\n"
-    "Tu disposes d'OUTILS pour interroger les données RÉELLES de la plateforme "
-    "(offres internes compatibles, catalogue de formations). Appelle-les quand c'est "
-    "utile pour fonder tes conseils sur des données concrètes plutôt que d'inventer. "
+    "Tu disposes d'OUTILS pour interroger les données RÉELLES de la plateforme : offres "
+    "internes compatibles, catalogue de formations, passerelles de mobilité (métiers "
+    "proches du profil) et définitions de compétences (référentiel). Appelle-les quand "
+    "c'est utile pour fonder tes conseils sur des données concrètes plutôt que d'inventer. "
     "Une fois que tu as assez d'informations, réponds directement, en français, sans "
     "citer les noms techniques des outils."
 )

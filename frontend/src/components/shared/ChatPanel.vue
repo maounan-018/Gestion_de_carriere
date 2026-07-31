@@ -36,6 +36,8 @@ const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un
 const TOOL_LABELS: Record<string, string> = {
   chercher_offres_compatibles: 'Consultation des offres internes…',
   lister_formations: 'Consultation du catalogue de formations…',
+  passerelles_mobilite: 'Recherche de passerelles de mobilité…',
+  definir_competence: 'Consultation du référentiel de compétences…',
 }
 
 // Auto-scroll en bas à chaque nouveau contenu (messages, tokens, statut).
