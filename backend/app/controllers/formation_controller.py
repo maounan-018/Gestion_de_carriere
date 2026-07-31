@@ -14,9 +14,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.auth.dependencies import get_current_user
-from app.schemas.formation import FormationOut
-from app.services import formation_service
+from app.auth.dependencies import get_current_user, require_roles
+from app.core.rate_limit import ia_rate_limit
+from app.models.user import Role
+from app.schemas.formation import FormationOut, FormationGenerationRequest, FormationGeneree
+from app.services import formation_service, formation_generation_service
 
 router = APIRouter(prefix="/api/formations", tags=["Formations"])
 
@@ -32,3 +34,16 @@ def lister_formations(
     db: Session = Depends(get_db),
 ) -> list[FormationOut]:
     return formation_service.list_formations(db, domaine=domaine, q=q, limit=limit, offset=offset)
+
+
+@router.post("/generer", response_model=FormationGeneree,
+             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
+             summary="Générer une formation synthétique pour une compétence (RH/ADMIN)")
+def generer_formation(req: FormationGenerationRequest,
+                      db: Session = Depends(get_db)) -> FormationGeneree:
+    """⚠️ Utilise Ollama (génération FR). Contenu SYNTHÉTIQUE (jamais un cours réel).
+    Si `persister`, ajoute la formation au catalogue et renvoie son `id`."""
+    gen = formation_generation_service.generer(db, req.competence)
+    if req.persister:
+        gen["id"] = formation_service.create_formation(db, gen).id
+    return FormationGeneree(**gen)

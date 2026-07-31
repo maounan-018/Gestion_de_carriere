@@ -40,3 +40,19 @@ def list_formations(db: Session, *, domaine: str | None = None, q: str | None = 
         )
     stmt = stmt.limit(min(max(limit, 1), 300)).offset(max(offset, 0))
     return [FormationOut.model_validate(f) for f in db.scalars(stmt).all()]
+
+
+def create_formation(db: Session, data: dict) -> FormationOut:
+    """Persiste une formation au catalogue (toujours SYNTHÉTIQUE). `data` = dict issu
+    de `formation_generation_service.generer` (les tags sont stockés en CSV)."""
+    f = Formation(
+        titre=data["titre"], provider=data.get("organisme"),
+        duree=data.get("duree"), niveau=data.get("niveau"), domaine=data.get("domaine"),
+        skill_cible=data.get("skill_cible"),
+        tags=", ".join(data.get("tags") or []) or None,
+        synthetique=True,
+    )
+    db.add(f)
+    db.commit()
+    db.refresh(f)
+    return FormationOut.model_validate(f)

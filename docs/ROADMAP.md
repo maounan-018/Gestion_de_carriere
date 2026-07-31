@@ -141,9 +141,10 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
 ## VI. Intégrations
 - 🅿️ Connecteurs **SIRH HCM** (Workday / SAP…) : différés — **prévoir un point d'intégration/
   adaptateur propre** pour faciliter le branchement futur, mais **ne pas construire les connecteurs**
-- ⏳ **Catalogue de cours SYNTHÉTIQUE** (à la place du LMS réel) : **table `Formation` + `GET /api/formations`
-  + 10 formations seedées** ✅ ; reste ⬜ : **recherche internet par métier + génération** de nouvelles
-  fiches de cours (aujourd'hui catalogue statique). Suivi/avancement = optionnel
+- ✅ **Catalogue de cours SYNTHÉTIQUE** (à la place du LMS réel) : table `Formation` + `GET /api/formations`
+  + 10 seedées ; **génération IA** d'une formation ciblant une compétence — `POST /api/formations/generer`
+  (RH/ADMIN, `formation_generation_service`, mistral-nemo, compétence ancrée au référentiel, option `persister`
+  au catalogue, contenu `synthetique=True`). Suivi/avancement = optionnel. (« recherche internet » sans objet : 100 % local.)
 - ⬜ **Import Excel** (fiches, profils réels traités localement) — pattern smart-objective
 - 🅿️ Comptes de **service** + tokens : différés (partent avec les connecteurs)
 
