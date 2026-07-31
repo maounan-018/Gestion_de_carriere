@@ -13,12 +13,27 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
 class NormaliseRequest(BaseModel):
     libelles: list[str] = Field(..., min_length=1, max_length=60,
                                 description="Libellés bruts à canonicaliser (1 à 60).")
+
+
+class NormaliserCibleRequest(BaseModel):
+    """Une saisie libre (objectif/intitulé de poste) à structurer."""
+    texte: str = Field(..., min_length=1, max_length=500,
+                       description="Saisie libre à normaliser (fautes/annotations tolérées).")
+
+
+class NormaliserCibleResponse(BaseModel):
+    """Saisie structurée : intitulé canonique + confiance (clair / ambigu / indisponible)."""
+    intitule: str
+    confiance: Literal["clair", "ambigu", "indisponible"]
+    model: str
 
 
 class NormaliseGroupe(BaseModel):
