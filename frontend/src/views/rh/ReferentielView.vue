@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { BookOpen } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
-import type { GabaritDoc, GabaritKind, CartoDoc } from '@/types/referentiel'
+import type { GabaritDoc, GabaritKind, CartoDoc, FicheGeneree } from '@/types/referentiel'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -118,6 +118,28 @@ async function saveCarto() {
     cartoBusy.value = false
   }
 }
+
+// ---- Génération de fiche de poste (IA) ------------------------------------
+const genMetier = ref('')
+const genDept = ref('')
+const genBusy = ref(false)
+const genError = ref('')
+const genResult = ref<FicheGeneree | null>(null)
+async function genererFiche() {
+  const metier = genMetier.value.trim()
+  if (!metier || !genDept.value || genBusy.value) return
+  genBusy.value = true
+  genError.value = ''
+  genResult.value = null
+  try {
+    genResult.value = await apiService.genererFiche({ metier, departementKey: genDept.value })
+    toast('Fiche générée', 'ok')
+  } catch (e) {
+    genError.value = (e as Error)?.message || 'Génération indisponible (IA). Réessayez.'
+  } finally {
+    genBusy.value = false
+  }
+}
 </script>
 
 <template>
@@ -162,6 +184,51 @@ async function saveCarto() {
     </ErrorState>
 
     <div v-else class="space-y-5">
+      <!-- Génération de fiche (IA) -->
+      <BaseCard title="Générer une fiche de poste (IA)">
+        <p class="mb-3 text-xs text-ink-3">
+          L'IA rédige une fiche synthétique pour un métier d'un département (compétences inférées du
+          graphe ESCO/O*NET/SFIA). Contenu de démonstration — jamais de données réelles.
+        </p>
+        <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <select v-model="genDept" :class="inputCls" aria-label="Département">
+            <option value="" disabled>Département…</option>
+            <option v-for="d in depts" :key="d.key" :value="d.key">{{ d.nom || d.key }}</option>
+          </select>
+          <input v-model="genMetier" placeholder="Métier (ex : Analyste Risque Senior)" :class="inputCls" />
+          <BaseButton :disabled="genBusy || !genMetier.trim() || !genDept" @click="genererFiche">
+            <AppIcon name="spark" :size="15" /> {{ genBusy ? 'Génération…' : 'Générer' }}
+          </BaseButton>
+        </div>
+        <p v-if="genError" class="mt-3 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning">
+          {{ genError }}
+        </p>
+
+        <div v-if="genResult" class="mt-4 space-y-3 rounded-xl border border-green-line bg-green-ghost p-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <h4 class="font-display text-sm font-bold text-ink">{{ genResult.metier }}</h4>
+            <BasePill tone="mut">{{ genResult.departement }}</BasePill>
+            <BasePill tone="ai">synthétique</BasePill>
+          </div>
+          <div v-for="(val, key) in genResult.sections" :key="key">
+            <div class="text-[11px] font-semibold uppercase tracking-wide text-green-deep">{{ key }}</div>
+            <p class="whitespace-pre-line text-sm text-ink-2">{{ val }}</p>
+          </div>
+          <div v-if="genResult.competences_reference.length">
+            <div class="mb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-3">
+              Compétences de référence (graphe)
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="c in genResult.competences_reference"
+                :key="c"
+                class="rounded-full border border-border bg-paper px-2 py-0.5 text-xs text-ink-2"
+              >{{ c }}</span>
+            </div>
+          </div>
+        </div>
+      </BaseCard>
+
       <!-- Gabarit -->
       <BaseCard title="Gabarit de fiche de poste">
         <template #actions>

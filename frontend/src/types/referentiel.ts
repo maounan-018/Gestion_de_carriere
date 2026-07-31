@@ -29,3 +29,12 @@ export interface CartoDoc {
   version?: number | null
   departements: CartoDept[]
 }
+
+/** Fiche de poste générée par IA (miroir de FicheGeneree — contenu synthétique). */
+export interface FicheGeneree {
+  metier: string
+  departement: string
+  synthetique: boolean
+  sections: Record<string, string>
+  competences_reference: string[]
+}
