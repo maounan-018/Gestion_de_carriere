@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
-import type { RhKpi, RhAlert, CartoMatrix } from '@/types/rh'
+import type { RhKpi, RhAlert, CartoMatrix, SyntheseRh } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -18,6 +18,7 @@ const router = useRouter()
 const kpis = ref<RhKpi[]>([])
 const alerts = ref<RhAlert[]>([])
 const carto = ref<CartoMatrix>({ familles: [], lignes: [] })
+const synthese = ref<SyntheseRh | null>(null)
 const loading = ref(true)
 const error = ref('')
 
@@ -33,6 +34,8 @@ async function load() {
     kpis.value = k
     alerts.value = a
     carto.value = c
+    // Synthèse consolidée : best-effort (n'empêche pas le reste du dashboard).
+    apiService.getSyntheseRh().then((s) => { synthese.value = s }).catch(() => { synthese.value = null })
   } catch {
     error.value = 'Impossible de charger le tableau de bord.'
   } finally {
@@ -43,6 +46,14 @@ onMounted(load)
 
 const sevTone: Record<string, 'hot' | 'warn' | 'ai'> = { crit: 'hot', warn: 'warn', info: 'ai' }
 const sevLabel: Record<string, string> = { crit: 'critique', warn: 'à traiter', info: 'info' }
+
+const poleMax = computed(() => Math.max(1, ...(synthese.value?.parPole.map((p) => p.effectif) ?? [])))
+const poleWidth = (v: number) => Math.round((v / poleMax.value) * 100)
+const STATUT_LABEL: Record<string, string> = {
+  deposee: 'Déposées', en_evaluation: 'En évaluation', retenue: 'Retenues',
+  rejetee: 'Rejetées', retiree: 'Retirées',
+}
+const statutLabel = (s: string) => STATUT_LABEL[s] ?? s
 function goPole(name: string) {
   router.push({ name: 'rh.cartoDetail', params: { pole: name } })
 }
@@ -75,6 +86,39 @@ function goPole(name: string) {
           <div class="text-xs text-ink-3">{{ k.label }}<span v-if="k.hint"> · {{ k.hint }}</span></div>
         </div>
       </div>
+
+      <BaseCard v-if="synthese" title="Synthèse RH">
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="min-w-0">
+            <p class="mb-2 text-xs font-semibold text-ink-2">Effectifs par pôle</p>
+            <div class="space-y-1.5">
+              <div v-for="p in synthese.parPole.slice(0, 6)" :key="p.pole" class="flex items-center gap-2">
+                <span class="w-40 shrink-0 truncate text-xs text-ink-2">{{ p.pole }}</span>
+                <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel-2">
+                  <div class="h-full rounded-full bg-green" :style="{ width: poleWidth(p.effectif) + '%' }" />
+                </div>
+                <span class="w-6 shrink-0 text-right text-xs text-ink-3">{{ p.effectif }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="min-w-0">
+            <p class="mb-2 text-xs font-semibold text-ink-2">Pipeline des candidatures</p>
+            <div class="flex flex-wrap gap-2">
+              <span v-for="c in synthese.candidaturesParStatut" :key="c.statut"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-panel px-2.5 py-1 text-xs text-ink-2">
+                {{ statutLabel(c.statut) }} <b class="text-ink">{{ c.nombre }}</b>
+              </span>
+              <span v-if="!synthese.candidaturesParStatut.length" class="text-xs text-ink-3">Aucune candidature.</span>
+            </div>
+            <div class="mt-4 flex items-center gap-2 rounded-xl border border-warning/25 bg-warning-soft/50 px-3 py-2">
+              <AppIcon name="flag" :size="15" class="text-warning" />
+              <span class="text-xs text-ink-2">
+                <b class="text-ink">{{ synthese.famillesEnTension }}</b> famille(s) de compétences en tension forte
+              </span>
+            </div>
+          </div>
+        </div>
+      </BaseCard>
 
       <div class="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
         <BaseCard class="min-w-0" title="Cartographie des compétences par pôle">

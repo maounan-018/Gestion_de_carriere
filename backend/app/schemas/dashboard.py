@@ -73,6 +73,24 @@ class FamilleCompetence(BaseModel):
     tension: str               # "faible" | "moyenne" | "forte" (demande vs couverture interne)
 
 
+class PoleEffectif(BaseModel):
+    pole: str
+    effectif: int
+
+
+class StatutCount(BaseModel):
+    statut: str
+    nombre: int
+
+
+class SyntheseRh(BaseModel):
+    """Vue consolidée du tableau de bord RH (au-delà des KPIs simples)."""
+    effectif: int
+    par_pole: list[PoleEffectif] = []
+    candidatures_par_statut: list[StatutCount] = []
+    familles_en_tension: int
+
+
 class HautPotentielItem(BaseModel):
     profil_id: int
     nom: str
