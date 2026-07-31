@@ -4,7 +4,7 @@ import { Check, MessageSquare, Clock, Sparkles, Send, ArrowRight } from '@lucide
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
-import type { ChatMessage } from '@/types/domain'
+import type { ChatMessage, CollabProfile } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
@@ -44,6 +44,7 @@ const busy = ref(false)
 const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
+const careerCtx = ref('') // contexte carrière (rôle/poste/objectif) injecté dans la consigne
 
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 const atLastStep = computed(() => currentStep.value >= STEPS.length - 1)
@@ -69,10 +70,27 @@ function isConseils(i: number): boolean {
 function isLast(i: number): boolean {
   return i >= STEPS.length - 1
 }
+/** Construit un contexte carrière compact à partir du profil (rôle/poste/objectif/…). */
+function buildContext(p: CollabProfile | null): string {
+  const u = session.user
+  const parts: string[] = []
+  if (u?.title) parts.push(`poste actuel : ${u.title}`)
+  if (u?.entity) parts.push(`entité : ${u.entity}`)
+  if (p?.posteVise && p.posteVise !== '—') parts.push(`poste visé : ${p.posteVise}`)
+  const skills = (p?.skills ?? []).slice(0, 4).map((s) => s.label).filter(Boolean)
+  if (skills.length) parts.push(`compétences clés : ${skills.join(', ')}`)
+  const asp = (p?.aspirations ?? []).slice(0, 3).filter(Boolean)
+  if (asp.length) parts.push(`aspirations : ${asp.join(', ')}`)
+  return parts.join(' ; ')
+}
 function consigne(stepIdx: number): string {
+  const ctx = careerCtx.value
+    ? ` Contexte de ${session.user?.name || 'la personne'} : ${careerCtx.value}. Adapte tes questions, ` +
+      `orientations et conseils à son rôle, son poste et son objectif.`
+    : ''
   return (
     `[Tu es un COACH RH bienveillant qui aide ${persona()} à PRÉPARER son entretien annuel ` +
-    `(tu n'es pas son manager). Section en cours : « ${STEPS[stepIdx].label} ». Reste STRICTEMENT ` +
+    `(tu n'es pas son manager). Section en cours : « ${STEPS[stepIdx].label} ».${ctx} Reste STRICTEMENT ` +
     `dans ce rôle d'accompagnateur. Ne parle ni d'offres internes ni du catalogue de formations. ` +
     `Réponds en français, 2 à 3 phrases maximum.]`
   )
@@ -144,8 +162,20 @@ async function nextStep() {
   await runTurn(frameOpen(currentStep.value))
 }
 
-// Démarrage : le coach ouvre l'introduction.
-onMounted(() => runTurn(frameOpen(0)))
+// Démarrage : charge le contexte carrière (rôle/poste/objectif) puis le coach ouvre l'introduction.
+onMounted(async () => {
+  try {
+    const r = session.role
+    const p =
+      r === 'manager' ? await apiService.getManagerProfile()
+      : r === 'rh' ? await apiService.getRhProfile()
+      : await apiService.getCollabProfile()
+    careerCtx.value = buildContext(p)
+  } catch {
+    /* contexte best-effort : on démarre l'entretien même sans profil */
+  }
+  runTurn(frameOpen(0))
+})
 </script>
 
 <template>
