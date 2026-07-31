@@ -50,6 +50,8 @@ class RecommendationResponse(BaseModel):
     competences_a_developper: list[EtapeFormation]
     passerelles_metiers: list[Passerelle]
     plan_developpement: str
+    confiance: Literal["clair", "ambigu", "indisponible"] = Field(
+        "clair", description="Fiabilité de l'objectif détecté : 'ambigu' -> à préciser.")
 
 
 # --- Reco asynchrone (le pipeline Ollama est lent : lancer puis interroger) ----

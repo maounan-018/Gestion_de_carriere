@@ -229,6 +229,7 @@ def _reco_a_preciser(intitule: str) -> dict:
             "fiable. Indiquez un poste visé plus explicite (par exemple « Manager "
             "d'équipe Risques » ou « Chargé d'affaires professionnels ») dans votre "
             "profil, puis relancez la recommandation."),
+        "confiance": "ambigu",
     }
 
 
@@ -240,7 +241,7 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
     if p is None:
         return {"poste_vise": None, "score_actuel": 0, "modele_extraction": "-",
                 "modele_conseil": "-", "competences_a_developper": [],
-                "passerelles_metiers": [], "plan_developpement": ""}
+                "passerelles_metiers": [], "plan_developpement": "", "confiance": "clair"}
     comps = db.scalars(
         select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
     ).all()
@@ -265,5 +266,6 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
         logger.info("Reco servie depuis le cache (profil %d).", p.id)
         return hit[1]
     result = recommander(db, labels, poste_texte)
+    result["confiance"] = norm["confiance"]   # 'clair' (normalisé) ou 'indisponible' (brut)
     _reco_cache[sig] = (now, result)
     return result

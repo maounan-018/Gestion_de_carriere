@@ -10,6 +10,7 @@ from app.services import skill_matching_service as sms
 from app.services import recommendation_service as rs
 from app.models.user import User, Role
 from app.models.profil import Profil
+from app.tests.conftest import auth, hdr, anon
 
 
 # ------------------------------------------------------- Normalisation d'entrée
@@ -85,4 +86,27 @@ def test_reco_ambigu_demande_de_preciser(db, monkeypatch):
     out = rs.recommander_pour_user(db, u.id)
     assert called["n"] == 0                                   # ni extraction ni conseil
     assert out["competences_a_developper"] == []
+    assert out["confiance"] == "ambigu"                       # signalé pour le bandeau UI
     assert "précis" in out["plan_developpement"].lower()      # message de clarification
+
+
+# -------------------------------------------------- Endpoint outil réutilisable
+
+def test_normalisation_cible_endpoint(client, monkeypatch):
+    from app.services import input_normalization_service
+    monkeypatch.setattr(input_normalization_service, "normaliser_cible",
+                        lambda t: {"intitule": "Chargé d'affaires professionnels",
+                                   "confiance": "clair", "model": "test"})
+    csrf = auth(client, "collab")
+    r = client.post("/api/normalisation/cible",
+                    json={"texte": "chargé daffaire (edit rh test)"}, headers=hdr(csrf))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["intitule"] == "Chargé d'affaires professionnels"
+    assert body["confiance"] == "clair"
+
+
+def test_normalisation_cible_exige_auth(client):
+    anon(client)
+    r = client.post("/api/normalisation/cible", json={"texte": "x"})
+    assert r.status_code in (401, 403)
