@@ -693,6 +693,19 @@ export const apiService = {
     }
     await apiFetch(`/candidatures/${candidatureId}/decision`, { method: 'PATCH', body: { statut } })
   },
+  /** Recalculer le score d'une candidature (attendus de l'offre modifiés depuis
+   *  le dépôt). Déterministe (sans Ollama). Renvoie le nouveau score arrondi. */
+  async reevaluerCandidature(candidatureId: string): Promise<number> {
+    if (MODE === 'mock') {
+      await delay(200)
+      return 0
+    }
+    const c = await apiFetch<{ score: number | null }>(
+      `/candidatures/${candidatureId}/reevaluation`,
+      { method: 'POST' },
+    )
+    return Math.round(c.score ?? 0)
+  },
   /** Pousser un souhait existant à son manager (collab). */
   async pushSouhait(id: string): Promise<void> {
     if (MODE === 'mock') {
