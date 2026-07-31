@@ -87,6 +87,21 @@ async function setStatus(c: RhCandidate, status: RhCandidate['status'], msg: str
     toast(msg, status === 'ecarte' ? 'info' : 'ok')
   }
 }
+
+// Recalculer le score (attendus de l'offre modifiés depuis le dépôt).
+const reevalKey = ref<string | null>(null)
+async function reevaluer(c: RhCandidate) {
+  if (!c.candidatureId || reevalKey.value) return
+  reevalKey.value = c.candidatureId
+  try {
+    c.score = await apiService.reevaluerCandidature(c.candidatureId)
+    toast(`Score recalculé : ${c.score} %`, 'ok')
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la réévaluation', 'error')
+  } finally {
+    reevalKey.value = null
+  }
+}
 </script>
 
 <template>
@@ -205,6 +220,16 @@ async function setStatus(c: RhCandidate, status: RhCandidate['status'], msg: str
               @click="setStatus(c, 'ecarte', `${c.name} écarté·e de cette offre`)"
             >
               Écarter
+            </BaseButton>
+            <BaseButton
+              v-if="c.candidatureId"
+              size="sm"
+              variant="ghost"
+              class="ml-auto"
+              :disabled="reevalKey === c.candidatureId"
+              @click="reevaluer(c)"
+            >
+              {{ reevalKey === c.candidatureId ? 'Recalcul…' : 'Réévaluer' }}
             </BaseButton>
           </div>
         </BaseCard>
