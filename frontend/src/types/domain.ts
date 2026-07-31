@@ -158,6 +158,8 @@ export interface RecoData {
   skills: RecoSkill[]
   passerelles: Passerelle[]
   plan: string
+  /** Fiabilité de l'objectif détecté : 'ambigu' → objectif à préciser (bandeau). */
+  confiance: 'clair' | 'ambigu' | 'indisponible'
 }
 
 /** Passerelle de mobilité fondée sur les compétences détenues (graphe ESCO/O*NET). */

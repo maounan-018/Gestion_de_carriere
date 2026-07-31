@@ -49,6 +49,7 @@ export const MANAGER_RECO: RecoData = {
     { title: 'Directeur Conformité & Risques', pct: 63, label: 'Affinité modérée', source: 'O*NET', tone: 'mut' },
   ],
   plan: "Pour viser Directeur Exécutif : (1) Vision stratégique · appétit au risque et planification Groupe ; (2) Influence COMEX · communication et arbitrages exécutifs ; (3) Gestion de crise · continuité et résilience.",
+  confiance: 'clair',
 }
 
 /** Offres de mobilité du manager (niveau dirigeant). */

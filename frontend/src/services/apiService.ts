@@ -203,6 +203,17 @@ export const apiService = {
     // ⚠️ Ollama : extraction + reranker + conseil (peut prendre quelques secondes).
     return fetchRecoLive()
   },
+  /** Outil de normalisation réutilisable : saisie libre bruitée → intitulé canonique
+   *  + confiance (clair/ambigu/indisponible). Ex. valider un objectif au profil. */
+  async normaliserCible(
+    texte: string,
+  ): Promise<{ intitule: string; confiance: 'clair' | 'ambigu' | 'indisponible'; model: string }> {
+    if (MODE === 'mock') {
+      await delay(300)
+      return { intitule: texte.trim(), confiance: 'clair', model: 'mock' }
+    }
+    return apiFetch('/normalisation/cible', { method: 'POST', body: { texte } })
+  },
   /** Coach Carrière : envoie un message (+ historique) et renvoie la réponse (HTML sûr). */
   async sendCoachMessage(message: string, history: ChatMessage[]): Promise<string> {
     if (MODE === 'mock') {

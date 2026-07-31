@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Sparkles } from '@lucide/vue'
+import { Sparkles, Info } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { RecoData } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -36,6 +36,21 @@ onMounted(load)
   </ErrorState>
 
   <div v-else-if="reco" class="space-y-5">
+    <!-- Objectif ambigu : bandeau de clarification seul (on masque les cartes vides). -->
+    <div
+      v-if="reco.confiance === 'ambigu'"
+      class="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning-soft/50 p-4"
+    >
+      <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-warning text-white">
+        <Info :size="18" />
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-ink">Objectif à préciser</h3>
+        <p class="mt-0.5 text-sm text-ink-2">{{ reco.plan }}</p>
+      </div>
+    </div>
+
+    <template v-else>
     <BaseCard>
       <div class="flex flex-wrap items-center gap-4">
         <div class="min-w-0 flex-1">
@@ -111,5 +126,6 @@ onMounted(load)
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
