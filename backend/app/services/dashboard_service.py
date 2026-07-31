@@ -181,6 +181,35 @@ def familles(db: Session) -> list[FamilleCompetence]:
     return out
 
 
+# ------------------------------------------------------------- Synthèse RH
+def synthese(db: Session) -> dict:
+    """Vue consolidée pour étoffer le tableau de bord RH : effectif total,
+    répartition par pôle, pipeline des candidatures par statut, et nombre de
+    familles de compétences en tension FORTE (signal de priorité)."""
+    effectif = _count(db, select(Profil.id))
+    par_pole = [
+        {"pole": _humanize(k) if k else "—", "effectif": n}
+        for k, n in db.execute(
+            select(Profil.departement_key, func.count(Profil.id))
+            .group_by(Profil.departement_key)
+            .order_by(func.count(Profil.id).desc())).all()
+    ]
+    candidatures_par_statut = [
+        {"statut": s, "nombre": n}
+        for s, n in db.execute(
+            select(Candidature.statut, func.count(Candidature.id))
+            .group_by(Candidature.statut)
+            .order_by(func.count(Candidature.id).desc())).all()
+    ]
+    familles_en_tension = sum(1 for f in familles(db) if f.tension == "forte")
+    return {
+        "effectif": effectif,
+        "par_pole": par_pole,
+        "candidatures_par_statut": candidatures_par_statut,
+        "familles_en_tension": familles_en_tension,
+    }
+
+
 # --------------------------------------------------------- Hauts potentiels
 def hauts_potentiels(db: Session, *, limit: int = 10) -> list[HautPotentielItem]:
     """Profils au niveau moyen de compétences le plus élevé (proxy de potentiel).

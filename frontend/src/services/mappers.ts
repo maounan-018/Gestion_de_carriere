@@ -13,7 +13,7 @@ import type {
   RecoData, RecoSkill, Passerelle, MobiliteItem,
 } from '@/types/domain'
 import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
-import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix, FamilleTension, TensionLevel } from '@/types/rh'
+import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix, FamilleTension, TensionLevel, SyntheseRh } from '@/types/rh'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 
 /* ------------------------------------------------------------------ Backend */
@@ -679,6 +679,23 @@ export function mapCartoMatrix(m: CartoMatrixOut): CartoMatrix {
       niveaux: l.niveaux,
       people: l.people ?? [],
     })),
+  }
+}
+
+/* ----------------------------------------------------------- Synthèse RH */
+export interface SyntheseRhOut {
+  effectif: number
+  par_pole: { pole: string; effectif: number }[]
+  candidatures_par_statut: { statut: string; nombre: number }[]
+  familles_en_tension: number
+}
+
+export function mapSyntheseRh(s: SyntheseRhOut): SyntheseRh {
+  return {
+    effectif: s.effectif,
+    parPole: s.par_pole ?? [],
+    candidaturesParStatut: s.candidatures_par_statut ?? [],
+    famillesEnTension: s.familles_en_tension,
   }
 }
 

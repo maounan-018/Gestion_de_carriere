@@ -158,7 +158,9 @@ frontend Vue mock-first complet. Base : **164 fiches / 2 939 compétences** (pr�
   → reste : **mappers** (`mapOffre/mapProfil/mapCandidature…`) + bascule **mock→live** domaine par domaine
   (tous les endpoints back existent désormais, cf. IV bis)
 - ⏳ Composants transversaux : présents en mock ; **gestion d'erreurs HTTP** (401→connexion, 403→accès refusé, 429→lockout) à finaliser
-- ⬜ **Dashboards analytiques** RH branchés sur `/api/dashboards/*` + `/api/rh/*` (endpoints prêts)
+- ✅ **Dashboards analytiques** RH branchés sur `/api/dashboards/*` + `/api/rh/*` ; **étoffés** : synthèse
+  consolidée `GET /api/dashboards/synthese` (effectifs par pôle, pipeline candidatures, familles en tension)
+  surfacée sur `rh/DashboardView.vue` ; panneau tensions par famille sur la Cartographie
 - ✅ Écran **édition gabarit / cartographie** (RH) — `rh/ReferentielView.vue` : éditeur live (GET/PUT), catégorie
   conditionnelle au kind, métiers par ligne, toast + affichage d'erreur de validation. Vérifié dans le preview.
 - ⬜ **Mentions légales & crédits** (attributions ESCO/O*NET/SFIA — obligation légale)

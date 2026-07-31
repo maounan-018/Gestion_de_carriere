@@ -45,6 +45,14 @@ export interface CartoMatrix {
   lignes: CartoLigne[]
 }
 
+/** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
+export interface SyntheseRh {
+  effectif: number
+  parPole: { pole: string; effectif: number }[]
+  candidaturesParStatut: { statut: string; nombre: number }[]
+  famillesEnTension: number
+}
+
 export type TensionLevel = 'faible' | 'moyenne' | 'forte'
 /** Vue par FAMILLE : offre interne détenue vs demande des offres ouvertes → tension. */
 export interface FamilleTension {

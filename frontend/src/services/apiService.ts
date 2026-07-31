@@ -15,7 +15,7 @@ import {
   RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
@@ -28,8 +28,8 @@ import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
-  mapMobilite, mapFamille,
-  type MobiliteOut, type FamilleOut,
+  mapMobilite, mapFamille, mapSyntheseRh,
+  type MobiliteOut, type FamilleOut, type SyntheseRhOut,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
@@ -92,6 +92,23 @@ const MOBILITE_MOCK: MobiliteItem[] = [
   { id: 2, metier: 'Analyste crédit corporate', source: 'ESCO', partagees: 5 },
   { id: 3, metier: 'Conseiller en investissements financiers', source: 'O*NET', partagees: 4 },
 ]
+
+/** Synthèse RH consolidée (mock hors backend). */
+const SYNTHESE_MOCK: SyntheseRh = {
+  effectif: 14,
+  parPole: [
+    { pole: 'Risques', effectif: 5 },
+    { pole: 'Corporate Banking', effectif: 4 },
+    { pole: 'Retail Banking', effectif: 3 },
+    { pole: 'Ressources Humaines', effectif: 2 },
+  ],
+  candidaturesParStatut: [
+    { statut: 'deposee', nombre: 5 },
+    { statut: 'en_evaluation', nombre: 2 },
+    { statut: 'retenue', nombre: 2 },
+  ],
+  famillesEnTension: 1,
+}
 
 /** Tensions par famille de compétences (mock hors backend). */
 const FAMILLES_MOCK: FamilleTension[] = [
@@ -446,6 +463,14 @@ export const apiService = {
       }
     }
     return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/cartographie'))
+  },
+  /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
+  async getSyntheseRh(): Promise<SyntheseRh> {
+    if (MODE === 'mock') {
+      await delay(120)
+      return SYNTHESE_MOCK
+    }
+    return mapSyntheseRh(await apiFetch<SyntheseRhOut>('/dashboards/synthese'))
   },
   /** Tensions par famille de compétences (offre interne détenue vs demande des
    *  offres ouvertes). Complète la cartographie par pôle. */

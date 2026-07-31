@@ -19,6 +19,7 @@ import {
   mapReco,
   mapMobilite,
   mapFamille,
+  mapSyntheseRh,
   mapRhOffre,
   mapRhCandidate,
   mapVacancy,
@@ -509,5 +510,21 @@ describe('mapFamille', () => {
   })
   it('replie une tension inconnue sur faible', () => {
     expect(mapFamille({ famille: 'metier', detenues: 1, profils_couverts: 1, niveau_moyen: null, demande: 0, tension: 'bizarre' }).tension).toBe('faible')
+  })
+})
+
+describe('mapSyntheseRh', () => {
+  it('mappe les clés snake_case vers camelCase', () => {
+    const s = mapSyntheseRh({
+      effectif: 14,
+      par_pole: [{ pole: 'Risques', effectif: 5 }],
+      candidatures_par_statut: [{ statut: 'retenue', nombre: 2 }],
+      familles_en_tension: 1,
+    })
+    expect(s).toMatchObject({
+      effectif: 14, famillesEnTension: 1,
+      parPole: [{ pole: 'Risques', effectif: 5 }],
+      candidaturesParStatut: [{ statut: 'retenue', nombre: 2 }],
+    })
   })
 })
