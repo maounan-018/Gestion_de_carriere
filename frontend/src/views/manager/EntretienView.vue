@@ -2,10 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import type { TeamMember } from '@/types/manager'
-import type { ChatMessage, ChatSuggestion } from '@/types/domain'
+import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import ChatPanel from '@/components/shared/ChatPanel.vue'
+import GuidedInterview from '@/components/shared/GuidedInterview.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -27,17 +28,6 @@ async function load() {
   }
 }
 onMounted(load)
-
-const myMessages: ChatMessage[] = [
-  {
-    from: 'bot',
-    text: 'Bonjour Jean-Marc 👋 Simulons votre entretien annuel avec votre N+1 (Directeur Exécutif Risques). Commençons par le <b>bilan de l’année</b> : quelles ont été vos 3 réussites majeures ?',
-  },
-]
-const mySug: ChatSuggestion[] = [
-  { label: 'Structurer en STAR', q: 'Aide-moi à structurer mes réussites en STAR.' },
-  { label: 'Défendre mon évolution', q: 'Comment défendre mon évolution vers Directeur Exécutif ?' },
-]
 
 const memberMessages = computed<ChatMessage[]>(() =>
   selected.value
@@ -70,13 +60,8 @@ const memberMessages = computed<ChatMessage[]>(() =>
       </button>
     </div>
 
-    <ChatPanel
-      v-if="mode === 'moi'"
-      :messages="myMessages"
-      :suggestions="mySug"
-      placeholder="Répondez au Coach…"
-      bot-reply="Bien. Structurez avec STAR (Situation, Tâche, Action, Résultat chiffré) et reliez chaque réussite à votre objectif exécutif."
-    />
+    <!-- Mon entretien : moteur co-pilote partagé (persona = manager connecté). -->
+    <GuidedInterview v-if="mode === 'moi'" />
 
     <template v-else>
       <LoadingState v-if="loading" label="Chargement de l'équipe…" />
