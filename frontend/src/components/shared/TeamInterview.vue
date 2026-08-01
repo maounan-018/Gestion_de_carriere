@@ -9,11 +9,10 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 /**
  * Entretien annuel MENÉ par l'utilisateur, où l'IA INCARNE la personne interrogée.
  *
- * L'humain est le vrai intervieweur (manager ou RH) : il pose ses questions, et
- * l'IA joue le rôle du collaborateur `subject` (ancrée sur son profil : rôle,
- * aspiration, écarts) et répond de façon réaliste, à la première personne. Le
- * framing est centralisé dans `persona`/`frame` (point de bascule si un mode
- * backend dédié arrive). Générique : sert manager↔équipe et RH↔collaborateur.
+ * Le RÔLE est NATIF côté backend (mode `entretien_roleplay`) : le backend construit
+ * le personnage à partir du `sujet` envoyé (nom/poste/aspiration/écarts/pôle) et
+ * n'utilise aucun outil. Le front ne fait que déclarer le mode + le sujet + le tour.
+ * Générique : sert manager↔équipe et RH↔collaborateur.
  */
 
 export interface InterviewSubject {
@@ -49,26 +48,13 @@ watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => 
   if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
 })
 
-function persona(): string {
-  const m = props.subject
-  const poste = `${m.role}${m.pole ? ` · ${m.pole}` : ''}`
-  const asp = m.aspiration ? `Ton aspiration : « ${m.aspiration} ». ` : ''
-  const gaps = m.gaps?.length ? `Points à développer : ${m.gaps.join(', ')}. ` : ''
-  return (
-    `[Tu INCARNES ${m.name}, ${poste}, reçu(e) pour ton entretien annuel. ${asp}${gaps}Réponds aux ` +
-    `questions de ton intervieweur de façon réaliste et cohérente avec ce profil, à la PREMIÈRE ` +
-    `PERSONNE, en 2 à 3 phrases. Reste STRICTEMENT dans le personnage : ne joue pas l'intervieweur, ` +
-    `ne donne pas de méta-commentaire, ne parle pas d'offres ni de catalogue de formations. Français.]`
-  )
-}
-function frameOpen(): string {
-  return `${persona()}\n\nSalue brièvement ton intervieweur en début d'entretien annuel (1 phrase) et dis que tu es prêt(e).`
-}
-function frame(question: string): string {
-  return `${persona()}\n\nQuestion de l'intervieweur : ${question}`
+/** Traduit le sujet (types front) vers le schéma backend `EntretienSujet`. */
+function sujet() {
+  const s = props.subject
+  return { nom: s.name, poste: s.role, aspiration: s.aspiration, ecarts: s.gaps ?? [], pole: s.pole }
 }
 
-async function runTurn(framed: string) {
+async function runTurn(message: string, ouverture: boolean) {
   if (busy.value) return
   busy.value = true
   streamStatus.value = ''
@@ -76,11 +62,16 @@ async function runTurn(framed: string) {
   let raw = ''
   const history = [...chat.value]
   try {
-    await apiService.streamCoachMessage(framed, history, {
-      onTool: () => { streamStatus.value = `${props.subject.name} réfléchit…` },
-      onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
-      onReset: () => { raw = ''; streamingHtml.value = '' },
-    })
+    await apiService.streamCoachMessage(
+      message,
+      history,
+      {
+        onTool: () => { streamStatus.value = `${props.subject.name} réfléchit…` },
+        onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
+        onReset: () => { raw = ''; streamingHtml.value = '' },
+      },
+      { mode: 'entretien_roleplay', sujet: sujet(), ouverture },
+    )
     chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
   } catch {
     chat.value.push({ from: 'bot', text: ERR })
@@ -96,10 +87,10 @@ async function ask(text?: string) {
   if (!t || busy.value) return
   chat.value.push({ from: 'me', text: t })
   input.value = ''
-  await runTurn(frame(t))
+  await runTurn(t, false)
 }
 
-onMounted(() => runTurn(frameOpen()))
+onMounted(() => runTurn('', true))
 </script>
 
 <template>

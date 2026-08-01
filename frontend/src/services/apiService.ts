@@ -67,6 +67,16 @@ export interface CoachStreamHandlers {
   onDone?: (info: { model: string; outils: string[] }) => void
 }
 
+/** Options d'un tour de conversation coach. Vide/omis = coach carrière (défaut).
+ *  Les modes `entretien_*` activent le rôle NATIF backend (system prompt dédié). */
+export interface CoachTurnOpts {
+  mode?: 'carriere' | 'entretien_copilote' | 'entretien_roleplay'
+  section?: string
+  focus?: string
+  ouverture?: boolean
+  sujet?: { nom: string; poste?: string; aspiration?: string; ecarts?: string[]; pole?: string }
+}
+
 /** Reco en mode ASYNCHRONE : lance le job puis interroge jusqu'à complétion.
  *  Requêtes courtes (plus de HTTP tenu ~85 s) → robuste aux timeouts proxy ;
  *  le cache backend rend un job déjà calculé quasi instantané. */
@@ -253,6 +263,7 @@ export const apiService = {
     message: string,
     history: ChatMessage[],
     handlers: CoachStreamHandlers,
+    opts: CoachTurnOpts = {},
   ): Promise<void> {
     if (MODE === 'mock') {
       const mock =
@@ -278,7 +289,7 @@ export const apiService = {
         Accept: 'text/event-stream',
         ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
       },
-      body: JSON.stringify({ message, history: hist }),
+      body: JSON.stringify({ message, history: hist, ...opts }),
     })
     if (!res.ok || !res.body) {
       throw new ApiError(res.status, `Erreur ${res.status}`)
