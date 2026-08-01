@@ -56,7 +56,11 @@ def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> S
     def event_source():
         db = SessionLocal()
         try:
-            for ev in coach_service.chat_agent_stream(db, user_id, req.message, req.history):
+            for ev in coach_service.chat_agent_stream(
+                db, user_id, req.message, req.history,
+                mode=req.mode, section=req.section, focus=req.focus,
+                ouverture=req.ouverture, sujet=req.sujet,
+            ):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
         finally:
             db.close()
