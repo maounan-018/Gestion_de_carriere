@@ -77,7 +77,7 @@ onMounted(load)
           ← Retour à l'équipe
         </button>
         <!-- Vrai entretien IA : le manager mène, l'IA incarne le collaborateur (ancré profil). -->
-        <TeamInterview :key="selected.id" :member="selected" />
+        <TeamInterview :key="selected.id" :subject="selected" />
       </div>
     </template>
   </div>
