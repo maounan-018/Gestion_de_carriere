@@ -4,21 +4,29 @@ import { Sparkles, Send, MessageSquare } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
 import type { ChatMessage } from '@/types/domain'
-import type { TeamMember } from '@/types/manager'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
- * Entretien annuel MENÉ par le manager, où l'IA INCARNE le collaborateur.
+ * Entretien annuel MENÉ par l'utilisateur, où l'IA INCARNE la personne interrogée.
  *
- * Ici le manager est le vrai intervieweur : il pose ses questions, et l'IA joue
- * le rôle du collaborateur sélectionné (ancrée sur son profil : rôle, aspiration,
- * écarts) et répond de façon réaliste, à la première personne. Le framing est
- * centralisé dans `frame` (point de bascule si un mode backend dédié arrive).
+ * L'humain est le vrai intervieweur (manager ou RH) : il pose ses questions, et
+ * l'IA joue le rôle du collaborateur `subject` (ancrée sur son profil : rôle,
+ * aspiration, écarts) et répond de façon réaliste, à la première personne. Le
+ * framing est centralisé dans `persona`/`frame` (point de bascule si un mode
+ * backend dédié arrive). Générique : sert manager↔équipe et RH↔collaborateur.
  */
 
-const props = defineProps<{ member: TeamMember }>()
+export interface InterviewSubject {
+  name: string
+  role: string
+  aspiration?: string
+  gaps?: string[]
+  pole?: string
+}
 
-// Trame indicative pour guider le manager (non contraignante).
+const props = defineProps<{ subject: InterviewSubject }>()
+
+// Trame indicative pour guider l'intervieweur (non contraignante).
 const TRAME = [
   'Objectifs & missions',
   'Réussites',
@@ -42,22 +50,22 @@ watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => 
 })
 
 function persona(): string {
-  const m = props.member
+  const m = props.subject
+  const poste = `${m.role}${m.pole ? ` · ${m.pole}` : ''}`
   const asp = m.aspiration ? `Ton aspiration : « ${m.aspiration} ». ` : ''
   const gaps = m.gaps?.length ? `Points à développer : ${m.gaps.join(', ')}. ` : ''
   return (
-    `[Tu INCARNES ${m.name}, ${m.role} au Pôle Risques, reçu(e) par ton manager pour ton entretien ` +
-    `annuel. ${asp}${gaps}Réponds aux questions de ton manager de façon réaliste et cohérente avec ce ` +
-    `profil, à la PREMIÈRE PERSONNE, en 2 à 3 phrases. Reste STRICTEMENT dans le personnage : ne joue ` +
-    `pas le manager, ne donne pas de méta-commentaire, ne parle pas d'offres ni de catalogue de ` +
-    `formations. Français.]`
+    `[Tu INCARNES ${m.name}, ${poste}, reçu(e) pour ton entretien annuel. ${asp}${gaps}Réponds aux ` +
+    `questions de ton intervieweur de façon réaliste et cohérente avec ce profil, à la PREMIÈRE ` +
+    `PERSONNE, en 2 à 3 phrases. Reste STRICTEMENT dans le personnage : ne joue pas l'intervieweur, ` +
+    `ne donne pas de méta-commentaire, ne parle pas d'offres ni de catalogue de formations. Français.]`
   )
 }
 function frameOpen(): string {
-  return `${persona()}\n\nSalue brièvement ton manager en début d'entretien annuel (1 phrase) et dis que tu es prêt(e).`
+  return `${persona()}\n\nSalue brièvement ton intervieweur en début d'entretien annuel (1 phrase) et dis que tu es prêt(e).`
 }
 function frame(question: string): string {
-  return `${persona()}\n\nQuestion de ton manager : ${question}`
+  return `${persona()}\n\nQuestion de l'intervieweur : ${question}`
 }
 
 async function runTurn(framed: string) {
@@ -69,7 +77,7 @@ async function runTurn(framed: string) {
   const history = [...chat.value]
   try {
     await apiService.streamCoachMessage(framed, history, {
-      onTool: () => { streamStatus.value = `${props.member.name} réfléchit…` },
+      onTool: () => { streamStatus.value = `${props.subject.name} réfléchit…` },
       onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
       onReset: () => { raw = ''; streamingHtml.value = '' },
     })
@@ -111,7 +119,7 @@ onMounted(() => runTurn(frameOpen()))
           <Sparkles :size="13" /> Simulation d'entretien · IA
         </div>
         <p class="text-xs text-ink-2">
-          Vous <b>menez</b> l'entretien : posez vos questions. <b>{{ member.name }}</b> (IA) répond
+          Vous <b>menez</b> l'entretien : posez vos questions. <b>{{ subject.name }}</b> (IA) répond
           dans son rôle, selon son profil. Idéal pour vous entraîner à conduire l'échange.
         </p>
       </div>
@@ -138,7 +146,7 @@ onMounted(() => runTurn(frameOpen()))
             </template>
             <span v-else class="inline-flex items-center gap-1.5 text-ink-3">
               <Sparkles :size="14" class="animate-pulse text-green-deep" />
-              {{ streamStatus || `${member.name} prépare sa réponse…` }}
+              {{ streamStatus || `${subject.name} prépare sa réponse…` }}
             </span>
           </div>
         </div>

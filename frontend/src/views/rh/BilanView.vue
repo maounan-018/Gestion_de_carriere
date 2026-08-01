@@ -14,6 +14,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import TeamInterview from '@/components/shared/TeamInterview.vue'
 
 const route = useRoute()
 const { toast } = useToast()
@@ -99,6 +100,12 @@ watch(() => route.params.id, load)
           <AppIcon name="cal" :size="15" /> Proposer un créneau
         </BaseButton>
       </BaseCard>
+    </div>
+
+    <!-- Vrai entretien IA : le RH mène, l'IA incarne le collaborateur (ancré profil). -->
+    <div class="mt-5">
+      <h3 class="mb-3 font-display text-base font-bold text-ink">Simuler l'entretien</h3>
+      <TeamInterview :key="p.id" :subject="p" />
     </div>
   </div>
 </template>
