@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NotificationOut(BaseModel):
@@ -27,3 +27,13 @@ class NotificationOut(BaseModel):
     to_route: str | None
     lu: bool
     created_at: datetime
+
+
+class MessageRhRequest(BaseModel):
+    """Message d'un manager à destination des RH (crée une notification par RH)."""
+    sujet: str = Field("", max_length=200, description="Sujet (optionnel).")
+    message: str = Field(..., min_length=1, max_length=1000, description="Corps du message.")
+
+
+class MessageRhResult(BaseModel):
+    destinataires: int   # nombre de RH/ADMIN notifiés

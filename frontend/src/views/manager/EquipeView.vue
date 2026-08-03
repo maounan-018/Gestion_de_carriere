@@ -9,6 +9,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import Heatmap from '@/components/shared/Heatmap.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -46,6 +47,27 @@ async function toggleCarto() {
     }
   }
 }
+
+// Communiquer aux RH : compose un message → crée une notification pour les RH.
+const showRhMsg = ref(false)
+const rhSujet = ref('')
+const rhMessage = ref('')
+const rhSending = ref(false)
+async function sendRh() {
+  if (!rhMessage.value.trim() || rhSending.value) return
+  rhSending.value = true
+  try {
+    const r = await apiService.communiquerRH(rhSujet.value, rhMessage.value)
+    toast(`Message envoyé aux RH (${r.destinataires} destinataire${r.destinataires > 1 ? 's' : ''}).`, 'ok')
+    showRhMsg.value = false
+    rhSujet.value = ''
+    rhMessage.value = ''
+  } catch {
+    toast("Échec de l'envoi. Réessayez.", 'error')
+  } finally {
+    rhSending.value = false
+  }
+}
 </script>
 
 <template>
@@ -59,7 +81,7 @@ async function toggleCarto() {
         <BaseButton variant="secondary" size="sm" @click="toggleCarto">
           <LayoutGrid :size="15" /> {{ showCarto ? 'Masquer la cartographie' : 'Cartographie de l’équipe' }}
         </BaseButton>
-        <BaseButton variant="secondary" size="sm" @click="toast('Message transmis aux RH', 'info')">
+        <BaseButton variant="secondary" size="sm" @click="showRhMsg = true">
           Communiquer aux RH
         </BaseButton>
       </div>
@@ -108,5 +130,36 @@ async function toggleCarto() {
         </div>
       </RouterLink>
     </div>
+
+    <BaseModal v-model="showRhMsg" title="Communiquer aux RH">
+      <div class="space-y-3">
+        <p class="text-xs text-ink-3">Votre message crée une notification pour l'équipe RH.</p>
+        <div>
+          <label class="mb-1 block text-xs font-semibold text-ink-2">Sujet (optionnel)</label>
+          <input
+            v-model="rhSujet"
+            maxlength="200"
+            placeholder="Ex. Besoin de renfort — Retail Banking"
+            class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-xs font-semibold text-ink-2">Message</label>
+          <textarea
+            v-model="rhMessage"
+            rows="4"
+            maxlength="1000"
+            placeholder="Votre message aux RH…"
+            class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green-line"
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <BaseButton variant="secondary" size="sm" @click="showRhMsg = false">Annuler</BaseButton>
+          <BaseButton size="sm" :disabled="!rhMessage.trim() || rhSending" @click="sendRh">
+            {{ rhSending ? 'Envoi…' : 'Envoyer' }}
+          </BaseButton>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>
