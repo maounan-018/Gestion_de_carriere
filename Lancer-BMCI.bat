@@ -26,7 +26,10 @@ where conda >nul 2>&1 || (echo [ERREUR] "conda" introuvable dans le PATH. & goto
 where npm   >nul 2>&1 || (echo [ERREUR] "npm" introuvable dans le PATH. & goto :fin)
 if not exist "%ROOT%backend\bmci_carrieres.db" (
   echo [ATTENTION] Base "backend\bmci_carrieres.db" absente.
-  echo             1er lancement ? Preparez-la avant : alembic upgrade head + seed.
+  echo             1er lancement ? Preparez-la d'abord depuis backend\ ^(env conda^) :
+  echo               conda run -n bmci-carrieres alembic upgrade head
+  echo               conda run -n bmci-carrieres python -m app.database.seed
+  echo             Reco/matching : ingestion des referentiels requise en amont ^(voir README^).
   echo.
 )
 
@@ -42,7 +45,7 @@ if errorlevel 1 (
 
 REM --- 2) Backend FastAPI (:5001) ------------------------------------------
 echo [2/3] Backend FastAPI (:5001)  [conda env bmci-carrieres]...
-start "BMCI Backend :5001" cmd /k "cd /d "%ROOT%backend" && conda run -n bmci-carrieres --no-capture-output uvicorn app.main:app --host 127.0.0.1 --port 5001"
+start "BMCI Backend :5001" cmd /k "cd /d "%ROOT%backend" && conda run -n bmci-carrieres --no-capture-output python -m uvicorn app.main:app --host 127.0.0.1 --port 5001"
 
 REM --- 3) Frontend Vite (:3001), force en LIVE (surcharge .env.local) ------
 echo [3/3] Frontend Vite (:3001)  [mode LIVE -^> backend :5001]...
@@ -52,6 +55,8 @@ REM --- Ouverture du navigateur (laisse le temps a Vite de compiler) --------
 echo.
 echo   Demarrage en cours... ouverture du navigateur dans ~12s.
 echo   (Astuce : mode maquette hors backend = mettre VITE_API_MODE=mock dans frontend\.env.local)
+echo   (Rafraichir donnees demo + cartographie 33 departements, depuis backend\ :)
+echo      conda run -n bmci-carrieres python -m app.database.seed   [idempotent]
 timeout /t 12 /nobreak >nul
 start "" http://localhost:3001
 
