@@ -20,7 +20,7 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
 from app.schemas.dashboard import (DashboardKpis, CartoMatrix, FamilleCompetence,
-                                    HautPotentielItem, SyntheseRh)
+                                    HautPotentielItem, SyntheseRh, SupervisionItem)
 from app.services import dashboard_service
 
 router = APIRouter(prefix="/api/dashboards", tags=["Tableaux de bord"])
@@ -79,3 +79,10 @@ def familles(db: Session = Depends(get_db)) -> list[FamilleCompetence]:
 def hauts_potentiels(limit: int = Query(10, ge=1, le=50),
                      db: Session = Depends(get_db)) -> list[HautPotentielItem]:
     return dashboard_service.hauts_potentiels(db, limit=limit)
+
+
+@router.get("/supervision", response_model=list[SupervisionItem],
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+            summary="Supervision qualité des données (scans réels de la base)")
+def supervision(db: Session = Depends(get_db)) -> list[SupervisionItem]:
+    return [SupervisionItem(**it) for it in dashboard_service.supervision(db)]

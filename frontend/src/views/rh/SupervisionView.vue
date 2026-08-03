@@ -1,49 +1,89 @@
 <script setup lang="ts">
-import { Settings, Check, BookOpen, ChevronRight } from '@lucide/vue'
+import { ref, computed, onMounted } from 'vue'
+import { Settings, Check, BookOpen, ChevronRight, RefreshCw, AlertTriangle } from '@lucide/vue'
+import { apiService } from '@/services/apiService'
 import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
+import LoadingState from '@/components/ui/LoadingState.vue'
+import ErrorState from '@/components/ui/ErrorState.vue'
 
-const reviews = [
-  { title: 'Fiches sans compétence ancrée', found: 3, fixed: 3 },
-  { title: 'Profils incomplets détectés', found: 8, fixed: 0 },
-  { title: 'Doublons de compétences fusionnés', found: 5, fixed: 5 },
-]
+// Supervision DATA-DRIVEN : chaque contrôle est un scan RÉEL de la base (aucune valeur
+// figée). Le bouton « Relancer l'analyse » ré-exécute le scan à la demande.
+type Item = { titre: string; found: number; total: number }
+const items = ref<Item[]>([])
+const loading = ref(true)
+const error = ref('')
+const lastRun = ref('')
+
+async function scan() {
+  loading.value = true
+  error.value = ''
+  try {
+    items.value = await apiService.getSupervision()
+    lastRun.value = new Date().toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    error.value = 'Analyse indisponible pour le moment.'
+  } finally {
+    loading.value = false
+  }
+}
+onMounted(scan)
+
+const anomalies = computed(() => items.value.reduce((s, i) => s + i.found, 0))
+function pct(i: Item): number {
+  return i.total ? Math.round((i.found / i.total) * 100) : 0
+}
 </script>
 
 <template>
   <div class="space-y-5">
     <BaseCard>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <div class="grid h-10 w-10 place-items-center rounded-xl bg-green-soft text-green-deep">
           <Settings :size="18" />
         </div>
-        <div>
+        <div class="min-w-0 flex-1">
           <h3 class="font-display text-base font-bold text-ink">Supervision de la plateforme</h3>
           <p class="text-sm text-ink-3">
-            Revues automatiques nocturnes de la qualité des données talents.
+            Analyse de la qualité des données talents — scans réels de la base, à la demande.
           </p>
         </div>
+        <BaseButton variant="secondary" size="sm" :disabled="loading" @click="scan">
+          <RefreshCw :size="15" :class="loading ? 'animate-spin' : ''" /> Relancer l'analyse
+        </BaseButton>
       </div>
     </BaseCard>
 
-    <BaseCard title="Dernière revue automatique">
-      <template #actions><BasePill tone="new">Terminée · cette nuit</BasePill></template>
+    <LoadingState v-if="loading" label="Analyse de la qualité des données en cours…" />
+    <ErrorState v-else-if="error" :message="error">
+      <template #action><BaseButton size="sm" @click="scan">Réessayer</BaseButton></template>
+    </ErrorState>
+
+    <BaseCard v-else title="Résultat de l'analyse">
+      <template #actions>
+        <BasePill :tone="anomalies === 0 ? 'new' : 'warn'">
+          {{ anomalies === 0 ? 'Aucune anomalie' : `${anomalies} anomalie(s)` }}
+        </BasePill>
+      </template>
+      <p v-if="lastRun" class="mb-2 text-xs text-ink-3">Dernière analyse : {{ lastRun }}</p>
       <div class="divide-y divide-border">
-        <div v-for="r in reviews" :key="r.title" class="flex items-center gap-3 py-3">
+        <div v-for="r in items" :key="r.titre" class="flex items-center gap-3 py-3">
           <div
-            class="grid h-8 w-8 place-items-center rounded-lg"
-            :class="r.fixed === r.found ? 'bg-green-soft text-green-deep' : 'bg-warning-soft text-warning'"
+            class="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+            :class="r.found === 0 ? 'bg-green-soft text-green-deep' : 'bg-warning-soft text-warning'"
           >
-            <Check :size="15" />
+            <Check v-if="r.found === 0" :size="15" />
+            <AlertTriangle v-else :size="15" />
           </div>
-          <div class="flex-1">
-            <h4 class="text-sm font-bold text-ink">{{ r.title }}</h4>
+          <div class="min-w-0 flex-1">
+            <h4 class="text-sm font-bold text-ink">{{ r.titre }}</h4>
             <p class="text-xs text-ink-3">
-              {{ r.found }} détecté(s) · {{ r.fixed }} corrigé(s) automatiquement
+              {{ r.found }} anomalie(s) sur {{ r.total }} contrôlé(s)<span v-if="r.found"> · {{ pct(r) }} %</span>
             </p>
           </div>
-          <BasePill :tone="r.fixed === r.found ? 'new' : 'warn'">
-            {{ r.fixed === r.found ? 'Résolu' : 'À traiter' }}
+          <BasePill :tone="r.found === 0 ? 'new' : 'warn'">
+            {{ r.found === 0 ? 'Conforme' : 'À traiter' }}
           </BasePill>
         </div>
       </div>
@@ -57,7 +97,7 @@ const reviews = [
         <BookOpen :size="18" />
       </div>
       <div class="min-w-0 flex-1">
-        <h4 class="text-sm font-bold text-ink">Référentiel de compétences & gabarit de fiche</h4>
+        <h4 class="text-sm font-bold text-ink">Référentiel de compétences &amp; gabarit de fiche</h4>
         <p class="text-xs text-ink-3">
           Référentiels ESCO · O*NET · SFIA, familles de compétences et structure type des fiches.
         </p>

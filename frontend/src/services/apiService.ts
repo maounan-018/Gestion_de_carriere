@@ -606,6 +606,21 @@ export const apiService = {
     const rows = await apiFetch<HautPotentielOut[]>('/dashboards/hauts-potentiels')
     return rows.map(mapHautPotentiel)
   },
+  /** Supervision qualité des données : scans RÉELS de la base (RH). Chaque item =
+   *  un contrôle et le nombre d'anomalies détectées sur une population. */
+  async getSupervision(): Promise<{ titre: string; found: number; total: number }[]> {
+    if (MODE === 'mock') {
+      await delay()
+      return [
+        { titre: 'Profils sans compétence renseignée', found: 2, total: 8 },
+        { titre: 'Profils sans poste renseigné', found: 0, total: 8 },
+        { titre: 'Profils sans aspiration exprimée', found: 4, total: 8 },
+        { titre: 'Compétences non ancrées au graphe', found: 6, total: 48 },
+        { titre: 'Compétences non catégorisées', found: 0, total: 48 },
+      ]
+    }
+    return apiFetch('/dashboards/supervision')
+  },
   async getVeille(): Promise<VeilleType[]> {
     if (MODE === 'mock') {
       await delay()
