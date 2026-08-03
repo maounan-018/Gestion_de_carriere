@@ -142,6 +142,8 @@ export const NADIA_PROFILE: CollabProfile = {
     "Responsable Développement RH, je pilote la mobilité interne, la cartographie des compétences et les hauts potentiels du Groupe. Objectif : Directrice des Talents.",
   aspirations: ['Direction des Talents', 'Stratégie RH Groupe', 'People analytics'],
   zones: 'Casablanca · Paris',
+  disponibilite: 'immédiate',
+  typeEvolution: 'Expertise',
   stations: [
     { period: '2014 · 2018', title: 'Chargée de mobilité', desc: 'Mobilité interne.', state: 'past' },
     { period: '2018 · 2022', title: 'Business Partner RH', desc: 'Accompagnement des pôles.', state: 'past' },

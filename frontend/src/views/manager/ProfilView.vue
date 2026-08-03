@@ -81,7 +81,12 @@ onMounted(load)
               <AppIcon name="route" :size="16" />
               <h4 class="text-sm font-bold">{{ profile.posteVise }}</h4>
             </div>
-            <p class="mt-1 text-xs text-ink-2">{{ profile.horizon }} · {{ profile.zones }}</p>
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              <BaseChip v-if="profile.horizon" tone="green">Horizon : {{ profile.horizon }}</BaseChip>
+              <BaseChip v-if="profile.typeEvolution" tone="green">{{ profile.typeEvolution }}</BaseChip>
+              <BaseChip v-if="profile.zones" tone="green">{{ profile.zones }}</BaseChip>
+              <BaseChip v-if="profile.disponibilite" tone="green">Dispo : {{ profile.disponibilite }}</BaseChip>
+            </div>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <BaseChip v-for="a in profile.aspirations" :key="a" tone="green">{{ a }}</BaseChip>

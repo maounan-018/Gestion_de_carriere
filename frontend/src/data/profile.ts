@@ -9,6 +9,8 @@ export const COLLAB_PROFILE: CollabProfile = {
     "Analyste Senior au Pôle Risques, référent du scoring IFRS 9. J'accompagne les chargés d'affaires sur l'analyse de contrepartie et je souhaite évoluer vers l'encadrement d'équipe.",
   aspirations: ['Management', 'Expertise', 'Mobilité géographique'],
   zones: 'Casablanca · Paris',
+  disponibilite: '6 à 12 mois',
+  typeEvolution: 'Management',
   stations: [
     { period: '2019 · 2021', title: 'Analyste Junior', desc: 'Graduate Program, portefeuille PME.', state: 'past' },
     { period: '2021 · 2023', title: 'Analyste', desc: 'Portefeuille Corporate.', state: 'past' },
