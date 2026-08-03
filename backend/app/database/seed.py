@@ -497,55 +497,107 @@ def _seed_entretiens(db: Session) -> int:
     return created
 
 
-# --- Cartographie : profils répartis sur plusieurs pôles, compétences par famille -
-# (departement_key, nom, poste, [(libellé, famille/catégorie, niveau)]). Peuple la
-# heatmap (pôles × familles) de façon variée. Familles = metier / comportementale /
-# transversale / outil_technologie / leadership / data — extensibles librement.
-_CARTO_POLES = [
-    ("risque_credit", "Fatima Ouali", "Analyste risque crédit",
-     [("Modélisation du risque", "metier", 4), ("Bâle III", "metier", 3),
-      ("Esprit d'analyse", "comportementale", 4), ("Python", "outil_technologie", 3),
-      ("Reporting réglementaire", "transversale", 4), ("Data science", "data", 3)]),
-    ("conformite", "Rachid Amrani", "Chargé de conformité",
-     [("LCB-FT", "metier", 4), ("Contrôle interne", "metier", 3),
-      ("Rigueur", "comportementale", 5), ("Veille réglementaire", "transversale", 4),
-      ("Pilotage d'équipe", "leadership", 2)]),
-    ("it_digital", "Sophia Benjelloun", "Ingénieure SI",
-     [("Cybersécurité", "metier", 4), ("Cloud", "outil_technologie", 4),
-      ("Gestion de projet", "transversale", 4), ("Data engineering", "data", 3),
-      ("Communication", "comportementale", 3)]),
-    ("corporate", "Omar Fassi", "Chargé d'affaires corporate",
-     [("Financement structuré", "metier", 4), ("Analyse financière", "data", 4),
-      ("Négociation", "comportementale", 4), ("Relation grands comptes", "metier", 5),
-      ("Management d'équipe", "leadership", 3)]),
-    ("international", "Leïla Sekkat", "Responsable international",
-     [("Trade finance", "metier", 4), ("Anglais des affaires", "transversale", 5),
-      ("Management interculturel", "leadership", 4), ("Analyse de marché", "data", 3),
-      ("Adaptabilité", "comportementale", 4)]),
-    ("operations", "Yassine Tahiri", "Gestionnaire back-office",
-     [("Gestion des flux", "metier", 4), ("Excel avancé", "outil_technologie", 4),
-      ("Rigueur opérationnelle", "comportementale", 4),
-      ("Optimisation de process", "transversale", 3), ("Data quality", "data", 3)]),
-]
+# --- Cartographie : profils synthétiques répartis sur TOUTE l'organisation réelle ---
+# Source = référentiel config/departements_metiers.yaml (6 pôles macro, ~34 départements,
+# ~165 métiers). Peuple la heatmap RH (départements × 6 familles de compétences) de façon
+# riche, variée et FIDÈLE à l'organigramme BMCI, au lieu de quelques pôles inventés.
+# ⚠️ Profils SYNTHÉTIQUES (synthetique=True, matricule `DEMO-CARTO-*`) — données de démo.
+
+# Familles de compétences = colonnes de la heatmap (alignées sur le front `humanizeFamille`).
+_CARTO_FAMILLES = ["metier", "comportementale", "transversale",
+                   "outil_technologie", "leadership", "data"]
+
+# Niveau de base (1-5) par (pôle macro → famille) : profil de compétences typique du pôle.
+# Chaque département hérite du profil de son pôle, ± un léger jitter déterministe.
+_POLE_PROFILE: dict[str, dict[str, int]] = {
+    "Lignes métiers commerciales": {
+        "metier": 4, "comportementale": 4, "transversale": 3,
+        "outil_technologie": 3, "leadership": 3, "data": 3},
+    "Marchés, international & filiales": {
+        "metier": 4, "comportementale": 3, "transversale": 4,
+        "outil_technologie": 3, "leadership": 3, "data": 4},
+    "Risques, conformité & contrôle": {
+        "metier": 4, "comportementale": 4, "transversale": 4,
+        "outil_technologie": 3, "leadership": 3, "data": 3},
+    "Finance, stratégie & pilotage": {
+        "metier": 4, "comportementale": 3, "transversale": 4,
+        "outil_technologie": 3, "leadership": 3, "data": 4},
+    "Data, IT & digital": {
+        "metier": 4, "comportementale": 3, "transversale": 3,
+        "outil_technologie": 5, "leadership": 3, "data": 4},
+    "Fonctions support & corporate": {
+        "metier": 3, "comportementale": 4, "transversale": 4,
+        "outil_technologie": 3, "leadership": 3, "data": 3},
+}
+_POLE_DEFAUT = {f: 3 for f in _CARTO_FAMILLES}
+
+# Libellés représentatifs par famille (la famille "metier" reprend le métier réel du poste).
+_FAM_LIBELLES: dict[str, list[str]] = {
+    "comportementale": ["Rigueur", "Esprit d'analyse", "Sens du client",
+                        "Adaptabilité", "Communication", "Esprit d'équipe"],
+    "transversale": ["Gestion de projet", "Reporting réglementaire", "Veille réglementaire",
+                     "Anglais professionnel", "Optimisation des process", "Conduite du changement"],
+    "outil_technologie": ["Excel avancé", "SQL", "Python", "Outils SI métiers",
+                          "Power BI", "Automatisation"],
+    "leadership": ["Management d'équipe", "Pilotage d'activité", "Leadership collaboratif",
+                   "Animation transverse"],
+    "data": ["Analyse de données", "Business intelligence", "Modélisation",
+             "Data quality", "Datavisualisation"],
+}
+
+_CARTO_PRENOMS = ["Youssef", "Fatima", "Rachid", "Sophia", "Omar", "Leïla", "Yassine",
+                  "Nadia", "Karim", "Salma", "Mehdi", "Imane", "Hamza", "Sara",
+                  "Anas", "Khadija", "Reda", "Meryem"]
+_CARTO_NOMS = ["Alaoui", "Bennani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri",
+               "Ouali", "Amrani", "Benjelloun", "El Malki", "Berrada", "Kabbaj",
+               "Lahlou", "Naciri", "Squalli", "Tazi", "Zniber"]
+
+
+def _carto_hash(s: str) -> int:
+    """Hash déterministe (indépendant du PYTHONHASHSEED) pour varier profils/niveaux."""
+    return sum((i + 1) * ord(c) for i, c in enumerate(s))
 
 
 def _seed_carto(db: Session) -> int:
-    """Profils synthétiques répartis sur plusieurs pôles, compétences taguées par
-    famille → cartographie (heatmap) pleine et variée. Idempotent par matricule."""
+    """Profils synthétiques répartis sur TOUS les départements réels (référentiel
+    d'organisation), compétences taguées par famille → cartographie (heatmap) pleine,
+    variée et fidèle à l'organigramme BMCI. Idempotent par matricule."""
+    from app.services import cartography_service  # référentiel pôles/départements (YAML)
+
+    try:
+        depts = cartography_service.departements()
+    except FileNotFoundError:
+        depts = []
+
     created = 0
-    for i, (dept, nom_complet, poste, comps) in enumerate(_CARTO_POLES):
-        matricule = f"DEMO-CARTO-{i + 1}"
-        if db.scalar(select(Profil).where(Profil.matricule == matricule)):
+    for dept in depts:
+        key = dept.get("key")
+        if not key:
             continue
-        prenom, nom = (nom_complet.split(" ", 1) + [""])[:2]
-        p = Profil(user_id=None, nom=nom or nom_complet, prenom=prenom, matricule=matricule,
-                   poste_actuel=poste, departement_key=dept, synthetique=True)
-        db.add(p)
-        db.flush()
-        for libelle, categorie, niveau in comps:
-            db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=categorie,
-                                    niveau=niveau, source=CompetenceSource.DECLARATIF))
-        created += 1
+        pole = dept.get("pole") or ""
+        metiers = dept.get("metiers") or [dept.get("nom", key)]
+        base = _POLE_PROFILE.get(pole, _POLE_DEFAUT)
+        n_profils = 1 + _carto_hash(key) % 3  # 1 à 3 profils/département → effectifs variés
+        for n in range(n_profils):
+            matricule = f"DEMO-CARTO-{key}-{n + 1}"
+            if db.scalar(select(Profil).where(Profil.matricule == matricule)):
+                continue
+            h = _carto_hash(f"{key}-{n}")
+            prenom = _CARTO_PRENOMS[h % len(_CARTO_PRENOMS)]
+            nom = _CARTO_NOMS[(h // 7) % len(_CARTO_NOMS)]
+            poste = metiers[h % len(metiers)]
+            p = Profil(user_id=None, nom=nom, prenom=prenom, matricule=matricule,
+                       poste_actuel=poste, departement_key=key, synthetique=True)
+            db.add(p)
+            db.flush()
+            for fam in _CARTO_FAMILLES:
+                jitter = (_carto_hash(f"{key}-{fam}-{n}") % 3) - 1  # -1, 0 ou +1
+                niveau = max(1, min(5, base.get(fam, 3) + jitter))
+                libelle = poste if fam == "metier" else \
+                    _FAM_LIBELLES[fam][_carto_hash(f"{key}-{fam}") % len(_FAM_LIBELLES[fam])]
+                db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=fam,
+                                        niveau=niveau, source=CompetenceSource.DECLARATIF))
+            created += 1
     db.commit()
     return created
 

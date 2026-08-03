@@ -47,7 +47,8 @@ class CartoLigne(BaseModel):
     `familles` (même ordre) : `niveaux[i]` = niveau moyen du pôle pour la famille i
     (None si aucune compétence de cette famille dans ce pôle)."""
     departement_key: str
-    label: str
+    label: str                 # libellé du département (référentiel d'organisation)
+    pole: str | None = None    # pôle macro de rattachement (regroupement de la heatmap)
     effectif: int
     niveau_moyen: float | None
     niveaux: list[float | None] = []

@@ -2,10 +2,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
+import { useSessionStore } from '@/stores/session'
 import type { Formation, FormationStatus } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
 import BasePill from '@/components/ui/BasePill.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -15,6 +17,18 @@ const items = ref<Formation[]>([])
 const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
+const session = useSessionStore()
+
+/* ---- Attestation (formation terminée) ---- */
+const attFormation = ref<Formation | null>(null)
+const showAtt = computed({
+  get: () => attFormation.value !== null,
+  set: (v: boolean) => { if (!v) attFormation.value = null },
+})
+const today = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+function openAttestation(f: Formation) {
+  attFormation.value = f
+}
 
 const filters = [
   { key: 'all', label: 'Toutes' },
@@ -93,8 +107,8 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
           <BaseButton
             v-if="f.status === 'done'"
             variant="secondary" size="sm" block
-            @click="toast('Attestation — à venir', 'info')"
-          ><AppIcon name="check" :size="14" /> Voir l'attestation</BaseButton>
+            @click="openAttestation(f)"
+          ><AppIcon name="award" :size="14" /> Voir l'attestation</BaseButton>
           <BaseButton
             v-else size="sm" block
             @click="toast(f.status === 'in-progress' ? 'Reprise de la formation…' : 'Inscription enregistrée')"
@@ -102,5 +116,26 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
         </div>
       </div>
     </div>
+
+    <BaseModal v-model="showAtt" title="Attestation de formation">
+      <div v-if="attFormation" class="rounded-2xl border border-green-line bg-green-ghost p-6 text-center">
+        <div class="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-green text-white">
+          <AppIcon name="award" :size="24" />
+        </div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-green-deep">Attestation de réussite</p>
+        <h3 class="mt-2 font-display text-lg font-bold text-ink">{{ attFormation.title }}</h3>
+        <p class="mt-1 text-sm text-ink-2">{{ attFormation.provider }} · {{ attFormation.duration }}</p>
+        <div class="my-4 h-px bg-green-line" />
+        <p class="text-sm text-ink-2">
+          Délivrée à <b class="text-ink">{{ session.user?.name || 'Collaborateur' }}</b>
+          <span v-if="session.user?.title"> — {{ session.user.title }}</span>
+        </p>
+        <p class="mt-1 text-xs text-ink-3">Formation suivie avec succès · le {{ today }}</p>
+        <p class="mt-4 text-[11px] italic text-ink-3">Document de démonstration — sans valeur officielle.</p>
+      </div>
+      <template #footer>
+        <BaseButton size="sm" @click="showAtt = false">Fermer</BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>

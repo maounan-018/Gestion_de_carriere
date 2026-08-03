@@ -447,11 +447,11 @@ export interface CandidatureMineOut {
 
 const CAND_STATUT: Record<string, CandidatureStatus> = {
   deposee: 'Envoyée', en_evaluation: 'En revue', retenue: 'Retenue',
-  rejetee: 'Refusée', retiree: 'Refusée',
+  rejetee: 'Refusée', retiree: 'Retirée',
 }
 const CAND_TONE: Record<CandidatureStatus, PillTone> = {
   'Envoyée': 'mut', 'En revue': 'ai', 'Entretien planifié': 'new',
-  'Refusée': 'warn', 'Retenue': 'ok',
+  'Refusée': 'warn', 'Retenue': 'ok', 'Retirée': 'mut',
 }
 
 function frDate(iso: string): string {
@@ -463,6 +463,7 @@ function frDate(iso: string): string {
 export function mapCandidature(c: CandidatureMineOut): Candidature {
   const status = CAND_STATUT[c.statut] ?? 'Envoyée'
   return {
+    id: String(c.id),
     icon: 'brief',
     title: c.offre_titre,
     type: OFFRE_TYPE_LABEL[c.offre_type] ?? 'Poste',
@@ -655,7 +656,7 @@ export function mapVacancy(v: VacancyOut): Vacancy {
 export interface CartoMatrixOut {
   familles: string[]
   lignes: {
-    departement_key: string; label: string; effectif: number
+    departement_key: string; label: string; pole?: string | null; effectif: number
     niveau_moyen: number | null; niveaux: (number | null)[]; people: string[]
   }[]
 }
@@ -674,6 +675,7 @@ export function mapCartoMatrix(m: CartoMatrixOut): CartoMatrix {
     lignes: m.lignes.map((l) => ({
       departementKey: l.departement_key,
       label: l.label,
+      pole: l.pole ?? null,
       effectif: l.effectif,
       niveauMoyen: l.niveau_moyen,
       niveaux: l.niveaux,

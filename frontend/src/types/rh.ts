@@ -24,10 +24,11 @@ export interface RhPerson {
 /* ------------------------------------------------------------- Cartographie */
 export type Criticite = 'critique' | 'modéré' | 'bénin'
 export interface CartoPole {
-  name: string
+  name: string // libellé du département
+  pole?: string // pôle macro de rattachement (regroupement de la heatmap, comme en live)
   levels: number[] // niveau 0-5 par famille (aligné sur CARTO_SKILLS)
   people: string[] // noms présents dans le pôle
-  analyse: { text: string; criticite: Criticite; focus?: string }
+  analyse?: { text: string; criticite: Criticite; focus?: string }
 }
 
 /* Cartographie DATA-DRIVEN (matrice flexible N pôles × M familles). Les colonnes
@@ -35,6 +36,7 @@ export interface CartoPole {
 export interface CartoLigne {
   departementKey: string
   label: string
+  pole?: string | null // pôle macro de rattachement (regroupement de la heatmap)
   effectif: number
   niveauMoyen: number | null
   niveaux: (number | null)[] // aligné sur `familles` (une cellule par colonne)

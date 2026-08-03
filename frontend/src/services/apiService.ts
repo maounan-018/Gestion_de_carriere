@@ -187,6 +187,14 @@ export const apiService = {
     const rows = await apiFetch<CandidatureMineOut[]>('/candidatures/mes')
     return rows.map(mapCandidature)
   },
+  /** Retire une de mes candidatures (statut → « retiree »). Réservé au candidat. */
+  async retirerCandidature(id: string): Promise<void> {
+    if (MODE === 'mock') {
+      await delay()
+      return
+    }
+    await apiFetch(`/candidatures/${id}/retrait`, { method: 'PATCH' })
+  },
   async getNotifications(): Promise<NotificationItem[]> {
     if (MODE === 'mock') {
       await delay(200)
@@ -221,6 +229,33 @@ export const apiService = {
     }
     const rows = await apiFetch<SouhaitOut[]>('/souhaits')
     return rows.map(mapSouhait)
+  },
+  /** Crée un souhait d'évolution (option `pushed` : le pousser aussitôt au manager). */
+  async createSouhait(input: {
+    titre: string; kind?: 'carriere' | 'mission'; horizon?: string; description?: string; pushed?: boolean
+  }): Promise<Souhait> {
+    if (MODE === 'mock') {
+      await delay()
+      return {
+        id: `mock-${Date.now()}`, title: input.titre, horizon: input.horizon || '—',
+        desc: input.description || '', status: input.pushed ? 'Poussé au manager' : 'Brouillon',
+        tone: input.pushed ? 'ai' : 'mut', pushed: !!input.pushed,
+      }
+    }
+    return mapSouhait(await apiFetch<SouhaitOut>('/souhaits', { method: 'POST', body: input }))
+  },
+  /** Édite un souhait existant (titre / horizon / description / type). */
+  async updateSouhait(id: string, patch: {
+    titre?: string; kind?: 'carriere' | 'mission'; horizon?: string; description?: string
+  }): Promise<Souhait> {
+    if (MODE === 'mock') {
+      await delay()
+      return {
+        id, title: patch.titre || '', horizon: patch.horizon || '—',
+        desc: patch.description || '', status: 'Brouillon', tone: 'mut', pushed: false,
+      }
+    }
+    return mapSouhait(await apiFetch<SouhaitOut>(`/souhaits/${id}`, { method: 'PATCH', body: patch }))
   },
   async getReco(): Promise<RecoData> {
     if (MODE === 'mock') {
@@ -467,7 +502,7 @@ export const apiService = {
       return {
         familles: [...CARTO_SKILLS],
         lignes: CARTO_POLES.map((p) => ({
-          departementKey: p.name, label: p.name, effectif: p.people.length,
+          departementKey: p.name, label: p.name, pole: p.pole ?? null, effectif: p.people.length,
           niveauMoyen: p.levels.length ? p.levels.reduce((a, b) => a + b, 0) / p.levels.length : null,
           niveaux: p.levels, people: p.people,
         })),

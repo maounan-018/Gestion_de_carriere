@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
+import { useToast } from '@/composables/useToast'
 import type { Candidature } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -14,6 +15,31 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 const items = ref<Candidature[]>([])
 const loading = ref(true)
 const error = ref('')
+const { toast } = useToast()
+const busyId = ref<string | null>(null)
+
+/** Une candidature n'est retirable que tant qu'elle n'est pas décidée/déjà retirée. */
+function canWithdraw(c: Candidature): boolean {
+  return !!c.id && (c.status === 'Envoyée' || c.status === 'En revue' || c.status === 'Entretien planifié')
+}
+
+async function retirer(c: Candidature) {
+  if (!c.id || busyId.value) return
+  busyId.value = c.id
+  const prev = { status: c.status, tone: c.tone }
+  c.status = 'Retirée'
+  c.tone = 'mut'
+  try {
+    await apiService.retirerCandidature(c.id)
+    toast('Candidature retirée')
+  } catch (e) {
+    c.status = prev.status
+    c.tone = prev.tone
+    toast(e instanceof Error ? e.message : 'Échec du retrait', 'error')
+  } finally {
+    busyId.value = null
+  }
+}
 
 async function load() {
   loading.value = true
@@ -93,6 +119,15 @@ const kpis = computed(() => {
               </div>
             </div>
             <BasePill :tone="c.tone">{{ c.status }}</BasePill>
+            <BaseButton
+              v-if="canWithdraw(c)"
+              variant="secondary"
+              size="sm"
+              :disabled="busyId === c.id"
+              @click="retirer(c)"
+            >
+              Retirer
+            </BaseButton>
           </div>
         </div>
       </BaseCard>

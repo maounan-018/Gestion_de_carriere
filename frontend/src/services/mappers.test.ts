@@ -24,6 +24,8 @@ import {
   mapRhCandidate,
   mapVacancy,
   mapVacancyReco,
+  mapCartoMatrix,
+  type CartoMatrixOut,
   type NotificationOut,
   type FormationOut,
   type SouhaitOut,
@@ -526,5 +528,35 @@ describe('mapSyntheseRh', () => {
       parPole: [{ pole: 'Risques', effectif: 5 }],
       candidaturesParStatut: [{ statut: 'retenue', nombre: 2 }],
     })
+  })
+})
+
+describe('mapCartoMatrix', () => {
+  it('humanise les familles, propage le pôle et aligne les niveaux', () => {
+    const out: CartoMatrixOut = {
+      familles: ['metier', 'data'],
+      lignes: [
+        { departement_key: 'retail_banking', label: 'Retail Banking', pole: 'Lignes métiers commerciales',
+          effectif: 3, niveau_moyen: 3.5, niveaux: [4, 3], people: ['Youssef Alaoui'] },
+        { departement_key: 'risques', label: 'Risques', pole: 'Risques, conformité & contrôle',
+          effectif: 1, niveau_moyen: 4, niveaux: [5, null], people: [] },
+      ],
+    }
+    const m = mapCartoMatrix(out)
+    expect(m.familles).toEqual(['Métier', 'Data & Analyse'])
+    expect(m.lignes[0]).toMatchObject({
+      departementKey: 'retail_banking', label: 'Retail Banking',
+      pole: 'Lignes métiers commerciales', effectif: 3, niveaux: [4, 3],
+    })
+    expect(m.lignes[1].pole).toBe('Risques, conformité & contrôle')
+    expect(m.lignes[1].niveaux).toEqual([5, null])
+  })
+
+  it('tolère un pôle absent (repli null)', () => {
+    const out: CartoMatrixOut = {
+      familles: ['metier'],
+      lignes: [{ departement_key: 'x', label: 'X', effectif: 1, niveau_moyen: 2, niveaux: [2], people: [] }],
+    }
+    expect(mapCartoMatrix(out).lignes[0].pole).toBeNull()
   })
 })

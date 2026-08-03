@@ -73,3 +73,33 @@ def test_collab_ne_lit_pas_candidature_dautrui(client):
     assert client.get(f"/api/candidatures/{cand}").status_code == 200   # RH : global
     auth(client, "collab")
     assert client.get(f"/api/candidatures/{cand}").status_code == 403   # pas sa candidature
+
+
+# --------------------------------------------------------- Retrait candidature
+
+def test_collab_retire_sa_candidature(client):
+    # RH publie une offre ; le collab candidate pour SON profil puis la retire.
+    csrf_rh = auth(client, "rh")
+    off = client.post("/api/offres", json={"titre": "Poste Retrait", "type": "offre_poste"},
+                      headers=hdr(csrf_rh)).json()["id"]
+    csrf = auth(client, "collab")
+    mon = client.get("/api/profils/me/carriere").json()["profil_id"]
+    cand = client.post("/api/candidatures", json={"offre_id": off, "profil_id": mon},
+                       headers=hdr(csrf)).json()["id"]
+    r = client.patch(f"/api/candidatures/{cand}/retrait", headers=hdr(csrf))
+    assert r.status_code == 200, r.text
+    assert r.json()["statut"] == "retiree"
+
+
+def test_collab_ne_retire_pas_candidature_dautrui(client):
+    # RH crée une candidature pour un profil synthétique ; le collab ne peut pas la retirer.
+    csrf_rh = auth(client, "rh")
+    off = client.post("/api/offres", json={"titre": "Poste RetraitX", "type": "offre_poste"},
+                      headers=hdr(csrf_rh)).json()["id"]
+    synth = client.post("/api/profils", json={"nom": "CandRetrait", "synthetique": True},
+                        headers=hdr(csrf_rh)).json()["id"]
+    cand = client.post("/api/candidatures", json={"offre_id": off, "profil_id": synth},
+                       headers=hdr(csrf_rh)).json()["id"]
+    csrf = auth(client, "collab")
+    r = client.patch(f"/api/candidatures/{cand}/retrait", headers=hdr(csrf))
+    assert r.status_code == 403, r.text
