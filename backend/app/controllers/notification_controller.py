@@ -20,8 +20,10 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import get_current_user, require_roles
+from app.auth import ownership
 from app.models.user import User, Role
-from app.schemas.notification import NotificationOut, MessageRhRequest, MessageRhResult
+from app.schemas.notification import (NotificationOut, MessageRhRequest, MessageRhResult,
+                                      MessageProfilRequest, MessageProfilResult)
 from app.services import notification_service
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
@@ -36,6 +38,20 @@ def message_rh(req: MessageRhRequest, user: User = Depends(get_current_user),
     n = notification_service.communiquer_aux_rh(
         db, from_name=user.name, sujet=req.sujet, message=req.message)
     return MessageRhResult(destinataires=n)
+
+
+@router.post("/message-profil", response_model=MessageProfilResult,
+             dependencies=[Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN))],
+             summary="Notifier un collaborateur (RH/manager → profil)")
+def message_profil(req: MessageProfilRequest, user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> MessageProfilResult:
+    """Envoie une notification ciblée au collaborateur d'un profil. Ownership :
+    RH/ADMIN global ; MANAGER borné à son équipe (403 hors périmètre)."""
+    ownership.require_profil_view(db, user, req.profil_id)  # 404 si absent, 403 hors périmètre
+    delivered = notification_service.message_a_profil(
+        db, profil_id=req.profil_id, from_name=user.name,
+        sujet=req.sujet, message=req.message, to_route=req.to_route)
+    return MessageProfilResult(delivered=delivered)
 
 
 @router.get("", response_model=list[NotificationOut],

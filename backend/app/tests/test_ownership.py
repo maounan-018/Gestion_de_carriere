@@ -103,3 +103,37 @@ def test_collab_ne_retire_pas_candidature_dautrui(client):
     csrf = auth(client, "collab")
     r = client.patch(f"/api/candidatures/{cand}/retrait", headers=hdr(csrf))
     assert r.status_code == 403, r.text
+
+
+# --------------------------------------------------- Notification ciblée (RH → collab)
+
+def test_rh_notifie_un_collaborateur(client):
+    # RH envoie une notification ciblée au collab (Marc a un compte → délivrée).
+    auth(client, "collab")
+    mon = client.get("/api/profils/me/carriere").json()["profil_id"]
+    csrf = auth(client, "rh")
+    r = client.post("/api/notifications/message-profil", headers=hdr(csrf),
+                    json={"profil_id": mon, "sujet": "Créneau",
+                          "message": "Un créneau d'entretien vous est proposé."})
+    assert r.status_code == 200, r.text
+    assert r.json()["delivered"] is True
+
+
+def test_message_profil_synthetique_non_delivre(client):
+    # Profil synthétique sans compte → delivered=False (pas d'erreur).
+    csrf = auth(client, "rh")
+    synth = client.post("/api/profils", json={"nom": "SynthNotif", "synthetique": True},
+                        headers=hdr(csrf)).json()["id"]
+    r = client.post("/api/notifications/message-profil", headers=hdr(csrf),
+                    json={"profil_id": synth, "message": "test"})
+    assert r.status_code == 200, r.text
+    assert r.json()["delivered"] is False
+
+
+def test_message_profil_interdit_au_collab(client):
+    # Un COLLAB ne peut pas notifier un autre collaborateur (RBAC → 403).
+    csrf = auth(client, "collab")
+    mon = client.get("/api/profils/me/carriere").json()["profil_id"]
+    r = client.post("/api/notifications/message-profil", headers=hdr(csrf),
+                    json={"profil_id": mon, "message": "test"})
+    assert r.status_code == 403

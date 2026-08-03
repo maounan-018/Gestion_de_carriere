@@ -541,6 +541,20 @@ export const apiService = {
     }
     return apiFetch('/notifications/message-rh', { method: 'POST', body: { sujet, message } })
   },
+  /** RH/manager → collaborateur : notification ciblée. `delivered=false` si le profil
+   *  n'a pas de compte actif (persona synthétique). */
+  async messageProfil(
+    profilId: string, sujet: string, message: string, toRoute?: string,
+  ): Promise<{ delivered: boolean }> {
+    if (MODE === 'mock') {
+      await delay(300)
+      return { delivered: true }
+    }
+    return apiFetch('/notifications/message-profil', {
+      method: 'POST',
+      body: { profil_id: Number(profilId), sujet, message, to_route: toRoute },
+    })
+  },
   /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
   async getSyntheseRh(): Promise<SyntheseRh> {
     if (MODE === 'mock') {
