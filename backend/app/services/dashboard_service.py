@@ -258,9 +258,16 @@ def synthese(db: Session) -> dict:
 
 
 # --------------------------------------------------------- Hauts potentiels
-def hauts_potentiels(db: Session, *, limit: int = 10) -> list[HautPotentielItem]:
-    """Profils au niveau moyen de compétences le plus élevé (proxy de potentiel).
-    Ne considère que les profils ayant au moins 2 compétences niveautées."""
+# Seuil « haut potentiel » : niveau moyen de compétences >= 4.5/5 (score >= 90).
+# C'est un VRAI critère (top ~12 % de la population niveautée), pas un « top N »
+# arbitraire — le nombre est donc stable et cohérent entre l'alerte et l'écran.
+SEUIL_HP = 4.5
+
+
+def hauts_potentiels(db: Session, *, limit: int = 50) -> list[HautPotentielItem]:
+    """Profils « hauts potentiels » : niveau moyen de compétences >= `SEUIL_HP`
+    (au moins 2 compétences niveautées). Triés par niveau décroissant. La même
+    définition sert au comptage de l'alerte RH ET à l'écran, garantissant la cohérence."""
     rows = db.execute(
         select(Profil, func.avg(ProfilCompetence.niveau),
                func.count(ProfilCompetence.id))
@@ -268,6 +275,7 @@ def hauts_potentiels(db: Session, *, limit: int = 10) -> list[HautPotentielItem]
         .where(ProfilCompetence.niveau.isnot(None))
         .group_by(Profil.id)
         .having(func.count(ProfilCompetence.id) >= 2)
+        .having(func.avg(ProfilCompetence.niveau) >= SEUIL_HP)
         .order_by(func.avg(ProfilCompetence.niveau).desc())
         .limit(min(max(limit, 1), 50))).all()
     out: list[HautPotentielItem] = []

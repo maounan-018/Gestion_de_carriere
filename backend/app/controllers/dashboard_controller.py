@@ -75,8 +75,8 @@ def familles(db: Session = Depends(get_db)) -> list[FamilleCompetence]:
 
 @router.get("/hauts-potentiels", response_model=list[HautPotentielItem],
             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
-            summary="Hauts potentiels (proxy : niveau moyen de compétences)")
-def hauts_potentiels(limit: int = Query(10, ge=1, le=50),
+            summary="Hauts potentiels (niveau moyen de compétences >= seuil)")
+def hauts_potentiels(limit: int = Query(50, ge=1, le=50),
                      db: Session = Depends(get_db)) -> list[HautPotentielItem]:
     return dashboard_service.hauts_potentiels(db, limit=limit)
 
