@@ -19,12 +19,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.auth.dependencies import get_current_user
-from app.models.user import User
-from app.schemas.notification import NotificationOut
+from app.auth.dependencies import get_current_user, require_roles
+from app.models.user import User, Role
+from app.schemas.notification import NotificationOut, MessageRhRequest, MessageRhResult
 from app.services import notification_service
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications"])
+
+
+@router.post("/message-rh", response_model=MessageRhResult,
+             dependencies=[Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN))],
+             summary="Envoyer un message aux RH (crée une notification par destinataire)")
+def message_rh(req: MessageRhRequest, user: User = Depends(get_current_user),
+               db: Session = Depends(get_db)) -> MessageRhResult:
+    """Un manager communique avec les RH : crée une notification pour chaque RH/ADMIN."""
+    n = notification_service.communiquer_aux_rh(
+        db, from_name=user.name, sujet=req.sujet, message=req.message)
+    return MessageRhResult(destinataires=n)
 
 
 @router.get("", response_model=list[NotificationOut],

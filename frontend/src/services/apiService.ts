@@ -533,6 +533,14 @@ export const apiService = {
     }
     return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/equipe/cartographie'))
   },
+  /** Manager → RH : envoie un message (crée une notification par destinataire RH). */
+  async communiquerRH(sujet: string, message: string): Promise<{ destinataires: number }> {
+    if (MODE === 'mock') {
+      await delay(400)
+      return { destinataires: 1 }
+    }
+    return apiFetch('/notifications/message-rh', { method: 'POST', body: { sujet, message } })
+  },
   /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
   async getSyntheseRh(): Promise<SyntheseRh> {
     if (MODE === 'mock') {
