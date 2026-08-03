@@ -2,6 +2,7 @@
 .env.local
 *.local
 backend/.env.local
+MDP.txt
 
 # Bases de données
 *.db
