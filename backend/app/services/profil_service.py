@@ -38,6 +38,18 @@ def _to_out(db: Session, p: Profil) -> ProfilOut:
     ).all()
     out = ProfilOut.model_validate(p)
     out.competences = [ProfilCompetenceOut.model_validate(c) for c in comps]
+    # Insights DÉRIVÉS (scan de la donnée) : évaluation ~ niveau moyen, séniorité,
+    # risque de départ, potentiel. Aucun champ « risque » n'est stocké en base.
+    niveaux = [c.niveau for c in comps if c.niveau is not None]
+    if niveaux:
+        out.score_eval = round(sum(niveaux) / len(niveaux), 2)
+    if p.date_entree is not None:
+        from datetime import datetime, timezone
+        de = p.date_entree if p.date_entree.tzinfo else p.date_entree.replace(tzinfo=timezone.utc)
+        out.anciennete_annees = max(0, (datetime.now(timezone.utc) - de).days // 365)
+    ev, anc = out.score_eval, (out.anciennete_annees or 0)
+    out.risque_depart = bool(ev is not None and (ev < 3.4 or (ev < 4.0 and anc >= 8)))
+    out.potentiel = "top" if (ev is not None and ev >= 4.2) else ("watch" if out.risque_depart else None)
     return out
 
 

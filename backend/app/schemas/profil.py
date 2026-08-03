@@ -104,6 +104,12 @@ class ProfilOut(BaseModel):
     synthetique: bool
     created_at: datetime
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)
+    # Insights DÉRIVÉS par « scan » de la donnée (non stockés en base) : évaluation
+    # (≈ niveau moyen /5), séniorité, risque de départ et potentiel.
+    score_eval: float | None = None
+    anciennete_annees: int | None = None
+    risque_depart: bool = False
+    potentiel: str | None = None   # 'top' | 'watch' | None
 
 
 class ImportResult(BaseModel):
