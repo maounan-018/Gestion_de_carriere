@@ -139,6 +139,46 @@ def cartographie(db: Session) -> CartoMatrix:
     return CartoMatrix(familles=familles, lignes=lignes)
 
 
+def cartographie_equipe(db: Session, manager_user_id: int) -> CartoMatrix:
+    """Cartographie de l'ÉQUIPE d'un manager, MÊME nomenclature que la carto RH
+    (familles = catégories de compétences, `_FAM_DEFAUT` par défaut) — mais les
+    LIGNES sont les collaborateurs (au lieu des pôles). Cellule = niveau moyen du
+    membre dans la famille. Portée : profils rattachés au manager (Profil.manager_id)."""
+    fam = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
+    membres = db.scalars(
+        select(Profil).where(Profil.manager_id == manager_user_id)
+        .order_by(Profil.nom, Profil.prenom)).all()
+    ids = [m.id for m in membres]
+    if not ids:
+        return CartoMatrix(familles=[], lignes=[])
+
+    familles = [r[0] for r in db.execute(
+        select(fam).where(ProfilCompetence.profil_id.in_(ids))
+        .distinct().order_by(fam)).all()]
+
+    cells: dict[tuple[int, str], float | None] = {}
+    for pid, f, moy in db.execute(
+            select(ProfilCompetence.profil_id, fam, func.avg(ProfilCompetence.niveau))
+            .where(ProfilCompetence.profil_id.in_(ids))
+            .group_by(ProfilCompetence.profil_id, fam)).all():
+        cells[(pid, f)] = round(moy, 2) if moy is not None else None
+    moy_glob = dict(db.execute(
+        select(ProfilCompetence.profil_id, func.avg(ProfilCompetence.niveau))
+        .where(ProfilCompetence.profil_id.in_(ids))
+        .group_by(ProfilCompetence.profil_id)).all())
+
+    lignes: list[CartoLigne] = []
+    for m in membres:
+        nom = f"{m.prenom or ''} {m.nom}".strip()
+        moy = moy_glob.get(m.id)
+        lignes.append(CartoLigne(
+            departement_key=str(m.id), label=nom, pole=None, effectif=1,
+            niveau_moyen=round(moy, 2) if moy is not None else None,
+            niveaux=[cells.get((m.id, f)) for f in familles],
+            people=[nom]))
+    return CartoMatrix(familles=familles, lignes=lignes)
+
+
 # ------------------------------------------------- Familles de compétences
 def _tension(demande: int, profils_couverts: int) -> str:
     """Signal INDICATIF de tension sur une famille : demande (offres ouvertes) vs

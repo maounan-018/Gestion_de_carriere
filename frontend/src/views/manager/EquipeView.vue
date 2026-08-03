@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { LayoutGrid } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
 import type { TeamMember } from '@/types/manager'
+import type { CartoMatrix } from '@/types/rh'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import Heatmap from '@/components/shared/Heatmap.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
@@ -13,6 +16,11 @@ const team = ref<TeamMember[]>([])
 const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
+
+// Cartographie de l'équipe (même nomenclature que la carto RH), chargée à la demande.
+const carto = ref<CartoMatrix | null>(null)
+const showCarto = ref(false)
+const cartoLoading = ref(false)
 
 async function load() {
   loading.value = true
@@ -26,6 +34,18 @@ async function load() {
   }
 }
 onMounted(load)
+
+async function toggleCarto() {
+  showCarto.value = !showCarto.value
+  if (showCarto.value && !carto.value) {
+    cartoLoading.value = true
+    try {
+      carto.value = await apiService.getTeamCarto()
+    } finally {
+      cartoLoading.value = false
+    }
+  }
+}
 </script>
 
 <template>
@@ -36,13 +56,24 @@ onMounted(load)
         sa base de connaissance.
       </p>
       <div class="flex gap-2">
-        <BaseButton variant="secondary" size="sm" @click="toast('Cartographie de l’équipe — bientôt', 'info')">
-          Mapping complet
+        <BaseButton variant="secondary" size="sm" @click="toggleCarto">
+          <LayoutGrid :size="15" /> {{ showCarto ? 'Masquer la cartographie' : 'Cartographie de l’équipe' }}
         </BaseButton>
         <BaseButton variant="secondary" size="sm" @click="toast('Message transmis aux RH', 'info')">
           Communiquer aux RH
         </BaseButton>
       </div>
+    </div>
+
+    <!-- Cartographie de l'équipe : mêmes familles que la carto RH, lignes = membres. -->
+    <div v-if="showCarto" class="rounded-2xl border border-border bg-paper p-4 shadow-card">
+      <div class="mb-2 flex items-center justify-between">
+        <h3 class="font-display text-base font-bold text-ink">Cartographie des compétences de l'équipe</h3>
+        <span class="text-[11px] text-ink-3">niveau moyen par famille (1→5)</span>
+      </div>
+      <LoadingState v-if="cartoLoading" label="Chargement de la cartographie…" />
+      <Heatmap v-else-if="carto && carto.lignes.length" :familles="carto.familles" :lignes="carto.lignes" />
+      <p v-else class="text-sm text-ink-3">Aucune compétence ancrée pour cette équipe pour le moment.</p>
     </div>
 
     <LoadingState v-if="loading" label="Chargement de l'équipe…" />

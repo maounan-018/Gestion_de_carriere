@@ -49,6 +49,16 @@ def cartographie(db: Session = Depends(get_db)) -> CartoMatrix:
     return dashboard_service.cartographie(db)
 
 
+@router.get("/equipe/cartographie", response_model=CartoMatrix,
+            dependencies=[Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN))],
+            summary="Cartographie des compétences de MON équipe (même nomenclature que la carto RH)")
+def cartographie_equipe(user: User = Depends(get_current_user),
+                        db: Session = Depends(get_db)) -> CartoMatrix:
+    """Lignes = collaborateurs de l'équipe du manager connecté ; colonnes = familles
+    (mêmes que la cartographie RH). Cellule = niveau moyen du membre par famille."""
+    return dashboard_service.cartographie_equipe(db, user.id)
+
+
 @router.get("/synthese", response_model=SyntheseRh,
             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
             summary="Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, familles en tension)")
