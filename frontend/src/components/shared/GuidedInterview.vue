@@ -37,7 +37,8 @@ const scroller = ref<HTMLElement>()
 
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 const atLastStep = computed(() => currentStep.value >= STEPS.length - 1)
-const progressPct = computed(() => Math.round(((currentStep.value + 1) / STEPS.length) * 100))
+// Progression = étapes franchies / total → 0 % à l'introduction, 100 % à la dernière étape.
+const progressPct = computed(() => Math.round((currentStep.value / (STEPS.length - 1)) * 100))
 function stepState(i: number): 'done' | 'current' | 'todo' {
   return i < currentStep.value ? 'done' : i === currentStep.value ? 'current' : 'todo'
 }
@@ -58,19 +59,27 @@ function openFocus(i: number): string {
   const s = STEPS[i]
   if (i === 0) {
     return (
-      "Accueille le collaborateur et explique en 1-2 phrases que tu vas l'accompagner, section par " +
-      'section, à préparer son entretien annuel. Invite-le à démarrer par ses objectifs et missions. ' +
-      'Termine par UNE seule question ouverte.'
+      "INTRODUCTION UNIQUEMENT. Souhaite la bienvenue au collaborateur et présente-toi en une phrase " +
+      "comme son copilote de préparation de l'entretien annuel. Explique en 1-2 phrases que vous allez " +
+      'parcourir ensemble, section par section (objectifs, réussites, difficultés, compétences, souhaits), ' +
+      "pour préparer son entretien. NE traite PAS encore le contenu des objectifs ni aucune autre section. " +
+      "Termine simplement en lui demandant s'il est prêt à commencer."
     )
   }
   if (isConseils(i)) {
     return (
-      "Donne au collaborateur 2-3 conseils personnalisés pour réussir son entretien (posture, points à " +
-      "valoriser, formulations), en t'appuyant sur ce qu'il a partagé. Termine en lui demandant s'il " +
-      'souhaite ajuster un point.'
+      "En te fondant PRÉCISÉMENT sur ce que le collaborateur a partagé dans cet échange, donne-lui 2 ou 3 " +
+      'conseils personnalisés et concrets pour réussir son entretien (posture, points à valoriser, façon ' +
+      "de formuler). Termine en lui demandant s'il souhaite ajuster un point."
     )
   }
-  if (isLast(i)) return `Fais la synthèse de la préparation : ${s.focus}.`
+  if (isLast(i)) {
+    return (
+      "Fais une synthèse structurée de ce que le collaborateur a préparé au fil de cet échange (objectifs, " +
+      'réussites, difficultés surmontées, axes de progrès et formations souhaitées), en te fondant sur SES ' +
+      "réponses réelles. Termine en l'encourageant pour son entretien."
+    )
+  }
   return `Ouvre la section « ${s.label} » : invite le collaborateur à préparer ${s.focus}. Termine par UNE seule question ouverte.`
 }
 

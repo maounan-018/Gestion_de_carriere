@@ -62,11 +62,17 @@ import BaseButton from '@/components/ui/BaseButton.vue'
         </section>
 
         <section>
-          <h2 class="font-display text-base font-bold text-ink">Technologies</h2>
+          <h2 class="font-display text-base font-bold text-ink">Architecture &amp; sécurité</h2>
           <p class="mt-1">
-            Interface Vue 3 · Tailwind CSS · polices Bricolage Grotesque & Hanken Grotesk (SIL Open
-            Font License) · icônes Lucide (licence ISC). Application 100 % locale — aucune donnée ne
-            quitte l'infrastructure du Groupe.
+            Application web interne exécutée intégralement sur l'infrastructure du Groupe
+            (architecture on-premise). L'analyse et le rapprochement des compétences ainsi que les
+            recommandations reposent sur des modèles d'intelligence artificielle hébergés localement :
+            aucune donnée ne transite par un service tiers ni ne quitte le système d'information de
+            la banque.
+          </p>
+          <p class="mt-2 text-xs text-ink-3">
+            La plateforme intègre des composants logiciels open source, utilisés dans le respect de
+            leurs licences respectives.
           </p>
         </section>
       </div>

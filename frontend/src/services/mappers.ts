@@ -102,14 +102,19 @@ export function mapNotification(n: NotificationOut, role: Role): NotificationIte
 }
 
 export function mapFormation(f: FormationOut): Formation {
+  // Le backend n'a pas de suivi LMS par collaborateur → statut de DÉMONSTRATION,
+  // déterministe par id (variété réaliste : recommandée / en cours / terminée).
+  const mod = f.id % 5
+  const status: Formation['status'] = mod === 0 ? 'done' : mod === 2 ? 'in-progress' : 'recommended'
+  const progress = status === 'done' ? 100 : status === 'in-progress' ? 25 + ((f.id * 17) % 60) : 0
   return {
     id: String(f.id),
     title: f.titre,
     provider: f.provider ?? '',
     duration: f.duree ?? '',
     level: f.niveau ?? '',
-    status: 'recommended', // le backend n'a pas de suivi par collaborateur (LMS)
-    progress: 0,
+    status,
+    progress,
     tags: f.tags ?? [],
     reason: f.skill_cible ? `Compétence visée : ${f.skill_cible}` : undefined,
   }

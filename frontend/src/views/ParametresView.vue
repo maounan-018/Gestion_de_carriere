@@ -70,7 +70,7 @@ async function logout() {
             <BaseToggle v-model="notifs.offres" />
           </label>
           <label class="flex cursor-pointer items-center justify-between gap-3">
-            <span class="text-sm text-ink">Souhaits d'évolution</span>
+            <span class="text-sm text-ink">Mes souhaits</span>
             <BaseToggle v-model="notifs.souhaits" />
           </label>
           <label class="flex cursor-pointer items-center justify-between gap-3">
