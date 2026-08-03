@@ -126,6 +126,19 @@ export interface CollabProfile {
   peerReviews: PeerReview[]
 }
 
+/** Champs AUTO-DÉCLARÉS éditables de son propre profil (collab / manager / RH).
+ *  Sert au composant partagé « Éditer mon profil » et à `updateMyProfil`. */
+export interface ProfilEditable {
+  poste_actuel?: string
+  aspirations?: string
+  bio?: string
+  poste_vise?: string
+  horizon?: string
+  type_evolution?: string
+  mobilite_geo?: string
+  disponibilite?: string
+}
+
 /* --------------------------------------------------------------- Souhaits */
 export type SouhaitStatus = 'Brouillon' | 'Poussé au manager' | 'En discussion'
 export interface Souhait {

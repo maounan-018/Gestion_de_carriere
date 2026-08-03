@@ -48,6 +48,12 @@ class ProfilCarriereOut(BaseModel):
     poste_actuel: str | None
     departement_key: str | None
     aspirations: str | None
+    bio: str | None = None
+    poste_vise: str | None = None
+    horizon: str | None = None
+    type_evolution: str | None = None
+    mobilite_geo: str | None = None
+    disponibilite: str | None = None
     competences: list[SkillNiveauOut] = []
     stations: list[StationOut] = []
     avis_pairs: list[PeerReviewOut] = []

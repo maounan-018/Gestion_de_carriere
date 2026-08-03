@@ -83,11 +83,18 @@ class ProfilUpdate(BaseModel):
 
 
 class ProfilSelfUpdate(BaseModel):
-    """Édition par le collaborateur de SON PROPRE profil : uniquement les champs
-    auto-déclarés (poste visé / aspirations, poste actuel). PAS `departement_key`
-    ni `manager_id` (données d'organisation, hors self-service)."""
-    aspirations: str | None = Field(None, description="Poste visé / souhaits d'évolution.")
+    """Édition par l'utilisateur de SON PROPRE profil (collaborateur, manager ou RH) :
+    uniquement les champs auto-déclarés. PAS `departement_key` ni `manager_id`
+    (données d'organisation, hors self-service)."""
+    aspirations: str | None = Field(None, description="Ambitions / souhaits d'évolution (texte libre).")
     poste_actuel: str | None = Field(None, max_length=200)
+    bio: str | None = Field(None, description="Description / « à propos ».")
+    poste_vise: str | None = Field(None, max_length=200, description="Poste ciblé.")
+    horizon: str | None = Field(None, max_length=32, description="Horizon visé, ex : « 1 an ».")
+    type_evolution: str | None = Field(None, max_length=48,
+                                       description="management / expertise / mobilité géo / mission transverse.")
+    mobilite_geo: str | None = Field(None, max_length=200, description="Zones géographiques.")
+    disponibilite: str | None = Field(None, max_length=64, description="Ex : « 6 à 12 mois ».")
 
 
 class ProfilOut(BaseModel):
@@ -101,6 +108,12 @@ class ProfilOut(BaseModel):
     departement_key: str | None
     manager_id: int | None
     aspirations: str | None
+    bio: str | None = None
+    poste_vise: str | None = None
+    horizon: str | None = None
+    type_evolution: str | None = None
+    mobilite_geo: str | None = None
+    disponibilite: str | None = None
     synthetique: bool
     created_at: datetime
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)

@@ -268,6 +268,8 @@ export interface SkillNiveauOut { libelle: string; categorie: string | null; niv
 export interface ProfilCarriereOut {
   profil_id: number; nom: string; prenom: string | null; poste_actuel: string | null
   departement_key: string | null; aspirations: string | null
+  bio?: string | null; poste_vise?: string | null; horizon?: string | null
+  type_evolution?: string | null; mobilite_geo?: string | null; disponibilite?: string | null
   competences: SkillNiveauOut[]; stations: StationOut[]; avis_pairs: PeerReviewOut[]
 }
 
@@ -296,11 +298,11 @@ export function mapCollabProfile(c: ProfilCarriereOut): CollabProfile {
       : 0
   return {
     progressionPct: Math.round(avgNiveau * 20),
-    posteVise: goal?.title ?? c.poste_actuel ?? '—',
-    horizon: '',
-    description: c.aspirations ?? '',
+    posteVise: c.poste_vise ?? goal?.title ?? c.poste_actuel ?? '—',
+    horizon: c.horizon ?? '',
+    description: c.bio ?? '',
     aspirations: c.aspirations ? [c.aspirations] : [],
-    zones: '',
+    zones: c.mobilite_geo ?? '',
     stations,
     todos: [],
     skills,

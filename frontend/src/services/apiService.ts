@@ -17,7 +17,7 @@ import {
 import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh } from '@/types/rh'
 import type {
-  Offer, Candidature, NotificationItem, CollabProfile,
+  Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
@@ -856,12 +856,32 @@ export const apiService = {
    *  poste actuel + aspirations. (Un collaborateur ne peut PAS éditer son propre
    *  profil : PATCH /profils/{id} est réservé RH/ADMIN — pas d'endpoint self-service.) */
   /** Éditer MON profil (collab, auto-service) : poste actuel + aspirations. */
-  async updateMyProfil(patch: { poste_actuel?: string; aspirations?: string }): Promise<void> {
+  async updateMyProfil(patch: ProfilEditable): Promise<void> {
     if (MODE === 'mock') {
       await delay(200)
       return
     }
     await apiFetch('/profils/me', { method: 'PATCH', body: patch })
+  },
+  /** Valeurs auto-déclarées de MON profil, pour préremplir « Éditer mon profil »
+   *  (indépendant du rôle : collab, manager, RH). null si le compte n'a pas de profil. */
+  async getMyProfilEditable(): Promise<ProfilEditable | null> {
+    if (MODE === 'mock') {
+      await delay(150)
+      return { poste_actuel: '', aspirations: '', bio: '', poste_vise: '', horizon: '',
+        type_evolution: '', mobilite_geo: '', disponibilite: '' }
+    }
+    try {
+      const c = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
+      return {
+        poste_actuel: c.poste_actuel ?? '', aspirations: c.aspirations ?? '',
+        bio: c.bio ?? '', poste_vise: c.poste_vise ?? '', horizon: c.horizon ?? '',
+        type_evolution: c.type_evolution ?? '', mobilite_geo: c.mobilite_geo ?? '',
+        disponibilite: c.disponibilite ?? '',
+      }
+    } catch {
+      return null
+    }
   },
   async updateProfil(
     id: string,

@@ -11,11 +11,13 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ProgressionCurve from '@/components/shared/ProgressionCurve.vue'
+import EditProfilModal from '@/components/shared/EditProfilModal.vue'
 
 const session = useSessionStore()
 const profile = ref<CollabProfile | null>(null)
 const loading = ref(true)
 const error = ref('')
+const showEdit = ref(false)
 
 async function load() {
   loading.value = true
@@ -42,6 +44,9 @@ onMounted(load)
           </h2>
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
         </div>
+        <BaseButton variant="secondary" @click="showEdit = true">
+          <AppIcon name="user" :size="15" /> Éditer mon profil
+        </BaseButton>
       </div>
     </BaseCard>
 
@@ -101,5 +106,7 @@ onMounted(load)
         </div>
       </BaseCard>
     </template>
+
+    <EditProfilModal v-model="showEdit" @saved="load" />
   </div>
 </template>
