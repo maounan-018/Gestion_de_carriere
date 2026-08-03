@@ -305,8 +305,6 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-const PUBLIC_ONLY = new Set(['portail', 'connexion', 'inscription'])
-
 // Guards RBAC (manque G19)
 router.beforeEach((to) => {
   const session = useSessionStore()
@@ -321,11 +319,10 @@ router.beforeEach((to) => {
     return { name: 'accessDenied' }
   }
 
-  // Déjà connecté → les pages publiques d'accès renvoient vers l'espace du rôle.
-  if (session.isAuthenticated && PUBLIC_ONLY.has(to.name as string)) {
-    return { name: `${session.role}.dashboard` }
-  }
-
+  // NB : on NE redirige PAS un utilisateur déjà connecté hors des pages d'accès
+  // (portail / connexion). Le portail reste l'entrée à chaque lancement, et la page
+  // de connexion permet de re-choisir un rôle (démo multi-rôles) — une nouvelle
+  // connexion remplace simplement la session courante.
   return true
 })
 
