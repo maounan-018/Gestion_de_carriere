@@ -89,14 +89,17 @@ def list_profils(db: Session, *, departement_key: str | None = None,
                  synthetique: bool | None = None, manager_id: int | None = None,
                  limit: int = 50, offset: int = 0) -> list[ProfilOut]:
     """Liste paginée, filtrable par département, par nature (persona vs réel) et
-    par manager (l'ÉQUIPE d'un manager = profils dont le compte a ce manager)."""
+    par manager (l'ÉQUIPE d'un manager = tous les profils qui lui sont rattachés)."""
     stmt = select(Profil).order_by(Profil.id)
     if departement_key is not None:
         stmt = stmt.where(Profil.departement_key == departement_key)
     if synthetique is not None:
         stmt = stmt.where(Profil.synthetique == synthetique)
     if manager_id is not None:
-        stmt = stmt.join(User, User.id == Profil.user_id).where(User.manager_id == manager_id)
+        # Équipe = profils rattachés au manager via Profil.manager_id, Y COMPRIS les
+        # profils candidats SANS compte (user_id null) — cohérent avec offre_service et
+        # l'écran Équipe. Un join via User.manager_id les excluait à tort (→ 1 seul membre).
+        stmt = stmt.where(Profil.manager_id == manager_id)
     stmt = stmt.limit(min(max(limit, 1), 200)).offset(max(offset, 0))
     return [_to_out(db, p) for p in db.scalars(stmt).all()]
 

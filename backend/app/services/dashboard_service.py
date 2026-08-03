@@ -52,10 +52,9 @@ def kpis_rh(db: Session) -> list[KpiItem]:
 
 
 def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
-    # Équipe = profils dont le compte a ce manager.
-    equipe = _count(
-        db, select(Profil.id).join(User, User.id == Profil.user_id)
-        .where(User.manager_id == manager_user_id))
+    # Équipe = tous les profils rattachés au manager (Profil.manager_id), y compris les
+    # profils candidats sans compte — cohérent avec l'écran Équipe (getTeam).
+    equipe = _count(db, select(Profil.id).where(Profil.manager_id == manager_user_id))
     mes_offres_ids = select(Offre.id).where(Offre.created_by == manager_user_id)
     offres = _count(db, mes_offres_ids)
     candidatures = _count(
