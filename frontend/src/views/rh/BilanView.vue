@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
@@ -28,6 +28,18 @@ const showSlot = ref(false)
 const slotDate = ref('')
 const slotNote = ref('')
 const sendingSlot = ref(false)
+/* Questions de préparation dérivées du profil réel du collaborateur. */
+const prepQuestions = computed<string[]>(() => {
+  const c = p.value
+  if (!c) return []
+  const q: string[] = []
+  if (c.aspiration) q.push(`Comment vous projetez-vous vers « ${c.aspiration} » à horizon ${c.aspirationHorizon || 'moyen terme'} ?`)
+  if (c.gaps.length) q.push(`Quelles missions ou formations vous aideraient à progresser sur ${c.gaps[0]} ?`)
+  q.push('Qu\'est-ce qui vous motive le plus dans votre poste aujourd\'hui ?')
+  q.push('De quel accompagnement auriez-vous besoin pour franchir un cap cette année ?')
+  return q
+})
+
 async function proposeSlot() {
   if (!p.value || !slotDate.value || sendingSlot.value) return
   sendingSlot.value = true
@@ -116,15 +128,42 @@ watch(() => route.params.id, load)
       </BaseCard>
 
       <BaseCard title="Recommandation IA · préparation" class="lg:col-span-2">
-        <div class="flex gap-3">
+        <div class="mb-3 flex gap-3">
           <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white">
             <Sparkles :size="16" />
           </div>
           <p class="text-sm text-ink-2">
-            Aborder l'aspiration « {{ p.aspiration }} », valoriser les points forts et proposer un
-            plan de développement sur {{ p.gaps.join(' et ') }}. Un créneau peut être proposé au
-            collaborateur.
+            Trame de préparation générée à partir du profil de <b class="text-ink">{{ p.name }}</b> :
+            valoriser ses réussites, cadrer les axes de progrès et ouvrir sur son aspiration.
           </p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div class="rounded-xl border border-green-line bg-green-ghost p-3">
+            <h4 class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-green-deep">
+              <AppIcon name="check" :size="13" /> Points à valoriser
+            </h4>
+            <ul class="space-y-1 text-xs text-ink-2">
+              <li v-for="s in p.strengths" :key="s">• {{ s }}</li>
+              <li v-if="!p.strengths.length" class="text-ink-3">À explorer en entretien.</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-warning/25 bg-warning-soft/40 p-3">
+            <h4 class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-warning">
+              <AppIcon name="flag" :size="13" /> Axes de développement
+            </h4>
+            <ul class="space-y-1 text-xs text-ink-2">
+              <li v-for="g in p.gaps" :key="g">• {{ g }}</li>
+              <li v-if="!p.gaps.length" class="text-ink-3">Aucun écart majeur identifié.</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-border bg-panel p-3">
+            <h4 class="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-ink">
+              <AppIcon name="chat" :size="13" /> Questions à poser
+            </h4>
+            <ul class="space-y-1 text-xs text-ink-2">
+              <li v-for="q in prepQuestions" :key="q">• {{ q }}</li>
+            </ul>
+          </div>
         </div>
         <BaseButton class="mt-3" @click="showSlot = true">
           <AppIcon name="cal" :size="15" /> Proposer un créneau
