@@ -14,6 +14,7 @@ import BaseModal from '@/components/ui/BaseModal.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ProgressionCurve from '@/components/shared/ProgressionCurve.vue'
+import EditProfilModal from '@/components/shared/EditProfilModal.vue'
 import { Sparkles } from '@lucide/vue'
 
 const session = useSessionStore()
@@ -64,33 +65,8 @@ async function submitCv() {
   }
 }
 
-// Auto-service : éditer mon propre profil (poste actuel + aspirations) — PATCH /profils/me.
+// Auto-service : éditer mon profil (composant partagé riche) — PATCH /profils/me.
 const showEdit = ref(false)
-const savingEdit = ref(false)
-const editPoste = ref('')
-const editAspi = ref('')
-function openEdit() {
-  editPoste.value = session.user?.title ?? ''
-  editAspi.value = profile.value?.description ?? ''
-  showEdit.value = true
-}
-async function saveEdit() {
-  if (savingEdit.value) return
-  savingEdit.value = true
-  try {
-    await apiService.updateMyProfil({
-      poste_actuel: editPoste.value.trim(),
-      aspirations: editAspi.value.trim(),
-    })
-    showEdit.value = false
-    toast('Profil mis à jour', 'ok')
-    await load()
-  } catch (e) {
-    toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
-  } finally {
-    savingEdit.value = false
-  }
-}
 
 const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n)
 
@@ -132,7 +108,7 @@ function goOffres(metier: string) {
           <BaseButton variant="ai" @click="showCv = true">
             <Sparkles :size="15" /> Depuis mon CV
           </BaseButton>
-          <BaseButton variant="secondary" @click="openEdit">
+          <BaseButton variant="secondary" @click="showEdit = true">
             <AppIcon name="user" :size="15" /> Éditer
           </BaseButton>
         </div>
@@ -243,54 +219,7 @@ function goOffres(metier: string) {
       </template>
     </BaseModal>
 
-    <BaseModal v-model="showEdit" title="Éditer mon profil">
-      <div class="space-y-4">
-        <div>
-          <label for="me-poste" class="mb-1.5 block text-xs font-semibold text-ink-2">Poste actuel</label>
-          <input
-            id="me-poste"
-            v-model="editPoste"
-            placeholder="Ex : Conseiller clientèle particuliers"
-            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
-          />
-        </div>
-        <div>
-          <label for="me-aspi" class="mb-1.5 block text-xs font-semibold text-ink-2">Aspirations / poste visé</label>
-          <textarea
-            id="me-aspi"
-            v-model="editAspi"
-            rows="3"
-            placeholder="Ex : Chargé d'affaires professionnels"
-            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
-          />
-          <p class="mt-1 text-[11px] text-ink-3">Alimente vos recommandations et votre poste visé.</p>
-        </div>
-        <div>
-          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Département</label>
-          <input
-            :value="session.user?.entity || '—'"
-            disabled
-            class="w-full cursor-not-allowed rounded-xl border border-border bg-panel-2 px-3 py-2 text-sm text-ink-3"
-          />
-          <p class="mt-1 text-[11px] text-ink-3">Rattachement géré par les Ressources Humaines.</p>
-        </div>
-        <div class="flex items-start gap-2.5 rounded-xl border border-green-line bg-green-soft p-3">
-          <Sparkles :size="16" class="mt-0.5 shrink-0 text-green-deep" />
-          <p class="text-xs text-ink-2">
-            Vos <b>compétences</b> se mettent à jour à partir de votre CV.
-            <button type="button" class="font-semibold text-green-deep hover:underline" @click="showEdit = false; showCv = true">
-              Mettre à jour depuis mon CV
-            </button>
-          </p>
-        </div>
-      </div>
-      <template #footer>
-        <BaseButton variant="secondary" size="sm" @click="showEdit = false">Annuler</BaseButton>
-        <BaseButton size="sm" :disabled="savingEdit" @click="saveEdit">
-          <AppIcon name="check" :size="14" /> {{ savingEdit ? 'Enregistrement…' : 'Enregistrer' }}
-        </BaseButton>
-      </template>
-    </BaseModal>
+    <EditProfilModal v-model="showEdit" @saved="load" />
 
     <BaseModal v-model="showMob" :title="selMob?.metier || 'Passerelle de mobilité'">
       <div v-if="selMob" class="space-y-3">

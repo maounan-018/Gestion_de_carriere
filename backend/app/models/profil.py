@@ -45,6 +45,14 @@ class Profil(Base):
     manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)
     date_entree: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     aspirations: Mapped[str | None] = mapped_column(Text, default=None)   # souhaits d'évolution (pour la reco)
+    # Profil de carrière AUTO-DÉCLARÉ (édité par le collaborateur/manager/RH lui-même) —
+    # enrichit la reco et la préparation d'entretiens. Tous nullables.
+    bio: Mapped[str | None] = mapped_column(Text, default=None)            # description / « à propos »
+    poste_vise: Mapped[str | None] = mapped_column(String(200), default=None)      # poste ciblé
+    horizon: Mapped[str | None] = mapped_column(String(32), default=None)          # ex : « 1 an »
+    type_evolution: Mapped[str | None] = mapped_column(String(48), default=None)   # management / expertise / mobilité géo / mission transverse
+    mobilite_geo: Mapped[str | None] = mapped_column(String(200), default=None)    # zones géographiques
+    disponibilite: Mapped[str | None] = mapped_column(String(64), default=None)    # ex : « 6 à 12 mois »
     synthetique: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))

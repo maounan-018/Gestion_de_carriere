@@ -163,6 +163,9 @@ def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
     return ProfilCarriereOut(
         profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
         departement_key=p.departement_key, aspirations=p.aspirations,
+        bio=p.bio, poste_vise=p.poste_vise, horizon=p.horizon,
+        type_evolution=p.type_evolution, mobilite_geo=p.mobilite_geo,
+        disponibilite=p.disponibilite,
         competences=[SkillNiveauOut.model_validate(c) for c in comps],
         stations=[StationOut.model_validate(s) for s in stations],
         avis_pairs=[PeerReviewOut.model_validate(a) for a in avis],
