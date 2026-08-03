@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
 import { apiService } from '@/services/apiService'
@@ -92,6 +93,24 @@ async function saveEdit() {
 }
 
 const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n)
+
+// Passerelle de mobilité : clic → description + direction (offres correspondantes).
+const router = useRouter()
+const selMob = ref<MobiliteItem | null>(null)
+const showMob = computed({
+  get: () => selMob.value !== null,
+  set: (v: boolean) => { if (!v) selMob.value = null },
+})
+function mobDesc(m: MobiliteItem): string {
+  return `« ${m.metier} » ressort comme une évolution possible : vous partagez déjà ${m.partagees} `
+    + `compétence${m.partagees > 1 ? 's' : ''} clé${m.partagees > 1 ? 's' : ''} avec ce métier, `
+    + `identifiée${m.partagees > 1 ? 's' : ''} via le référentiel ${m.source.toUpperCase()}. `
+    + `Explorez les offres internes correspondantes pour envisager cette passerelle.`
+}
+function goOffres(metier: string) {
+  selMob.value = null
+  router.push({ name: 'collab.offres', query: { q: metier } })
+}
 </script>
 
 <template>
@@ -166,20 +185,28 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
           </div>
           <p class="mt-3 text-xs text-ink-3"><AppIcon name="pin" :size="12" class="inline" /> Zones · {{ profile.zones }}</p>
           <RouterLink :to="{ name: 'collab.souhaits' }" class="mt-3 block">
-            <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Gérer mes souhaits d'évolution</BaseButton>
+            <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Mes souhaits</BaseButton>
           </RouterLink>
         </BaseCard>
 
         <BaseCard v-if="mobilite.length" title="Passerelles de mobilité">
-          <p class="mb-2.5 text-xs text-ink-3">Métiers proches de vos compétences détenues (graphe ESCO/O*NET).</p>
+          <p class="mb-2.5 text-xs text-ink-3">Métiers proches de vos compétences détenues (graphe ESCO/O*NET). Cliquez pour en savoir plus.</p>
           <ul class="space-y-2">
-            <li v-for="m in mobilite" :key="m.id"
-                class="flex items-center justify-between gap-2 rounded-xl border border-border bg-panel-2 px-3 py-2">
-              <div class="min-w-0">
-                <p class="truncate text-sm font-semibold text-ink">{{ m.metier }}</p>
-                <p class="text-xs text-ink-3">{{ m.source }}</p>
-              </div>
-              <BaseChip tone="green">{{ m.partagees }} en commun</BaseChip>
+            <li v-for="m in mobilite" :key="m.id">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-panel-2 px-3 py-2 text-left transition hover:border-green-line hover:bg-green-ghost"
+                @click="selMob = m"
+              >
+                <div class="min-w-0">
+                  <p class="truncate text-sm font-semibold text-ink">{{ m.metier }}</p>
+                  <p class="text-xs uppercase tracking-wide text-ink-3">{{ m.source }}</p>
+                </div>
+                <span
+                  class="inline-flex shrink-0 items-center justify-center rounded-full bg-green-soft px-2.5 py-1 text-[11px] font-semibold text-green-deep"
+                  style="min-width: 96px"
+                >{{ m.partagees }} en commun</span>
+              </button>
             </li>
           </ul>
         </BaseCard>
@@ -236,12 +263,47 @@ const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.s
             placeholder="Ex : Chargé d'affaires professionnels"
             class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
           />
+          <p class="mt-1 text-[11px] text-ink-3">Alimente vos recommandations et votre poste visé.</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Département</label>
+          <input
+            :value="session.user?.entity || '—'"
+            disabled
+            class="w-full cursor-not-allowed rounded-xl border border-border bg-panel-2 px-3 py-2 text-sm text-ink-3"
+          />
+          <p class="mt-1 text-[11px] text-ink-3">Rattachement géré par les Ressources Humaines.</p>
+        </div>
+        <div class="flex items-start gap-2.5 rounded-xl border border-green-line bg-green-soft p-3">
+          <Sparkles :size="16" class="mt-0.5 shrink-0 text-green-deep" />
+          <p class="text-xs text-ink-2">
+            Vos <b>compétences</b> se mettent à jour à partir de votre CV.
+            <button type="button" class="font-semibold text-green-deep hover:underline" @click="showEdit = false; showCv = true">
+              Mettre à jour depuis mon CV
+            </button>
+          </p>
         </div>
       </div>
       <template #footer>
         <BaseButton variant="secondary" size="sm" @click="showEdit = false">Annuler</BaseButton>
         <BaseButton size="sm" :disabled="savingEdit" @click="saveEdit">
           <AppIcon name="check" :size="14" /> {{ savingEdit ? 'Enregistrement…' : 'Enregistrer' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
+
+    <BaseModal v-model="showMob" :title="selMob?.metier || 'Passerelle de mobilité'">
+      <div v-if="selMob" class="space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <BaseChip tone="green">{{ selMob.partagees }} compétences en commun</BaseChip>
+          <BaseChip>{{ selMob.source.toUpperCase() }}</BaseChip>
+        </div>
+        <p class="text-sm leading-relaxed text-ink-2">{{ mobDesc(selMob) }}</p>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showMob = false">Fermer</BaseButton>
+        <BaseButton size="sm" @click="goOffres(selMob!.metier)">
+          <AppIcon name="search" :size="14" /> Voir les offres
         </BaseButton>
       </template>
     </BaseModal>

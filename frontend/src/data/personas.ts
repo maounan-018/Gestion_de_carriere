@@ -23,9 +23,9 @@ export const PERSONAS: Record<Role, User> = {
     name: 'Marc Bennani',
     firstName: 'Marc',
     initials: 'MB',
-    email: 'marc.bennani@bnpparibas.com',
-    title: 'Analyste Risque Senior',
-    entity: 'Direction des Risques',
+    email: 'marc.bennani@bmci.local',
+    title: 'Conseiller clientèle particuliers',
+    entity: 'Retail Banking',
     roleLabel: 'Collaborateur',
   },
   manager: {

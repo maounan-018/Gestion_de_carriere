@@ -30,6 +30,36 @@ function openAttestation(f: Formation) {
   attFormation.value = f
 }
 
+/* ---- Détail + inscription ---- */
+const detail = ref<Formation | null>(null)
+const showDetail = computed({
+  get: () => detail.value !== null,
+  set: (v: boolean) => { if (!v) detail.value = null },
+})
+function openDetail(f: Formation) {
+  detail.value = f
+}
+/** Description composée (le catalogue backend n'a pas de champ description dédié). */
+function descriptionOf(f: Formation): string {
+  const bits: string[] = []
+  const niv = f.level ? f.level.toLowerCase() : ''
+  bits.push(`Formation ${niv ? niv + ' ' : ''}proposée par ${f.provider || 'BMCI Academy'}, d'une durée de ${f.duration || '—'}.`)
+  if (f.reason) bits.push(f.reason.replace('Compétence visée', 'Elle vise le développement de la compétence') + '.')
+  if (f.tags.length) bits.push('Thèmes abordés : ' + f.tags.join(', ') + '.')
+  return bits.join(' ')
+}
+/** Inscription : le backend n'a pas de suivi LMS → bascule locale en « en cours ». */
+function enroll(f: Formation) {
+  if (f.status === 'in-progress') {
+    toast('Reprise de la formation…')
+  } else {
+    f.status = 'in-progress'
+    f.progress = 5
+    toast('Inscription enregistrée — formation ajoutée à « En cours »', 'ok')
+  }
+  detail.value = null
+}
+
 const filters = [
   { key: 'all', label: 'Toutes' },
   { key: 'in-progress', label: 'En cours' },
@@ -81,7 +111,12 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
     <EmptyState v-else-if="filtered.length === 0" title="Aucune formation" text="Aucune formation dans cette catégorie pour le moment." />
 
     <div v-else class="grid gap-4 sm:grid-cols-2">
-      <div v-for="f in filtered" :key="f.id" class="flex flex-col rounded-2xl border border-border bg-paper p-4 shadow-card">
+      <div
+        v-for="f in filtered"
+        :key="f.id"
+        class="flex cursor-pointer flex-col rounded-2xl border border-border bg-paper p-4 shadow-card transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float"
+        @click="openDetail(f)"
+      >
         <div class="flex items-start justify-between gap-2">
           <div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-green-soft text-green-deep"><AppIcon name="book" :size="18" /></div>
           <BasePill :tone="STATUS[f.status].tone">{{ STATUS[f.status].label }}</BasePill>
@@ -107,15 +142,44 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
           <BaseButton
             v-if="f.status === 'done'"
             variant="secondary" size="sm" block
-            @click="openAttestation(f)"
+            @click.stop="openAttestation(f)"
           ><AppIcon name="award" :size="14" /> Voir l'attestation</BaseButton>
           <BaseButton
             v-else size="sm" block
-            @click="toast(f.status === 'in-progress' ? 'Reprise de la formation…' : 'Inscription enregistrée')"
+            @click.stop="enroll(f)"
           >{{ f.status === 'in-progress' ? 'Reprendre' : "S'inscrire" }}</BaseButton>
         </div>
       </div>
     </div>
+
+    <BaseModal v-model="showDetail" :title="detail?.title || 'Formation'">
+      <div v-if="detail" class="space-y-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <BasePill :tone="STATUS[detail.status].tone">{{ STATUS[detail.status].label }}</BasePill>
+          <span class="inline-flex items-center gap-1 text-xs text-ink-3"><AppIcon name="clock" :size="12" /> {{ detail.duration }}</span>
+          <span class="inline-flex items-center gap-1 text-xs text-ink-3"><AppIcon name="spark" :size="12" /> {{ detail.level }}</span>
+        </div>
+        <p class="text-sm leading-relaxed text-ink-2">{{ descriptionOf(detail) }}</p>
+        <div v-if="detail.tags.length" class="flex flex-wrap gap-1.5">
+          <BaseChip v-for="t in detail.tags" :key="t">{{ t }}</BaseChip>
+        </div>
+        <div v-if="detail.status === 'in-progress'">
+          <div class="mb-1 flex justify-between text-xs"><span class="text-ink-3">Avancement</span><b class="text-green-deep">{{ detail.progress }} %</b></div>
+          <div class="h-2 overflow-hidden rounded-full bg-panel-2"><div class="h-full rounded-full bg-green" :style="{ width: detail.progress + '%' }" /></div>
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showDetail = false">Fermer</BaseButton>
+        <BaseButton
+          v-if="detail && detail.status === 'done'"
+          size="sm"
+          @click="() => { const f = detail!; showDetail = false; openAttestation(f) }"
+        ><AppIcon name="award" :size="14" /> Voir l'attestation</BaseButton>
+        <BaseButton v-else-if="detail" size="sm" @click="enroll(detail)">
+          {{ detail.status === 'in-progress' ? 'Reprendre' : "S'inscrire" }}
+        </BaseButton>
+      </template>
+    </BaseModal>
 
     <BaseModal v-model="showAtt" title="Attestation de formation">
       <div v-if="attFormation" class="rounded-2xl border border-green-line bg-green-ghost p-6 text-center">

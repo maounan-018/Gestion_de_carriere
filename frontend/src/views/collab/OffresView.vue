@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Search } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import { OFFER_LIGNES } from '@/data/offers'
 import type { Offer } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -11,10 +11,12 @@ import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
+const route = useRoute()
 const offers = ref<Offer[]>([])
 const loading = ref(true)
 const error = ref('')
-const query = ref('')
+// Recherche pré-remplie si on arrive depuis une passerelle de mobilité (?q=métier).
+const query = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const ligne = ref<string>('Tout')
 
 async function load() {
@@ -29,6 +31,13 @@ async function load() {
   }
 }
 onMounted(load)
+
+// Filtres dérivés des offres réellement chargées → jamais de filtre « vide »
+// (les valeurs de `ligne` proviennent du backend, pas d'une liste figée).
+const OFFER_LIGNES = computed(() => {
+  const lignes = [...new Set(offers.value.map((o) => o.ligne).filter(Boolean))].sort()
+  return ['Tout', ...lignes]
+})
 
 const filtered = computed(() =>
   offers.value.filter((o) => {

@@ -97,7 +97,7 @@ const collabDetailRoutes: RouteRecordRaw[] = [
     path: 'collab/souhaits',
     name: 'collab.souhaits',
     component: () => import('@/views/collab/SouhaitsView.vue'),
-    meta: { roles: ['collab'], title: "Souhaits d'évolution" },
+    meta: { roles: ['collab'], title: 'Mes souhaits' },
   },
   {
     path: 'collab/collegue/:id',

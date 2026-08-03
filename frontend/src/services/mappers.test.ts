@@ -86,14 +86,22 @@ describe('mapNotification', () => {
 describe('mapFormation', () => {
   it('mappe les champs et dérive la raison', () => {
     const f: FormationOut = {
-      id: 12, titre: 'Python', provider: 'Coursera', duree: '20 h',
+      id: 13, titre: 'Python', provider: 'Coursera', duree: '20 h',
       niveau: 'Inter', domaine: 'Data', tags: ['data'], skill_cible: 'Analyse de données', synthetique: true,
     }
     const r = mapFormation(f)
-    expect(r.id).toBe('12')
-    expect(r.status).toBe('recommended')
+    expect(r.id).toBe('13')
+    expect(r.status).toBe('recommended') // 13 % 5 = 3 → recommandée
     expect(r.progress).toBe(0)
     expect(r.reason).toBe('Compétence visée : Analyse de données')
+  })
+  it('dérive un statut de démonstration déterministe (en cours / terminée)', () => {
+    const base = { titre: 'X', provider: null, duree: null, niveau: null,
+      domaine: null, tags: [], skill_cible: null, synthetique: false }
+    expect(mapFormation({ ...base, id: 10 }).status).toBe('done') // %5==0
+    expect(mapFormation({ ...base, id: 10 }).progress).toBe(100)
+    expect(mapFormation({ ...base, id: 12 }).status).toBe('in-progress') // %5==2
+    expect(mapFormation({ ...base, id: 12 }).progress).toBeGreaterThan(0)
   })
   it('reason undefined sans skill_cible', () => {
     const f: FormationOut = {

@@ -17,26 +17,47 @@ const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
 
+/* ---- Horizon = nombre + période (jours / semaines / mois / ans) ---- */
+const PERIODS = [
+  { value: 'jours', one: 'jour', many: 'jours' },
+  { value: 'semaines', one: 'semaine', many: 'semaines' },
+  { value: 'mois', one: 'mois', many: 'mois' },
+  { value: 'ans', one: 'an', many: 'ans' },
+] as const
+type PeriodVal = (typeof PERIODS)[number]['value']
+function composeHorizon(num: string, period: PeriodVal): string {
+  const n = parseInt(num, 10)
+  if (!n || n < 1) return ''
+  const p = PERIODS.find((x) => x.value === period) ?? PERIODS[2]
+  return `${n} ${n === 1 ? p.one : p.many}`
+}
+function parseHorizon(h: string): { num: string; period: PeriodVal } {
+  const m = h.match(/(\d+)\s*(jour|semaine|mois|an)/i)
+  if (!m) return { num: '', period: 'mois' }
+  const u = m[2].toLowerCase()
+  const period: PeriodVal = u.startsWith('jour') ? 'jours' : u.startsWith('semaine')
+    ? 'semaines' : u.startsWith('an') ? 'ans' : 'mois'
+  return { num: m[1], period }
+}
+
 /* ---- Formulaire création / édition ---- */
 type Kind = 'carriere' | 'mission'
 const showForm = ref(false)
 const editing = ref<Souhait | null>(null)
 const saving = ref(false)
-const form = ref<{ titre: string; kind: Kind; horizon: string; description: string }>({
-  titre: '', kind: 'carriere', horizon: '', description: '',
+const form = ref<{ titre: string; kind: Kind; horizonNum: string; horizonPeriod: PeriodVal; description: string; pushNow: boolean }>({
+  titre: '', kind: 'carriere', horizonNum: '', horizonPeriod: 'mois', description: '', pushNow: false,
 })
 
 function openNew() {
   editing.value = null
-  form.value = { titre: '', kind: 'carriere', horizon: '', description: '' }
+  form.value = { titre: '', kind: 'carriere', horizonNum: '', horizonPeriod: 'mois', description: '', pushNow: false }
   showForm.value = true
 }
 function openEdit(s: Souhait) {
   editing.value = s
-  form.value = {
-    titre: s.title, kind: 'carriere',
-    horizon: s.horizon === '—' ? '' : s.horizon, description: s.desc,
-  }
+  const { num, period } = parseHorizon(s.horizon === '—' ? '' : s.horizon)
+  form.value = { titre: s.title, kind: 'carriere', horizonNum: num, horizonPeriod: period, description: s.desc, pushNow: false }
   showForm.value = true
 }
 
@@ -46,30 +67,19 @@ async function save() {
   saving.value = true
   const payload = {
     titre, kind: form.value.kind,
-    horizon: form.value.horizon.trim() || undefined,
+    horizon: composeHorizon(form.value.horizonNum, form.value.horizonPeriod) || undefined,
     description: form.value.description.trim() || undefined,
   }
   try {
     if (editing.value) {
-      const s = editing.value
-      const prev = { title: s.title, horizon: s.horizon, desc: s.desc }
-      // Optimiste : le PATCH ne change ni le statut ni le « poussé ».
-      s.title = titre
-      s.horizon = payload.horizon || '—'
-      s.desc = payload.description || ''
-      try {
-        await apiService.updateSouhait(s.id ?? '', payload)
-        toast('Souhait mis à jour')
-      } catch (e) {
-        Object.assign(s, prev)
-        throw e
-      }
+      await apiService.updateSouhait(editing.value.id ?? '', payload)
+      toast('Souhait mis à jour')
     } else {
-      const created = await apiService.createSouhait(payload)
-      items.value.unshift(created)
-      toast('Souhait créé')
+      await apiService.createSouhait({ ...payload, pushed: form.value.pushNow })
+      toast(form.value.pushNow ? 'Souhait créé et transmis à votre manager' : 'Souhait créé')
     }
     showForm.value = false
+    await load() // refetch → cohérence sur tous les écrans qui l'affichent
   } catch (e) {
     toast(e instanceof Error ? e.message : "Échec de l'enregistrement", 'error')
   } finally {
@@ -79,7 +89,7 @@ async function save() {
 
 const crumbs = [
   { label: 'Mon profil', to: { name: 'collab.profil' } },
-  { label: "Souhaits d'évolution" },
+  { label: 'Mes souhaits' },
 ]
 
 async function load() {
@@ -103,6 +113,7 @@ async function push(s: Souhait) {
   try {
     await apiService.pushSouhait(s.id ?? '')
     toast('Souhait transmis à votre manager')
+    await load() // cohérence avec les écrans qui affichent les souhaits reçus
   } catch (e) {
     Object.assign(s, prev)
     toast(e instanceof Error ? e.message : "Échec de l'envoi au manager", 'error')
@@ -169,14 +180,24 @@ async function push(s: Souhait) {
               <option value="mission">Mission / projet</option>
             </select>
           </label>
-          <label class="block">
+          <div class="block">
             <span class="mb-1 block text-xs font-semibold text-ink-2">Horizon</span>
-            <input
-              v-model="form.horizon"
-              placeholder="Ex : 6-12 mois"
-              class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
-            />
-          </label>
+            <div class="flex gap-2">
+              <input
+                v-model="form.horizonNum"
+                type="number"
+                min="1"
+                placeholder="Ex : 6"
+                class="w-20 rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
+              />
+              <select
+                v-model="form.horizonPeriod"
+                class="flex-1 rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
+              >
+                <option v-for="p in PERIODS" :key="p.value" :value="p.value">{{ p.many }}</option>
+              </select>
+            </div>
+          </div>
         </div>
         <label class="block">
           <span class="mb-1 block text-xs font-semibold text-ink-2">Description</span>
@@ -186,6 +207,13 @@ async function push(s: Souhait) {
             placeholder="Précisez votre souhait, le contexte, ce qui vous motive…"
             class="w-full resize-none rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
           />
+        </label>
+        <label v-if="!editing" class="flex items-start gap-2.5 rounded-xl border border-green-line bg-green-soft p-3">
+          <input v-model="form.pushNow" type="checkbox" class="mt-0.5 h-4 w-4 accent-green" />
+          <span class="text-xs text-ink-2">
+            <b class="text-green-deep">Transmettre à mon manager maintenant.</b>
+            Sinon, le souhait reste <b>privé</b> — visible de vous seul — jusqu'à ce que vous décidiez de le pousser.
+          </span>
         </label>
       </form>
       <template #footer>
