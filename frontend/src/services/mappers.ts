@@ -319,6 +319,9 @@ export interface ProfilOut {
   id: number; user_id: number | null; nom: string; prenom: string | null; matricule: string | null
   poste_actuel: string | null; departement_key: string | null; manager_id: number | null
   aspirations: string | null; synthetique: boolean; created_at: string; competences: ProfilCompetenceOut[]
+  // Insights dérivés côté backend (scan de la donnée).
+  score_eval?: number | null; anciennete_annees?: number | null
+  risque_depart?: boolean; potentiel?: string | null
 }
 
 const POLE_LABEL: Record<string, string> = {
@@ -334,9 +337,8 @@ function poleLabel(key: string | null): string {
   return POLE_LABEL[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-/** Mappe un profil backend vers une `RhPerson`. Les champs non portés par le backend
- *  (ancienneté, dernier entretien RH, éval) prennent un repli neutre — à enrichir
- *  quand les endpoints correspondants existeront. */
+/** Mappe un profil backend vers une `RhPerson`, y compris les insights DÉRIVÉS par le
+ *  backend (évaluation ≈ niveau moyen, séniorité, risque de départ, potentiel). */
 export function mapProfil(p: ProfilOut): RhPerson {
   const name = `${p.prenom ?? ''} ${p.nom}`.trim()
   const comps = p.competences ?? []
@@ -345,22 +347,25 @@ export function mapProfil(p: ProfilOut): RhPerson {
   const skills: TeamSkill[] = comps.slice(0, 6).map((c) => ({
     label: c.skill_label_fr || c.libelle, pct: Math.min(100, (c.niveau ?? 3) * 20),
   }))
+  const anc = p.anciennete_annees
+  const flag: RhPerson['flag'] = p.potentiel === 'top' ? 'top' : p.potentiel === 'watch' ? 'watch' : null
   return {
     id: String(p.id),
     initials: initialsOf(name),
     name,
     role: p.poste_actuel ?? '—',
     pole: poleLabel(p.departement_key),
-    seniority: '—',
-    ring: Math.round(moy * 20),
-    evalScore: '—',
+    seniority: anc != null ? `${anc} an${anc > 1 ? 's' : ''}` : '—',
+    ring: Math.round((p.score_eval ?? moy) * 20),
+    evalScore: p.score_eval != null ? `${p.score_eval.toFixed(1).replace('.', ',')}/5` : '—',
     lastRh: '—',
     aspiration: p.aspirations ?? '',
     aspirationHorizon: '',
     skills,
     strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
-    gaps: [],
-    flag: null,
+    gaps: comps.filter((c) => (c.niveau ?? 5) <= 2).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
+    riskDeparture: !!p.risque_depart,
+    flag,
   }
 }
 
