@@ -44,22 +44,7 @@ const router = useRouter()
           </BaseButton>
         </div>
 
-        <div class="mt-8 flex gap-8">
-          <div>
-            <div class="font-display text-2xl font-extrabold text-ink">2 850</div>
-            <div class="text-xs text-ink-3">Collaborateurs</div>
-          </div>
-          <div>
-            <div class="font-display text-2xl font-extrabold text-ink">450</div>
-            <div class="text-xs text-ink-3">Formations</div>
-          </div>
-          <div>
-            <div class="font-display text-2xl font-extrabold text-ink">92 %</div>
-            <div class="text-xs text-ink-3">Satisfaction</div>
-          </div>
-        </div>
-
-        <div class="mt-6 flex flex-wrap gap-4 text-xs text-ink-3">
+        <div class="mt-8 flex flex-wrap gap-4 text-xs text-ink-3">
           <span class="inline-flex items-center gap-1"><ShieldCheck :size="14" /> Connexion sécurisée</span>
           <span class="inline-flex items-center gap-1"><TrendingUp :size="14" /> 100 % interne au Groupe</span>
         </div>
@@ -68,18 +53,14 @@ const router = useRouter()
       <div class="hidden lg:block">
         <div class="rounded-3xl border border-border bg-paper p-8 shadow-float">
           <div class="text-xs font-bold uppercase tracking-wide text-green-deep">
-            Prochaine station
+            La Courbe
           </div>
-          <div class="mt-1 flex items-baseline justify-between">
-            <span class="font-display text-xl font-extrabold text-ink">Manager de Pôle</span>
-            <span class="font-display text-2xl font-extrabold text-green-deep">92 %</span>
-          </div>
-          <div class="mt-3 h-2 overflow-hidden rounded-full bg-panel-2">
-            <div class="h-full rounded-full bg-green" style="width: 78%" />
+          <div class="mt-1">
+            <span class="font-display text-xl font-extrabold text-ink">Votre prochaine station</span>
           </div>
           <p class="mt-4 text-sm text-ink-2">
             « La Courbe » relie compétences, aspirations et opportunités pour éclairer chaque
-            prochaine étape.
+            prochaine étape de votre parcours.
           </p>
         </div>
       </div>
