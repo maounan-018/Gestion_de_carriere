@@ -59,6 +59,24 @@ onMounted(load)
       </div>
     </BaseCard>
 
+    <!-- Actions rapides (parité maquette manager) -->
+    <BaseCard title="Actions rapides">
+      <div class="flex flex-wrap gap-2">
+        <RouterLink :to="{ name: 'manager.souhaitsRecus' }">
+          <BaseButton variant="secondary" size="sm"><AppIcon name="route" :size="15" /> Souhaits reçus</BaseButton>
+        </RouterLink>
+        <RouterLink :to="{ name: 'manager.offres' }">
+          <BaseButton variant="secondary" size="sm"><AppIcon name="brief" :size="15" /> Publier une offre</BaseButton>
+        </RouterLink>
+        <RouterLink :to="{ name: 'manager.equipe' }">
+          <BaseButton variant="secondary" size="sm"><AppIcon name="team" :size="15" /> Mon équipe</BaseButton>
+        </RouterLink>
+        <RouterLink :to="{ name: 'manager.entretien' }">
+          <BaseButton variant="secondary" size="sm"><AppIcon name="chat" :size="15" /> Préparer un entretien</BaseButton>
+        </RouterLink>
+      </div>
+    </BaseCard>
+
     <LoadingState v-if="loading" label="Chargement de votre tableau de bord…" />
     <ErrorState v-else-if="error" :message="error">
       <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
