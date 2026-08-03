@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import { MANAGER_OFFER_LIGNES } from '@/data/manager'
 import { useToast } from '@/composables/useToast'
 import type { Offer } from '@/types/domain'
 import type { Vacancy } from '@/types/manager'
@@ -35,6 +34,12 @@ async function load() {
   }
 }
 onMounted(load)
+
+// Filtres dérivés des offres réellement chargées (plus de liste figée → jamais vide).
+const MANAGER_OFFER_LIGNES = computed(() => {
+  const lignes = [...new Set(offers.value.map((o) => o.ligne).filter(Boolean))].sort()
+  return ['Tout', ...lignes]
+})
 
 const filtered = computed(() =>
   offers.value.filter((o) => ligne.value === 'Tout' || o.ligne === ligne.value),

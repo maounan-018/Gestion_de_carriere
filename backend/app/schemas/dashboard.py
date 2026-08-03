@@ -120,3 +120,10 @@ class AlerteItem(BaseModel):
     texte: str
     cta: str
     to_route: str | None = None
+
+
+class SupervisionItem(BaseModel):
+    """Contrôle de qualité des données (scan réel de la base) : anomalies détectées."""
+    titre: str
+    found: int                 # nombre d'anomalies détectées
+    total: int                 # population contrôlée

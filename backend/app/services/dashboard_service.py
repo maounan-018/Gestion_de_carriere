@@ -329,3 +329,27 @@ def alertes(db: Session) -> list[AlerteItem]:
             texte="Des collaborateurs ont poussé un souhait d'évolution — opportunité de rétention.",
             cta="Voir les souhaits", to_route="souhaitsRecus"))
     return out
+
+
+# ---------------------------------------------------- Supervision qualité données
+def supervision(db: Session) -> list[dict]:
+    """Supervision de la qualité des données : scans RÉELS de la base (aucune valeur
+    figée). Chaque item = un contrôle et le nombre d'anomalies détectées."""
+    from sqlalchemy import or_
+    total_p = _count(db, select(Profil.id))
+    total_c = _count(db, select(ProfilCompetence.id))
+    avec_comp = select(ProfilCompetence.profil_id).distinct()
+    sans_comp = _count(db, select(Profil.id).where(Profil.id.not_in(avec_comp)))
+    sans_poste = _count(db, select(Profil.id).where(
+        or_(Profil.poste_actuel.is_(None), Profil.poste_actuel == "")))
+    sans_aspi = _count(db, select(Profil.id).where(
+        or_(Profil.aspirations.is_(None), Profil.aspirations == "")))
+    non_ancrees = _count(db, select(ProfilCompetence.id).where(ProfilCompetence.skill_id.is_(None)))
+    non_cat = _count(db, select(ProfilCompetence.id).where(ProfilCompetence.categorie.is_(None)))
+    return [
+        {"titre": "Profils sans compétence renseignée", "found": sans_comp, "total": total_p},
+        {"titre": "Profils sans poste renseigné", "found": sans_poste, "total": total_p},
+        {"titre": "Profils sans aspiration exprimée", "found": sans_aspi, "total": total_p},
+        {"titre": "Compétences non ancrées au graphe", "found": non_ancrees, "total": total_c},
+        {"titre": "Compétences non catégorisées", "found": non_cat, "total": total_c},
+    ]

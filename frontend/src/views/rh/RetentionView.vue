@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
 import type { RhPerson } from '@/types/rh'
@@ -30,12 +30,21 @@ async function load() {
 }
 onMounted(load)
 
-const causes = [
-  "Faible engagement lors des derniers entretiens",
-  "Absence d'évolution récente",
-  'Rémunération sous le marché',
-  'Charge / équilibre pro-perso',
-]
+// Causes DÉRIVÉES des signaux réels de la population à risque (aucune liste figée).
+const causes = computed<string[]>(() => {
+  const ppl = people.value
+  const num = (s: string) => parseFloat((s || '').replace(',', '.'))
+  const lowEval = ppl.filter((p) => p.evalScore !== '—' && num(p.evalScore) < 3.4).length
+  const seniors = ppl.filter((p) => { const y = parseInt(p.seniority); return !isNaN(y) && y >= 8 }).length
+  const aspir = ppl.filter((p) => !!p.aspiration).length
+  const out: string[] = []
+  if (lowEval) out.push(`${lowEval} évaluation(s) en retrait (< 3,4/5)`)
+  if (seniors) out.push(`${seniors} ancienneté(s) élevée(s) (≥ 8 ans) sans évolution récente`)
+  if (aspir) out.push(`${aspir} aspiration(s) d'évolution exprimée(s) mais non concrétisée(s)`)
+  out.push('Désengagement signalé par des entretiens RH en retard')
+  return out
+})
+// Leviers de rétention RECOMMANDÉS (suggestions d'action, pas des données).
 const plan = [
   'Programmer un entretien RH sous 2 semaines',
   'Proposer une mission valorisante',
@@ -104,7 +113,7 @@ function toggleLever(l: string) {
             <BaseAvatar :initials="p.initials" size="md" />
             <div class="min-w-0 flex-1">
               <h4 class="truncate text-sm font-bold text-ink">{{ p.name }}</h4>
-              <p class="truncate text-xs text-ink-3">{{ p.role }} · {{ p.pole }} · dernier RH {{ p.lastRh }}</p>
+              <p class="truncate text-xs text-ink-3">{{ p.role }} · {{ p.pole }}<span v-if="p.evalScore !== '—'"> · éval {{ p.evalScore }}</span></p>
             </div>
           </RouterLink>
         </div>
