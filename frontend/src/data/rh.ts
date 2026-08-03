@@ -16,20 +16,36 @@ export const RH_PEOPLE: RhPerson[] = [
   { id: 'omar', initials: 'OT', name: 'Omar Tazi', role: 'Analyste Crédit Junior', pole: 'Corporate', seniority: '1 an', ring: 68, evalScore: '3,8/5', lastRh: '4 mois', aspiration: 'Analyste confirmé', aspirationHorizon: '24 mois', skills: [{ label: 'Analyse crédit', pct: 66 }, { label: 'Excel', pct: 72 }], strengths: ['Motivation'], gaps: ['Autonomie'], flag: null },
 ]
 
-/** Familles de compétences (colonnes de la heatmap). */
-export const CARTO_SKILLS = ['Analyse', 'Risque', 'Digital', 'Compliance', 'Leadership', 'Data'] as const
+/** Familles de compétences (colonnes de la heatmap) — alignées sur le backend live
+ *  (`humanizeFamille`, ordre alphabétique des catégories). */
+export const CARTO_SKILLS = ['Comportementale', 'Data & Analyse', 'Leadership', 'Métier', 'Outils & Tech', 'Transversale'] as const
 
-/** Cartographie des compétences par pôle (9 pôles × 6 familles). */
+/** Cartographie mock (fallback `VITE_API_MODE=mock`) — départements RÉELS regroupés par
+ *  pôle macro, fidèle à l'organigramme BMCI (référentiel departements_metiers.yaml).
+ *  Représentatif (le live couvre les ~33 départements). `levels` suit l'ordre CARTO_SKILLS. */
 export const CARTO_POLES: CartoPole[] = [
-  { name: 'Corporate & Investment', levels: [5, 4, 2, 3, 4, 2], people: ['Sofia Haddad', 'Omar Tazi'], analyse: { text: 'Pôle mature en analyse et risque. Digitalisation à renforcer.', criticite: 'modéré', focus: 'Digital' } },
-  { name: 'Retail', levels: [3, 3, 4, 2, 3, 1], people: [], analyse: { text: 'Bonne culture digitale, socle compliance et data à consolider.', criticite: 'modéré', focus: 'Compliance' } },
-  { name: 'Risques', levels: [4, 5, 1, 4, 3, 2], people: ['Aya Bennani', 'Karim Idrissi'], analyse: { text: 'Expertise risque de référence. Déficit digital marqué à combler.', criticite: 'modéré', focus: 'Digital' } },
-  { name: 'IT & Digital', levels: [2, 1, 5, 2, 2, 5], people: ['Marc Vasseur'], analyse: { text: 'Excellence digitale et data, mais déficit Cybersécurité critique (écart 24 % sur les certifications ISO 27001).', criticite: 'critique', focus: 'Cybersécurité' } },
-  { name: 'Finance', levels: [4, 3, 3, 5, 4, 3], people: ['Youssef Amrani', 'Mehdi Chraibi'], analyse: { text: 'Pôle équilibré, fort en compliance et leadership.', criticite: 'bénin' } },
-  { name: 'Conformité', levels: [3, 4, 2, 5, 3, 2], people: ['Leïla Fassi'], analyse: { text: 'Compliance excellente. Montée en compétences data recommandée.', criticite: 'bénin', focus: 'Data' } },
-  { name: 'International', levels: [4, 3, 3, 3, 3, 2], people: [], analyse: { text: 'Profil homogène, à renforcer sur la data.', criticite: 'bénin' } },
-  { name: 'Opérations', levels: [3, 2, 4, 3, 3, 3], people: [], analyse: { text: 'Bonne base digitale et data, expertise risque à renforcer.', criticite: 'modéré', focus: 'Risque' } },
-  { name: 'Ressources Humaines', levels: [3, 2, 3, 4, 4, 3], people: ['Nadia Alami'], analyse: { text: 'Fort leadership et compliance, data en progression.', criticite: 'bénin' } },
+  // Lignes métiers commerciales
+  { name: 'Retail Banking', pole: 'Lignes métiers commerciales', levels: [4, 3, 3, 4, 3, 3], people: ['Marc Bennani', 'Omar Tazi'] },
+  { name: 'Corporate Banking', pole: 'Lignes métiers commerciales', levels: [4, 4, 3, 4, 3, 3], people: ['Sofia Haddad'] },
+  { name: 'Banque Privée', pole: 'Lignes métiers commerciales', levels: [4, 3, 3, 4, 2, 3], people: [] },
+  // Marchés, international & filiales
+  { name: 'ALM Treasury', pole: 'Marchés, international & filiales', levels: [3, 4, 3, 4, 3, 3], people: ['Mehdi Chraibi'] },
+  { name: 'BMCI Bourse', pole: 'Marchés, international & filiales', levels: [3, 5, 3, 4, 3, 4], people: [] },
+  { name: 'IMEX (Trade Finance)', pole: 'Marchés, international & filiales', levels: [3, 4, 2, 4, 3, 4], people: [] },
+  // Risques, conformité & contrôle
+  { name: 'Risques', pole: 'Risques, conformité & contrôle', levels: [4, 4, 3, 5, 3, 4], people: ['Aya Bennani', 'Karim Idrissi'] },
+  { name: 'Conformité', pole: 'Risques, conformité & contrôle', levels: [4, 3, 3, 4, 3, 5], people: ['Leïla Fassi'] },
+  { name: 'Inspection générale', pole: 'Risques, conformité & contrôle', levels: [4, 3, 3, 4, 3, 4], people: [] },
+  // Finance, stratégie & pilotage
+  { name: 'Finance', pole: 'Finance, stratégie & pilotage', levels: [3, 4, 3, 4, 3, 4], people: ['Youssef Amrani'] },
+  { name: 'Stratégie & Gouvernance', pole: 'Finance, stratégie & pilotage', levels: [4, 4, 3, 3, 3, 4], people: [] },
+  // Data, IT & digital
+  { name: "Système d'Information", pole: 'Data, IT & digital', levels: [3, 4, 3, 4, 5, 3], people: ['Marc Vasseur'] },
+  { name: 'Digital Factory', pole: 'Data, IT & digital', levels: [3, 4, 3, 4, 5, 4], people: [] },
+  { name: 'Chief Data Office', pole: 'Data, IT & digital', levels: [3, 5, 3, 3, 5, 3], people: [] },
+  // Fonctions support & corporate
+  { name: 'Ressources Humaines', pole: 'Fonctions support & corporate', levels: [4, 3, 3, 3, 3, 4], people: ['Nadia Alami'] },
+  { name: 'Marketing & Communication', pole: 'Fonctions support & corporate', levels: [4, 3, 3, 3, 3, 4], people: [] },
 ]
 
 export const RH_KPIS: RhKpi[] = [

@@ -191,6 +191,18 @@ def decide_candidature(db: Session, candidature_id: int, statut: str,
     return _to_out(c)
 
 
+def retirer_candidature(db: Session, candidature_id: int) -> CandidatureOut | None:
+    """Le candidat retire sa candidature → statut `retiree`. None si introuvable.
+    (Le contrôle de propriété est fait en amont par `ownership.require_own_candidature`.)"""
+    c = db.get(Candidature, candidature_id)
+    if not c:
+        return None
+    c.statut = CandidatureStatut.RETIREE
+    db.commit()
+    db.refresh(c)
+    return _to_out(c)
+
+
 def reevaluer_candidature(db: Session, candidature_id: int) -> CandidatureOut | None:
     """Recalcule le score/snapshot (ex : attendus de l'offre modifiés depuis le
     dépôt). None si introuvable. Ne change PAS le statut/la décision."""

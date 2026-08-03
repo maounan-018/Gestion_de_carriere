@@ -4,7 +4,27 @@
 > branchement du frontend Vue sur l'API FastAPI. Tenu à jour au fil des chantiers.
 > Sévérité : 🔴 bloquant · 🟠 à traiter · 🟡 dette/finition · ✅ fait.
 >
-> Dernière mise à jour : 2026-07-27.
+> Dernière mise à jour : 2026-08-03.
+
+---
+
+## 0. Chantier A→D + finitions (2026-08-03) — suite de l'audit plateforme
+
+Points de l'audit du 2026-08-02 traités :
+
+- **A · Cartographie sur l'organigramme RÉEL.** `_seed_carto` (backend `database/seed.py`) réécrit
+  sur le référentiel `config/departements_metiers.yaml` : **67 profils synthétiques répartis sur les
+  33 départements / 6 pôles macro réels** (au lieu de 6 clés inventées). `dashboard_service.cartographie()`
+  libelle chaque ligne via le référentiel (`nom` + `pole`) et **regroupe la heatmap par pôle** (schéma
+  `CartoLigne.pole`, mapper + type front + `Heatmap.vue` intertitres). Mock front (`data/rh.ts`) réaligné
+  sur les 6 familles réelles + départements réels groupés par pôle. **Live vérifié : 33 lignes riches.**
+- **B · Souhaits création/édition câblés** : `apiService.createSouhait` (`POST /souhaits`) +
+  `updateSouhait` (`PATCH /souhaits/{id}`) ; `SouhaitsView` a un vrai formulaire (BaseModal). Fin des toasts « à venir ».
+- **C · Retrait de candidature** ajouté : `PATCH /candidatures/{id}/retrait` (ownership : candidat ou RH/ADMIN)
+  → statut `retiree` ; front `apiService.retirerCandidature` + bouton « Retirer » (MesCandidatures) ; statut
+  front `Retirée` distinct de `Refusée`.
+- **Finitions** : `.env.example` (front) créé ; `ALLOWED_ORIGINS` inclut `:3001` ; **attestation de formation**
+  implémentée (modale, marquée « démonstration »). Réévaluation : **déjà câblée** (RevueCandidats). Voir lignes ci-dessous.
 
 ---
 
@@ -15,22 +35,22 @@
 | 1.1 | ✅ | **Postuler** persiste | `POST /api/candidatures` câblé (OffreDetailView collab). 201 vérifié + garde doublon 400. |
 | 1.2 | ✅ | **Notifications lues** persistent | `PATCH /notifications/{id}/lu` + `POST /notifications/lues` (3 vues). 200 vérifié. |
 | 1.3 | ✅ | **Décision candidat** persiste | `PATCH /candidatures/{id}/decision` (RevueCandidats RH). 200 sur les 3 statuts. |
-| 1.4 | 🔴 | **Pas d'endpoint DELETE candidature** | Impossible de nettoyer une candidature ni de la retirer côté collaborateur. Le statut `retiree` existe dans le schéma mais **aucune route ne le pose**. → besoin d'un `DELETE /candidatures/{id}` ou `PATCH …/retrait`. |
-| 1.5 | ✅/🔴 | **Édition profil : RH faite, self-service collab BLOQUÉ** | **RH** : formulaire d'édition (poste actuel + aspirations) sur `FicheCollabRhView` → `PATCH /profils/{id}` — fait & vérifié (RH 200). **MAIS** `PATCH /profils/{id}` est **réservé RH/ADMIN** : un **collaborateur ne peut PAS éditer son propre profil** (collab → **403** vérifié). « Éditer mon profil » (collab) reste donc un stub. → backend : ajouter un **`PATCH /profils/me`** self-service (champs limités) pour débloquer l'édition collaborateur. |
-| 1.6 | ✅ | **Pousser un souhait persiste** | `Souhait` porte désormais son `id` (résolu) ; `apiService.pushSouhait` → `PATCH /souhaits/{id}` {pushed,statut}. 200 vérifié (SouhaitsView collab). *Reste : « Nouveau souhait » / « Modifier » = toasts (form à faire).* |
+| 1.4 | ✅ | **Retrait de candidature (2026-08-03)** — `PATCH /candidatures/{id}/retrait` (ownership : candidat ou RH/ADMIN) pose `statut=retiree` ; front `retirerCandidature` + bouton « Retirer ». Retrait logique (pas de DELETE dur, trace conservée). |
+| 1.5 | ✅ | **Édition profil : RH + self-service collab** | RH : `PATCH /profils/{id}`. **`PATCH /profils/me`** existe (`profil_controller.py:94`) → édition self-service du collaborateur débloquée backend. |
+| 1.6 | ✅ | **Souhaits : pousser + créer + éditer (2026-08-03)** | `pushSouhait` + **`createSouhait` (`POST /souhaits`)** + **`updateSouhait` (`PATCH /souhaits/{id}`)** ; `SouhaitsView` a un vrai formulaire (BaseModal). Fin des toasts « à venir ». |
 | 1.7 | ✅ | **Publier une offre persiste** | `apiService.publishOffer` → `POST /offres` (brouillon, `synthetique`). Modale manager câblée. **Règle backend découverte** : un **MANAGER ne peut publier qu'une mission/projet, pas un POSTE (403)** ; les postes sont réservés à la RH → modale manager restreinte à Mission/Projet. *Reste : côté RH le bouton « Publier » n'a pas encore de modale.* |
-| 1.8 | 🟡 | **Statuts candidature : front plus riche que back** | Le front distingue `entretien`/`preselection` ; le backend n'accepte que `en_evaluation`/`retenue`/`rejetee`. « Convoquer » et « Présélectionner » persistent tous deux en `en_evaluation` (perte de granularité). |
+| 1.8 | 🟡 | **Statuts candidature : front plus riche que back** | Le front distingue `entretien`/`preselection` ; le backend n'accepte que `en_evaluation`/`retenue`/`rejetee`. **Choix DIFFÉRÉ assumé (2026-08-03)** : élargir l'automate d'états (enum modèle + `CandidatureDecision` + notifications) pour un gain 🟡 n'est pas justifié ; le flux reste fonctionnel (les deux persistent en `en_evaluation`). |
 | 1.9 | 🟡 | **Démotion « un seul retenu » non persistée** | Dans RevueCandidats, retenir un candidat rétrograde l'ancien retenu **localement seulement** → peut diverger du backend. |
-| 1.10 | 🟡 | **Réévaluation inutilisée** | `POST /candidatures/{id}/reevaluation` existe mais aucun déclencheur front. |
+| 1.10 | ✅ | **Réévaluation câblée** | `POST /candidatures/{id}/reevaluation` **déclenché depuis le front** : `RevueCandidatsView.reevaluer()` → `apiService.reevaluerCandidature(id)`. *(Le registre la disait inutilisée : périmé.)* |
 
-## 2. Recommandation & cartographie (#3) — reco RÉSOLUE (live), cartographie encore bloquée
+## 2. Recommandation & cartographie (#3) — reco ET cartographie RÉSOLUES (live)
 
 | # | Sév. | Remarque | Détail / recommandation |
 |---|------|----------|-------------------------|
 | 3.1 | ✅ | **Reco : résolue en live** | Contournement de la latence ~128 s (génération Ollama synchrone) : la session parallèle a ajouté **`GET /api/competences/ma-reco`** (pré-calculé / caché). `getReco` **et** `getManagerReco` sont désormais **LIVE** via `mapReco(RecommendationOut)`. Le vieux `POST /competences/recommandations` synchrone reste réservé à un usage async/on-demand. |
 | 3.2 | ✅ | **Reco : entrées gérées côté backend** | `/ma-reco` dérive lui-même `poste_texte` du poste visé/aspiration du profil → le front n'a plus à collecter d'entrée. |
-| 3.3 | 🟠 | **Carto : forme incompatible + données trop creuses (SEUL mock restant)** | `GET /api/dashboards/cartographie` renvoie **département × top-compétences** (`effectif`, `niveau_moyen`, `top_competences[]`), alors que le front attend une **matrice 9 pôles × 6 familles fixes** (`levels[6]`, `people[]`, `analyse{criticité,focus}`). **En + : seuls 2 départements sont peuplés** (RH=1 pers., Retail=7) car le seed n'a de profils que là → live = 2 lignes creuses vs 9 pôles riches. Décision : **garder mock** (ne pas dégrader un écran phare). → backend : peupler les pôles + exposer une structure alignée 6 familles (ou redessiner la Heatmap sur la donnée réelle). |
-| 3.4 | 🟠 | **Bilan live : 32/34 méthodes `apiService` en live** | Reco (`/ma-reco`) et **vacances** (`/offres/vacances`, matching inverse) désormais **live** ; il ne reste plus que `getCarto` / `getCartoPole` en **mock** (cf. 3.3). |
+| 3.3 | ✅ | **Carto LIVE sur l'organigramme réel (2026-08-03)** | Le backend `cartographie()` était déjà data-driven (N pôles × M familles) et le front `CartoMatrix` aligné — le vrai défaut était le **seed** (6 clés inventées, ~2 départements peuplés). **`_seed_carto` réécrit** sur `config/departements_metiers.yaml` → **67 profils sur les 33 départements / 6 pôles réels**, compétences taguées par 6 familles. Labels via référentiel (`nom`) + **regroupement par pôle** (`CartoLigne.pole` + intertitres `Heatmap.vue`). Mock front réaligné. **Vérifié : 33 lignes riches.** |
+| 3.4 | ✅ | **Bilan live : ~58/58 méthodes `apiService` en live** | `getCarto`/`getCartoPole` désormais **live** (branche `/dashboards/cartographie`). Les 2 « mock-only » apparents (`getReco`/`getManagerReco`) passent par `fetchRecoLive` (async) → live. |
 
 ## 3. Trous de données (replis neutres des mappers)
 
@@ -50,15 +70,15 @@ Champs affichés par le front mais **non portés par le backend** → repli `—
 | 5.1 | ✅ | **chart.js + vue-chartjs inutilisés** | Aucun import dans `src/` (la « Courbe » est en SVG, la heatmap en grille CSS). **Retirés de `package.json`** → lancer `npm install` pour purger `node_modules`. |
 | 5.2 | ✅ | **`tsconfig.node.json` orphelin** | Aucune référence (ni `references`, ni import). **Supprimé.** |
 | 5.3 | ✅ | **`lucide-vue-next` déprécié → migré vers `@lucide/vue`** | Confirmé déprécié (npm : « Please use @lucide/vue instead »). Migré : chemin d'import remplacé sur **47 fichiers** (`@lucide/vue` = drop-in, mêmes exports nommés), package déprécié désinstallé. Vérifié : **typecheck exit 0 + build OK**. |
-| 5.4 | 🟡 | **Zéro test** | Aucun harnais (pas de vitest). **Différé** ; démarrage le moins coûteux = tests unitaires des fonctions pures des mappers (`relativeTime`, `initialsOf`, `mapOffre`, `mapCandidature`). |
+| 5.4 | ✅ | **Tests en place** | **vitest : 54 tests** (mappers 41 + store session 8 + …). Backend **pytest : 149**. Plus « zéro test ». |
 
 ## 5. Auth / session / infra
 
 | # | Sév. | Remarque | Détail |
 |---|------|----------|--------|
 | 6.1 | ✅ | **Durcissement session (#4) — vérifié runtime** | Intercepteur 401 (`http.ts` → `main.ts` : `session.expire()` + redirection `connexion?redirect`), `hydrate()` purge le cache sur 401. **Rejoué au navigateur (live)** : session révoquée serveur → appel API → 401 → redirection `/connexion?redirect=/app/rh/notifications` + store purgé. ✅ |
-| 6.2 | 🟡 | **CORS `ALLOWED_ORIGINS` sans `:3001`** | Sans effet **tant qu'on passe par le proxy Vite** `/api→:5001` (same-origin). À corriger seulement si le front est servi hors proxy. |
-| 6.3 | 🟠 | **Pas de `.env` → mode `live` par défaut** | Sans backend lancé, tous les appels live échouent. (Chantier #2 mis de côté par l'utilisateur.) → fournir `.env.example` + trancher le défaut, ou `VITE_API_MODE=mock`. |
+| 6.2 | ✅ | **CORS `:3001` ajouté (2026-08-03)** | `ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173` (backend/.env). Utile si le front est servi hors proxy Vite. |
+| 6.3 | ✅ | **`.env.example` fourni (2026-08-03)** | `frontend/.env.example` documente `VITE_API_MODE` (défaut **live** ; `mock` = fixtures hors-ligne). `frontend/.env.local` (cette machine) réglé sur **`live`** pour la démo backend complète (cartographie 33 départements, reco IA, persistance). |
 | 6.4 | 🟡 | **Backend à lancer sur `:5001`** | `uvicorn app.main:app --port 5001` (défaut 8000 sinon). SQLite = un seul writer. |
 
 ## 6. Coordination inter-sessions

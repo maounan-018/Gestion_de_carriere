@@ -139,6 +139,22 @@ def require_candidature_view(db: Session, user: User, candidature_id: int) -> Ca
     return c
 
 
+def require_own_candidature(db: Session, user: User, candidature_id: int) -> Candidature:
+    """Charge la candidature (404) et exige que l'utilisateur en soit le PROPRIÉTAIRE
+    (le candidat), ou RH/ADMIN. Sert au retrait par le candidat lui-même (403 sinon)."""
+    c = db.get(Candidature, candidature_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="Candidature introuvable")
+    if _is_global(user):
+        return c
+    own = profil_of_user(db, user.id)
+    if own is None or own.id != c.profil_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Vous ne pouvez retirer que vos propres candidatures.")
+    return c
+
+
 def require_candidature_list_scope(db: Session, user: User,
                                    offre_id: int | None, profil_id: int | None) -> None:
     """Autorise une liste de candidatures selon le périmètre (403 sinon) :

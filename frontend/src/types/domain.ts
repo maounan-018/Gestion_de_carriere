@@ -60,9 +60,11 @@ export interface Offer {
 
 /* ------------------------------------------------------------- Candidatures */
 export type CandidatureStatus =
-  | 'Envoyée' | 'En revue' | 'Entretien planifié' | 'Refusée' | 'Retenue'
+  | 'Envoyée' | 'En revue' | 'Entretien planifié' | 'Refusée' | 'Retenue' | 'Retirée'
 
 export interface Candidature {
+  /** Id backend (pour retirer la candidature). Absent en mock. */
+  id?: string
   icon: IconKey
   title: string
   type: string

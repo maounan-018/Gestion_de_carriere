@@ -97,6 +97,18 @@ def decider_candidature(candidature_id: int, data: CandidatureDecision,
     return out
 
 
+@router.patch("/{candidature_id}/retrait", response_model=CandidatureOut,
+              summary="Retirer ma candidature (le candidat renonce → statut « retiree »)")
+def retirer_candidature(candidature_id: int, user: User = Depends(get_current_user),
+                        db: Session = Depends(get_db)) -> CandidatureOut:
+    # Ownership : seul le candidat (propriétaire du profil) ou RH/ADMIN peut retirer.
+    ownership.require_own_candidature(db, user, candidature_id)  # 404 si absent, 403 hors périmètre
+    out = candidature_service.retirer_candidature(db, candidature_id)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Candidature introuvable")
+    return out
+
+
 @router.post("/{candidature_id}/reevaluation", response_model=CandidatureOut,
              dependencies=[Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN))],
              summary="Recalculer le score (attendus de l'offre modifiés depuis le dépôt)")

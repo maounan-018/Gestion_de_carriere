@@ -120,12 +120,20 @@ def cartographie(db: Session) -> CartoMatrix:
             .order_by(Profil.nom)).all():
         people.setdefault(dept, []).append(f"{prenom or ''} {nom}".strip())
 
-    # Lignes triées par effectif décroissant (pôles les plus fournis en tête).
+    # Libellés lisibles + regroupement par pôle via le référentiel d'organisation.
+    from app.services import cartography_service
+    ref_list = cartography_service.departements()
+    ref = {d.get("key"): d for d in ref_list}
+    rank = {d.get("key"): i for i, d in enumerate(ref_list)}
+
+    # Lignes groupées par pôle (ordre du référentiel), départements les plus fournis en tête.
     lignes: list[CartoLigne] = []
-    for dept, eff in sorted(effectifs.items(), key=lambda kv: -kv[1]):
+    for dept, eff in sorted(effectifs.items(), key=lambda kv: (rank.get(kv[0], 10**6), -kv[1])):
+        meta = ref.get(dept, {})
         moy = moy_globales.get(dept)
         lignes.append(CartoLigne(
-            departement_key=dept, label=_humanize(dept), effectif=eff,
+            departement_key=dept, label=meta.get("nom") or _humanize(dept),
+            pole=meta.get("pole"), effectif=eff,
             niveau_moyen=round(moy, 2) if moy is not None else None,
             niveaux=[cells.get((dept, f)) for f in familles],
             people=people.get(dept, [])[:12]))

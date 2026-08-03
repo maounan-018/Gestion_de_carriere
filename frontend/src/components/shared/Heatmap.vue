@@ -1,13 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { CartoLigne } from '@/types/rh'
 
-// Heatmap DATA-DRIVEN : les colonnes (`familles`) et les lignes viennent du
-// backend — aucune taxonomie figée. Une cellule `null` = pas de compétence de
-// cette famille dans ce pôle.
-withDefaults(defineProps<{ familles: string[]; lignes: CartoLigne[]; big?: boolean }>(), {
-  big: false,
-})
+// Heatmap DATA-DRIVEN : les colonnes (`familles`) et les lignes (départements) viennent
+// du backend — aucune taxonomie figée. Une cellule `null` = pas de compétence de cette
+// famille dans ce département. Les lignes sont regroupées par PÔLE macro (intertitres).
+const props = withDefaults(
+  defineProps<{ familles: string[]; lignes: CartoLigne[]; big?: boolean }>(),
+  { big: false },
+)
 const emit = defineEmits<{ pole: [string] }>()
+
+// Annote chaque ligne : `firstOfPole` déclenche un intertitre de pôle (les lignes
+// arrivent déjà groupées par pôle depuis le backend).
+const rows = computed(() =>
+  props.lignes.map((l, i) => ({
+    ...l,
+    firstOfPole: !!l.pole && l.pole !== props.lignes[i - 1]?.pole,
+  })),
+)
 
 function cls(l: number | null): string {
   const v = l ?? 0
@@ -40,7 +51,14 @@ function fmt(l: number | null): string {
         {{ f }}
       </div>
 
-      <template v-for="p in lignes" :key="p.departementKey">
+      <template v-for="p in rows" :key="p.departementKey">
+        <div
+          v-if="p.firstOfPole"
+          class="mt-2 border-t border-green-line pt-1.5 text-[10px] font-bold uppercase tracking-wide text-green-deep"
+          style="grid-column: 1 / -1"
+        >
+          {{ p.pole }}
+        </div>
         <button
           class="flex items-center pr-1.5 text-left text-[11.5px] font-semibold text-ink-2 transition hover:text-green-deep"
           @click="emit('pole', p.departementKey)"
