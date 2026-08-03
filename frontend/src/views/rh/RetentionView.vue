@@ -7,6 +7,7 @@ import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import BaseBreadcrumb from '@/components/ui/BaseBreadcrumb.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -41,6 +42,44 @@ const plan = [
   'Étudier une revalorisation salariale',
   "Clarifier les perspectives d'évolution",
 ]
+
+/* ---- Transmettre le plan : point de carrière proposé au collaborateur ---- */
+const showPlan = ref(false)
+const targetId = ref('')
+const selectedLevers = ref<string[]>([...plan])
+const planNote = ref('')
+const sendingPlan = ref(false)
+function openPlan() {
+  targetId.value = people.value[0]?.id ?? ''
+  selectedLevers.value = [...plan]
+  planNote.value = ''
+  showPlan.value = true
+}
+async function transmitPlan() {
+  const target = people.value.find((p) => p.id === targetId.value)
+  if (!target || sendingPlan.value) return
+  sendingPlan.value = true
+  const message = 'Votre RH souhaite échanger avec vous sur votre évolution et vos perspectives '
+    + 'au sein du Groupe. Un point de carrière va vous être proposé prochainement.'
+    + (planNote.value.trim() ? ` ${planNote.value.trim()}` : '')
+  try {
+    const { delivered } = await apiService.messageProfil(
+      target.id, 'Point de carrière proposé', message, 'collab.souhaits')
+    toast(delivered
+      ? `Plan de rétention initié — ${target.name} a été invité·e à un point de carrière`
+      : `Plan enregistré pour ${target.name} (pas de compte actif)`, 'ok')
+    showPlan.value = false
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la transmission', 'error')
+  } finally {
+    sendingPlan.value = false
+  }
+}
+function toggleLever(l: string) {
+  const i = selectedLevers.value.indexOf(l)
+  if (i >= 0) selectedLevers.value.splice(i, 1)
+  else selectedLevers.value.push(l)
+}
 </script>
 
 <template>
@@ -85,11 +124,55 @@ const plan = [
               <AppIcon name="check" :size="14" class="mt-0.5 text-green-deep" /> {{ a }}
             </li>
           </ul>
-          <BaseButton block class="mt-3" @click="toast('Plan de rétention transmis à la direction du pôle', 'info')">
+          <BaseButton block class="mt-3" :disabled="!people.length" @click="openPlan">
             <AppIcon name="send" :size="15" /> Transmettre le plan
           </BaseButton>
         </BaseCard>
       </div>
     </div>
+
+    <BaseModal v-model="showPlan" title="Initier un plan de rétention">
+      <div class="space-y-4">
+        <label class="block">
+          <span class="mb-1 block text-xs font-semibold text-ink-2">Collaborateur concerné</span>
+          <select
+            v-model="targetId"
+            class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
+          >
+            <option v-for="p in people" :key="p.id" :value="p.id">{{ p.name }} · {{ p.role }}</option>
+          </select>
+        </label>
+        <div>
+          <span class="mb-1.5 block text-xs font-semibold text-ink-2">Leviers de rétention</span>
+          <div class="space-y-1.5">
+            <label v-for="l in plan" :key="l" class="flex items-start gap-2 text-sm text-ink-2">
+              <input
+                type="checkbox"
+                class="mt-0.5 h-4 w-4 accent-green"
+                :checked="selectedLevers.includes(l)"
+                @change="toggleLever(l)"
+              />
+              <span>{{ l }}</span>
+            </label>
+          </div>
+        </div>
+        <label class="block">
+          <span class="mb-1 block text-xs font-semibold text-ink-2">Note interne (optionnel)</span>
+          <textarea
+            v-model="planNote"
+            rows="2"
+            placeholder="Contexte, points d'attention…"
+            class="w-full resize-none rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
+          />
+        </label>
+        <p class="text-[11px] text-ink-3">Le collaborateur reçoit une invitation neutre à un point de carrière ; les leviers restent internes RH.</p>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showPlan = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="sendingPlan || !targetId" @click="transmitPlan">
+          <AppIcon name="send" :size="14" /> {{ sendingPlan ? 'Transmission…' : 'Initier le plan' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>

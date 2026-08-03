@@ -82,3 +82,18 @@ def communiquer_aux_rh(db: Session, *, from_name: str, sujet: str, message: str)
                             texte=texte, to_route="rh.notifications", commit=False)
     db.commit()
     return len(rh)
+
+
+def message_a_profil(db: Session, *, profil_id: int, from_name: str, sujet: str,
+                     message: str, to_route: str | None = None) -> bool:
+    """Notifie le collaborateur d'un profil (RH/manager → collaborateur). Renvoie
+    True si une notification a été créée, False si le profil n'a pas de compte
+    utilisateur actif (persona synthétique)."""
+    from app.models.profil import Profil
+    profil = db.get(Profil, profil_id)
+    if profil is None or profil.user_id is None:
+        return False
+    titre = (f"{sujet.strip()} — {from_name}" if sujet.strip() else f"Message de {from_name}")[:200]
+    create_notification(db, user_id=profil.user_id, titre=titre, type="info",
+                        texte=message.strip()[:1000], to_route=to_route)
+    return True

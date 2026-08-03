@@ -37,3 +37,16 @@ class MessageRhRequest(BaseModel):
 
 class MessageRhResult(BaseModel):
     destinataires: int   # nombre de RH/ADMIN notifiés
+
+
+class MessageProfilRequest(BaseModel):
+    """Message ciblé vers un collaborateur (RH/manager → profil). Crée une
+    notification pour le compte du collaborateur, s'il en possède un."""
+    profil_id: int = Field(..., description="Profil du collaborateur destinataire.")
+    sujet: str = Field("", max_length=200, description="Sujet (optionnel).")
+    message: str = Field(..., min_length=1, max_length=1000, description="Corps du message.")
+    to_route: str | None = Field(None, max_length=64, description="Route de destination (front).")
+
+
+class MessageProfilResult(BaseModel):
+    delivered: bool   # False si le profil n'a pas de compte utilisateur actif
