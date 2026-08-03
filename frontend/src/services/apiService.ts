@@ -510,6 +510,29 @@ export const apiService = {
     }
     return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/cartographie'))
   },
+  /** Cartographie de MON équipe (lignes = collaborateurs), même nomenclature que la
+   *  carto RH (familles). Pour l'écran « Mon équipe ». */
+  async getTeamCarto(): Promise<CartoMatrix> {
+    if (MODE === 'mock') {
+      await delay()
+      const familles = ['Métier', 'Comportementale', 'Transversale', 'Outils & tech.']
+      const membres = [
+        ['Marc Bennani', [3.5, 4, 3, 2]], ['Salma Idrissi', [4, 3, 3.5, 2.5]],
+        ['Youssef Alaoui', [3, 3.5, 2.5, null]], ['Hicham Berrada', [2.5, 3, 3, 2]],
+        ['Imane Cherkaoui', [4.5, 4, 4, 3]], ['Karim Sabri', [4, 3.5, 3.5, 3]],
+      ] as [string, (number | null)[]][]
+      return {
+        familles,
+        lignes: membres.map(([nom, niveaux]) => ({
+          departementKey: nom, label: nom, pole: null, effectif: 1,
+          niveauMoyen: (niveaux.filter((n): n is number => n != null).reduce((a, b) => a + b, 0)
+            / Math.max(1, niveaux.filter((n) => n != null).length)),
+          niveaux, people: [nom],
+        })),
+      }
+    }
+    return mapCartoMatrix(await apiFetch<CartoMatrixOut>('/dashboards/equipe/cartographie'))
+  },
   /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
   async getSyntheseRh(): Promise<SyntheseRh> {
     if (MODE === 'mock') {
