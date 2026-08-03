@@ -10,6 +10,8 @@ export const MANAGER_PROFILE: CollabProfile = {
     "Directeur de Pôle Risques, j'anime une équipe de 8 collaborateurs et pilote la maîtrise du risque de crédit du portefeuille Corporate. Objectif : évoluer vers un rôle exécutif (COMEX).",
   aspirations: ['Direction exécutive des Risques', 'Influence COMEX', 'Vision stratégique Groupe'],
   zones: 'Casablanca · Paris',
+  disponibilite: '6 à 12 mois',
+  typeEvolution: 'Management',
   stations: [
     { period: '2012 · 2016', title: 'Analyste Risque Senior', desc: 'Scoring et modélisation.', state: 'past' },
     { period: '2016 · 2021', title: 'Manager Risques', desc: '5 collaborateurs.', state: 'past' },

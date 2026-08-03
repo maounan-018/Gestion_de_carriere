@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { Settings, Check, BookOpen, ChevronRight, RefreshCw, AlertTriangle } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
+import { useToast } from '@/composables/useToast'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -15,20 +16,28 @@ const items = ref<Item[]>([])
 const loading = ref(true)
 const error = ref('')
 const lastRun = ref('')
+const { toast } = useToast()
 
-async function scan() {
+async function scan(manual = false) {
   loading.value = true
   error.value = ''
   try {
     items.value = await apiService.getSupervision()
     lastRun.value = new Date().toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+    if (manual) {
+      const total = items.value.reduce((s, i) => s + i.found, 0)
+      toast(total > 0
+        ? `Analyse relancée · ${total} anomalie${total > 1 ? 's' : ''} détectée${total > 1 ? 's' : ''}`
+        : 'Analyse relancée · aucune anomalie', 'ok')
+    }
   } catch {
     error.value = 'Analyse indisponible pour le moment.'
+    if (manual) toast('Analyse indisponible pour le moment.', 'error')
   } finally {
     loading.value = false
   }
 }
-onMounted(scan)
+onMounted(() => scan())
 
 const anomalies = computed(() => items.value.reduce((s, i) => s + i.found, 0))
 function pct(i: Item): number {
@@ -49,7 +58,7 @@ function pct(i: Item): number {
             Analyse de la qualité des données talents — scans réels de la base, à la demande.
           </p>
         </div>
-        <BaseButton variant="secondary" size="sm" :disabled="loading" @click="scan">
+        <BaseButton variant="secondary" size="sm" :disabled="loading" @click="scan(true)">
           <RefreshCw :size="15" :class="loading ? 'animate-spin' : ''" /> Relancer l'analyse
         </BaseButton>
       </div>

@@ -153,13 +153,17 @@ function goOffres(metier: string) {
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><AppIcon name="route" :size="16" /></div>
             <div>
               <h4 class="text-sm font-bold text-green-deep">{{ profile.posteVise }}</h4>
-              <p class="text-xs text-ink-2">Horizon {{ profile.horizon }}</p>
+              <p class="text-xs text-ink-2">
+                Horizon {{ profile.horizon }}<span v-if="profile.typeEvolution"> · {{ profile.typeEvolution }}</span>
+              </p>
             </div>
           </div>
           <div class="mt-3 flex flex-wrap gap-2">
             <BaseChip v-for="a in profile.aspirations" :key="a" tone="green">{{ a }}</BaseChip>
           </div>
-          <p class="mt-3 text-xs text-ink-3"><AppIcon name="pin" :size="12" class="inline" /> Zones · {{ profile.zones }}</p>
+          <p class="mt-3 text-xs text-ink-3">
+            <AppIcon name="pin" :size="12" class="inline" /> Zones · {{ profile.zones }}<span v-if="profile.disponibilite"> · Dispo {{ profile.disponibilite }}</span>
+          </p>
           <RouterLink :to="{ name: 'collab.souhaits' }" class="mt-3 block">
             <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Mes souhaits</BaseButton>
           </RouterLink>

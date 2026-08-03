@@ -120,6 +120,8 @@ export interface CollabProfile {
   description: string
   aspirations: string[]
   zones: string
+  disponibilite: string
+  typeEvolution: string
   stations: ProgressionStation[]
   todos: TodoItem[]
   skills: SkillLevel[]

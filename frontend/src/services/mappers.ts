@@ -303,6 +303,8 @@ export function mapCollabProfile(c: ProfilCarriereOut): CollabProfile {
     description: c.bio ?? '',
     aspirations: c.aspirations ? [c.aspirations] : [],
     zones: c.mobilite_geo ?? '',
+    disponibilite: c.disponibilite ?? '',
+    typeEvolution: c.type_evolution ?? '',
     stations,
     todos: [],
     skills,
