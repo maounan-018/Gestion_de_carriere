@@ -48,7 +48,7 @@ from app.models.fiche import Fiche, FicheCompetence
 from app.models.offre import Offre
 from app.models.candidature import Candidature
 from app.models.notification import Notification
-from app.models.souhait import Souhait, SouhaitStatut
+from app.models.souhait import Souhait, SouhaitStatut, SouhaitKind
 from app.models.formation import Formation
 from app.models.carriere import ProfilStation, PeerReview, StationEtat
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
@@ -663,8 +663,150 @@ def _seed_carto(db: Session) -> int:
     return created
 
 
+# --- Population synthétique RH : comptes COMPLETS répartis sur l'organisation -------
+# ⚠️ Comptes de DÉMONSTRATION (User.type=SYNTHETIC, matricule SYN-*, profils synthetique=True),
+# INCONNUS des modèles d'évaluation/reco. Ils portent des SIGNAUX réalistes (compétences,
+# séniorité, entretiens, souhaits) à partir desquels les insights RH (hauts potentiels,
+# risque de départ, alertes, KPI) ÉMERGENT par calcul — aucun champ « risque » n'est stocké.
+
+_POP_PRENOMS = ["Youssef", "Fatima", "Rachid", "Sophia", "Omar", "Leila", "Yassine", "Nadia",
+    "Karim", "Salma", "Mehdi", "Imane", "Hamza", "Sara", "Anas", "Khadija", "Reda", "Meryem",
+    "Amine", "Hajar", "Nabil", "Ghita", "Tarik", "Nawal", "Zakaria", "Douae", "Ismail", "Wafaa",
+    "Adil", "Loubna", "Soufiane", "Asmaa", "Bilal", "Rim", "Hicham", "Chaimae", "Othmane",
+    "Siham", "Marouane", "Kenza"]
+_POP_NOMS = ["Alaoui", "Bennani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri", "Ouali",
+    "Amrani", "Benjelloun", "El Malki", "Berrada", "Kabbaj", "Lahlou", "Naciri", "Squalli",
+    "Tazi", "Zniber", "Bennis", "Cherkaoui", "Guessous", "Haddad", "Jaidi", "Kadiri", "Lamrani",
+    "Mansouri", "Nejjar", "Ouazzani", "Sbai", "Bouazza", "Filali", "Hilali", "Karimi", "Saidi",
+    "Belghiti", "Chaoui", "Drissi", "Ennaji", "Fikri", "Ghazi"]
+_POP_ASPIRATIONS = [
+    "Évoluer vers un poste à responsabilités",
+    "Prendre la responsabilité d'une équipe",
+    "Envisager une mobilité vers un autre pôle",
+    "Devenir référent(e) métier reconnu(e)",
+    "Piloter des projets transverses",
+    "Accéder à un poste de management",
+]
+
+
+def _pop_person(db: Session, *, seq: int, key: str, poste: str, role: str, base: dict,
+                boost: int, now, password_hash: str, manager_uid: int | None,
+                with_aspiration: bool) -> int:
+    """Crée UN compte synthétique complet (user + profil + compétences + entretiens +
+    éventuels souhait/avis) et renvoie son user.id. Déterministe (hash sur `seq`)."""
+    import unicodedata
+    from datetime import timedelta
+    h = _carto_hash(f"{key}-{seq}")
+    prenom = _POP_PRENOMS[h % len(_POP_PRENOMS)]
+    nom = _POP_NOMS[(h // 7) % len(_POP_NOMS)]
+    matricule = f"SYN-{seq + 1:04d}"
+    raw = f"{prenom}.{nom}.{seq + 1}"
+    email = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode() \
+        .lower().replace(" ", "") + "@bmci.local"
+    is_mgr = role == Role.MANAGER
+    mois = (36 if is_mgr else 4) + (h % (168 if is_mgr else 132))  # séniorité (managers + anciens)
+    date_entree = now - timedelta(days=mois * 30)
+    aspiration = _POP_ASPIRATIONS[h % len(_POP_ASPIRATIONS)] if (with_aspiration and h % 5 < 2) else None
+
+    u = User(email=email, name=f"{prenom} {nom}", role=role, type=UserType.SYNTHETIC,
+             password_hash=password_hash, is_active=True, manager_id=manager_uid,
+             departement_key=key, matricule=matricule)
+    db.add(u)
+    db.flush()
+    p = Profil(user_id=u.id, nom=nom, prenom=prenom, matricule=matricule, poste_actuel=poste,
+               departement_key=key, manager_id=manager_uid, date_entree=date_entree,
+               aspirations=aspiration, synthetique=True)
+    db.add(p)
+    db.flush()
+
+    for fam in _CARTO_FAMILLES:
+        jitter = (_carto_hash(f"{key}-{fam}-{seq}") % 3) - 1
+        top = 1 if h % 9 == 0 else 0                       # ~11 % de profils « haut niveau » (HP)
+        niveau = max(1, min(5, base.get(fam, 3) + jitter + boost + top))
+        libelle = poste if fam == "metier" else \
+            _FAM_LIBELLES[fam][_carto_hash(f"{key}-{fam}-{seq}") % len(_FAM_LIBELLES[fam])]
+        db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=fam,
+                                niveau=niveau, source=CompetenceSource.DECLARATIF))
+
+    # Entretiens : annuel + RH. ~15 % d'entretiens RH EN RETARD → signal de désengagement.
+    db.add(Entretien(profil_id=p.id, type=EntretienType.ANNUEL,
+                     statut=EntretienStatut.REALISE if h % 3 else EntretienStatut.PLANIFIE))
+    db.add(Entretien(profil_id=p.id, type=EntretienType.RH,
+                     statut=EntretienStatut.EN_RETARD if h % 7 == 0 else EntretienStatut.REALISE))
+
+    # Souhaits : ~30 % ; certains poussés (mobilité/promotion = signal de rétention).
+    if h % 10 < 3:
+        mission = h % 2 == 0
+        pushed = h % 3 == 0
+        db.add(Souhait(
+            profil_id=p.id,
+            titre="Mobilité vers un autre pôle" if mission else (aspiration or "Évolution de carrière"),
+            kind=SouhaitKind.MISSION if mission else SouhaitKind.CARRIERE,
+            horizon=f"{6 + h % 18} mois",
+            description="Souhait synthétique de démonstration.",
+            statut=SouhaitStatut.POUSSE if pushed else SouhaitStatut.BROUILLON, pushed=pushed))
+
+    # Avis des pairs : ~40 %.
+    if h % 5 < 2:
+        db.add(PeerReview(profil_id=p.id, auteur_nom="Un collègue", auteur_role="Pair",
+                          initiales="CP", texte="Collaborateur fiable, impliqué dans l'équipe.",
+                          etoiles=3 + h % 3))
+    return u.id
+
+
+def _seed_population(db: Session, password_hash: str) -> int:
+    """Population synthétique complète : ~250 comptes (collab/manager/N+2) répartis sur
+    tous les départements réels, porteurs de signaux réalistes. Idempotent (SYN-0001).
+    Renvoie le nombre de comptes créés."""
+    from datetime import datetime, timezone
+    from app.services import cartography_service
+    if db.scalar(select(User).where(User.matricule == "SYN-0001")):
+        return 0
+    try:
+        depts = cartography_service.departements()
+    except FileNotFoundError:
+        depts = []
+    now = datetime.now(timezone.utc)
+    seq = 0
+    for dept in depts:
+        key = dept.get("key")
+        if not key:
+            continue
+        pole = dept.get("pole") or ""
+        nom_dept = dept.get("nom") or key
+        metiers = dept.get("metiers") or [nom_dept]
+        base = _POLE_PROFILE.get(pole, _POLE_DEFAUT)
+        h0 = _carto_hash(key)
+        n_mgr = 1 + h0 % 2
+        n_collab = 4 + h0 % 5
+        # N+2 : chef de département.
+        head = _pop_person(db, seq=seq, key=key, poste=f"Directeur·rice {nom_dept}"[:200],
+                           role=Role.MANAGER, base=base, boost=1, now=now,
+                           password_hash=password_hash, manager_uid=None, with_aspiration=False)
+        seq += 1
+        # N+1 : managers rattachés au chef de département.
+        mgr_uids: list[int] = []
+        for _ in range(n_mgr):
+            mgr = _pop_person(db, seq=seq, key=key,
+                              poste=f"Responsable {metiers[seq % len(metiers)]}"[:200],
+                              role=Role.MANAGER, base=base, boost=1, now=now,
+                              password_hash=password_hash, manager_uid=head, with_aspiration=False)
+            mgr_uids.append(mgr)
+            seq += 1
+        # Collaborateurs rattachés à un manager.
+        for c in range(n_collab):
+            _pop_person(db, seq=seq, key=key, poste=metiers[seq % len(metiers)],
+                        role=Role.COLLAB, base=base, boost=0, now=now,
+                        password_hash=password_hash,
+                        manager_uid=mgr_uids[c % len(mgr_uids)] if mgr_uids else head,
+                        with_aspiration=True)
+            seq += 1
+    db.commit()
+    return seq
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
-             password: str, synthetic_offers: bool = True) -> dict:
+             password: str, synthetic_offers: bool = True, population: bool = False) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
     Idempotent. Renvoie un résumé. `synthetic_offers` no-op sans fiches en base
     (défaut True → rétro-compatible avec les appelants existants)."""
@@ -673,7 +815,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
                "candidats_created": [], "candidats_existing": [],
                "candidatures_created": 0, "candidatures_existing": 0,
                "formations_created": [], "notifications_created": 0, "souhaits_created": 0,
-               "carriere_created": 0, "entretiens_created": 0, "carto_created": 0}
+               "carriere_created": 0, "entretiens_created": 0, "carto_created": 0,
+               "population_created": 0}
 
     if not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — aucun compte créé.")
@@ -750,6 +893,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
         summary["carriere_created"] = _seed_carriere(db, users_by_email)
         summary["carto_created"] = _seed_carto(db)
+        if population:
+            summary["population_created"] = _seed_population(db, hash_password(password))
         summary["entretiens_created"] = _seed_entretiens(db)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
@@ -762,10 +907,12 @@ def main() -> None:
     password = os.getenv("SEED_DEMO_PASSWORD", DEFAULT_DEMO_PASSWORD)
     db = SessionLocal()
     try:
+        population = os.getenv("SEED_POPULATION", "false").strip().lower() in ("1", "true", "yes")
         summary = seed_all(
             db, demo_accounts=settings.SEED_DEMO_ACCOUNTS,
             synthetic_personas=settings.SEED_SYNTHETIC_PERSONAS,
             synthetic_offers=settings.SEED_SYNTHETIC_OFFERS, password=password,
+            population=population,
         )
     finally:
         db.close()
@@ -785,6 +932,7 @@ def main() -> None:
     print("Souhaits        :", summary["souhaits_created"], "créés")
     print("Carrière        :", summary["carriere_created"], "éléments (stations + avis)")
     print("Cartographie    :", summary["carto_created"], "profils (pôles × familles)")
+    print("Population       :", summary["population_created"], "comptes synthétiques (collab/manager/N+2)")
     print("Entretiens      :", summary["entretiens_created"], "créés")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
