@@ -13,6 +13,8 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -110,6 +112,22 @@ class VeilleItem(BaseModel):
     realises: int
     planifies: int
     en_retard: int
+
+
+class EntretienCasItem(BaseModel):
+    """Cas concret à traiter : un entretien en retard ou à planifier, avec le
+    collaborateur concerné, son manager (qui doit le réaliser) et l'ancienneté du
+    dernier entretien réalisé (mois)."""
+    profil_id: int
+    nom: str
+    prenom: str | None
+    poste_actuel: str | None
+    departement_key: str | None
+    type: str                  # "annuel" | "rh"
+    statut: str                # "en_retard" | "planifie"
+    date_prevue: datetime | None
+    mois_depuis_dernier: int | None   # None = aucun entretien réalisé à ce jour
+    manager_nom: str | None
 
 
 class AlerteItem(BaseModel):
