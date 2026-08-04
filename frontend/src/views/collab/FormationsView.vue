@@ -81,9 +81,17 @@ async function load() {
 }
 onMounted(load)
 
-const filtered = computed(() =>
-  active.value === 'all' ? items.value : items.value.filter((f) => f.status === active.value),
-)
+const query = ref('')
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return items.value.filter((f) => {
+    const okStatus = active.value === 'all' || f.status === active.value
+    const okQuery = !q
+      || (`${f.title} ${f.provider} ${f.level} ${f.reason ?? ''} ${f.tags.join(' ')}`)
+        .toLowerCase().includes(q)
+    return okStatus && okQuery
+  })
+})
 
 const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok' }> = {
   'recommended': { label: 'Recommandée', tone: 'ai' },
@@ -94,6 +102,15 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
 
 <template>
   <div class="space-y-4">
+    <div class="flex items-center gap-2 rounded-xl border border-border bg-paper px-3 py-2">
+      <AppIcon name="search" :size="16" class="shrink-0 text-ink-3" />
+      <input
+        v-model="query"
+        type="search"
+        placeholder="Rechercher un cours : compétence, thème, domaine…"
+        class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3"
+      />
+    </div>
     <div class="flex flex-wrap gap-2">
       <button
         v-for="f in filters"

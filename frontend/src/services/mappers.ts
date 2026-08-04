@@ -292,6 +292,9 @@ export function mapCollabProfile(c: ProfilCarriereOut): CollabProfile {
     name: a.auteur_nom, role: a.auteur_role ?? '', text: a.texte, stars: a.etoiles,
   }))
   const goal = stations.find((s) => s.state === 'goal')
+  // Cohérence : le jalon OBJECTIF de la courbe reflète le poste visé ÉDITABLE
+  // (poste_vise), pas le titre figé du seed — même source que la carte et la reco.
+  if (goal && c.poste_vise) goal.title = c.poste_vise
   const avgNiveau =
     c.competences.length > 0
       ? c.competences.reduce((sum, s) => sum + (s.niveau ?? 0), 0) / c.competences.length

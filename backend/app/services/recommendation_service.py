@@ -246,7 +246,10 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
         select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
     ).all()
     labels = [c.skill_label_fr or c.libelle for c in comps] or ["(profil sans compétence)"]
-    poste_brut = (p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
+    # POSTE VISÉ = même source que l'affichage (carte « poste visé » + courbe) : le champ
+    # structuré `poste_vise` d'abord, puis `aspirations`, puis le poste actuel. Ainsi
+    # éditer l'objectif dans « Mon profil » recalcule la reco (signature de cache changée).
+    poste_brut = (p.poste_vise or p.aspirations or p.poste_actuel or "évolution de carrière interne").strip()
 
     # Normalise la saisie libre (fautes, annotations parasites…) EN TÊTE du pipeline,
     # pour que l'extraction voie une entrée propre. Si l'objectif est trop vague

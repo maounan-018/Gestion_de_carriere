@@ -369,7 +369,7 @@ export const apiService = {
       await delay()
       return COLLEAGUES
     }
-    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire')
+    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire?limit=500')
     return rows.map(mapColleague)
   },
   async getColleague(id: string): Promise<Colleague | undefined> {
@@ -377,7 +377,7 @@ export const apiService = {
       await delay(160)
       return COLLEAGUES.find((c) => c.id === id)
     }
-    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire')
+    const rows = await apiFetch<AnnuaireOut[]>('/profils/annuaire?limit=500')
     return rows.map(mapColleague).find((c) => c.id === id)
   },
 
