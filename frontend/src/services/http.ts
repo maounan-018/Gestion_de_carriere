@@ -88,3 +88,22 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   }
   return data as T
 }
+
+/** Upload multipart (FormData). Ne fixe PAS Content-Type (le navigateur pose la
+ *  boundary). CSRF + cookies inclus, comme `apiFetch`. */
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const csrf = getCsrf()
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  const res = await fetch(BASE + path, { method: 'POST', credentials: 'include', headers, body: form })
+  if (res.status === 204) return undefined as T
+  const text = await res.text()
+  const data: unknown = text ? JSON.parse(text) : undefined
+  if (!res.ok) {
+    if (res.status === 401 && !AUTH_PATH.test(path)) onUnauthorized?.(path)
+    const detail =
+      data && typeof data === 'object' && 'detail' in data ? (data as { detail: unknown }).detail : data
+    throw new ApiError(res.status, typeof detail === 'string' ? detail : `Erreur ${res.status}`, data)
+  }
+  return data as T
+}
