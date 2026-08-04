@@ -46,7 +46,7 @@ from app.models.user import User, Role, UserType
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.fiche import Fiche, FicheCompetence
 from app.models.offre import Offre
-from app.models.candidature import Candidature
+from app.models.candidature import Candidature, CandidatureStatut
 from app.models.notification import Notification
 from app.models.souhait import Souhait, SouhaitStatut, SouhaitKind
 from app.models.formation import Formation
@@ -317,6 +317,47 @@ def _seed_candidatures(db: Session, offre_ids: list[int],
     if marc_profil is not None:
         _postuler(_offre(0), marc_profil.id, "[DÉMO] Intéressé par cette évolution.")
         _postuler(_offre(2), marc_profil.id, "[DÉMO] Disponible pour cette mission.")
+    return res
+
+
+def _seed_candidatures_larges(db: Session, offre_ids: list[int], *, par_offre: int = 6) -> dict:
+    """Peuple LARGEMENT les candidatures : chaque offre OUVERTE reçoit un pool de
+    candidats issus de VRAIS comptes collaborateurs (user_id non null) — ils
+    retrouvent ainsi l'offre dans « Mes candidatures » (visibilité bidirectionnelle
+    demandée). Score calculé par le service ; priorité aux profils du même
+    département. Déterministe et idempotent (unicité profil/offre)."""
+    res = {"created": 0, "existing": 0}
+    profils = list(db.scalars(
+        select(Profil).join(User, User.id == Profil.user_id)
+        .where(User.role == Role.COLLAB).order_by(Profil.id)).all())
+    if not profils:
+        return res
+    open_offres = list(db.scalars(
+        select(Offre).where(Offre.id.in_(offre_ids), Offre.statut == "ouverte")
+        .order_by(Offre.id)).all())
+    for oi, offre in enumerate(open_offres):
+        meme_dept = [p for p in profils if p.departement_key == offre.departement_key]
+        autres = [p for p in profils if p.departement_key != offre.departement_key]
+        pool = meme_dept + autres
+        start = (oi * 7) % len(pool)
+        choisis = (pool[start:] + pool[:start])[:par_offre]
+        for k, p in enumerate(choisis):
+            if db.scalar(select(Candidature.id).where(
+                    Candidature.offre_id == offre.id, Candidature.profil_id == p.id)):
+                res["existing"] += 1
+                continue
+            try:
+                out = candidature_service.create_candidature(db, CandidatureCreate(
+                    offre_id=offre.id, profil_id=p.id,
+                    motivation="[DÉMO] Candidature synthétique"))
+            except ValueError:
+                continue
+            # Une partie passe « en évaluation » pour peupler la revue RH.
+            if (oi + k) % 3 == 0:
+                c = db.get(Candidature, out.id)
+                c.statut = CandidatureStatut.EN_EVALUATION
+                db.commit()
+            res["created"] += 1
     return res
 
 
@@ -885,6 +926,10 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
             cand_res = _seed_candidatures(db, offre_ids, candidate_profils, marc_profil)
             summary["candidatures_created"] = cand_res["candidatures_created"]
             summary["candidatures_existing"] = cand_res["candidatures_existing"]
+            # Pool LARGE : chaque offre ouverte reçoit des candidats (vrais comptes),
+            # pour peupler la revue RH et « Mes candidatures » côté collaborateur.
+            large_res = _seed_candidatures_larges(db, offre_ids)
+            summary["candidatures_created"] += large_res["created"]
         else:
             logger.info("Aucune fiche avec ≥3 compétences — offres/candidatures non semées.")
         # Contenus de démo indépendants des fiches (catalogue, cloches, souhaits).
