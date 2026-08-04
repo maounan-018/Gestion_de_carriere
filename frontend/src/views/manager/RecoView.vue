@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { RecoData } from '@/types/domain'
@@ -27,6 +27,12 @@ async function load() {
   }
 }
 onMounted(load)
+
+// Plan de développement : découpé en paragraphes lisibles (le texte IA arrive
+// souvent en un seul bloc dense).
+const planParas = computed<string[]>(() =>
+  (reco.value?.plan ?? '').split(/\n+/).map((s) => s.trim()).filter(Boolean),
+)
 </script>
 
 <template>
@@ -101,14 +107,23 @@ onMounted(load)
       </BaseCard>
     </div>
 
-    <div class="flex gap-3 rounded-2xl border border-green-line bg-green-soft p-4">
-      <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white">
-        <Sparkles :size="16" />
+    <BaseCard>
+      <template #header>
+        <div class="flex items-center gap-2.5">
+          <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white">
+            <Sparkles :size="16" />
+          </div>
+          <div>
+            <h3 class="font-display text-base font-bold text-ink">Plan de développement</h3>
+            <p class="text-xs text-ink-3">Personnalisé par le Coach Carrière · IA locale</p>
+          </div>
+        </div>
+      </template>
+      <div class="space-y-2.5">
+        <p v-for="(para, i) in planParas" :key="i" class="text-sm leading-relaxed text-ink-2">
+          {{ para }}
+        </p>
       </div>
-      <div>
-        <h4 class="text-sm font-bold text-green-deep">Plan de développement · Coach Carrière</h4>
-        <p class="mt-0.5 text-xs text-ink-2">{{ reco.plan }}</p>
-      </div>
-    </div>
+    </BaseCard>
   </div>
 </template>
