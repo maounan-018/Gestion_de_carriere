@@ -555,6 +555,22 @@ export const apiService = {
       body: { profil_id: Number(profilId), sujet, message, to_route: toRoute },
     })
   },
+  /** Analyse stratégique RH par l'IA : synthèse des indicateurs consolidés de la
+   *  plateforme (tensions, potentiels, rétention, qualité data). ⚠️ LLM local. */
+  async lancerAnalyseRh(): Promise<{ synthese: string; model: string; genere_le: string }> {
+    if (MODE === 'mock') {
+      await delay(1200)
+      return {
+        synthese:
+          '1. Constats clés — effectif bien cartographié ; quelques familles de compétences en tension.\n'
+          + "2. Tensions — surveiller les compétences data et réglementaires.\n"
+          + '3. Rétention — sécuriser les hauts potentiels et traiter les entretiens en retard.\n'
+          + "4. Priorités — planifier les entretiens en retard, lancer des passerelles de mobilité.",
+        model: 'mock', genere_le: new Date().toISOString(),
+      }
+    }
+    return apiFetch('/rh/analyse', { method: 'POST' })
+  },
   /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
   async getSyntheseRh(): Promise<SyntheseRh> {
     if (MODE === 'mock') {

@@ -145,3 +145,10 @@ class SupervisionItem(BaseModel):
     titre: str
     found: int                 # nombre d'anomalies détectées
     total: int                 # population contrôlée
+
+
+class AnalyseRhOut(BaseModel):
+    """Synthèse stratégique RH produite par l'IA à partir des indicateurs consolidés."""
+    synthese: str
+    model: str
+    genere_le: str
