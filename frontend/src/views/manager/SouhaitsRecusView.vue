@@ -7,6 +7,7 @@ import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -33,6 +34,38 @@ onMounted(load)
 function act(s: SouhaitRecu, status: SouhaitRecuStatus, msg: string) {
   s.status = status
   toast(msg)
+}
+
+// Transmettre un souhait « carrière » à la RH : une RECOMMANDATION justifiée est
+// exigée (pourquoi le manager appuie ce collaborateur) et réellement envoyée à la RH.
+const showTransmit = ref(false)
+const curSouhait = ref<SouhaitRecu | null>(null)
+const justification = ref('')
+const transmitting = ref(false)
+
+function openTransmit(s: SouhaitRecu) {
+  curSouhait.value = s
+  justification.value = ''
+  showTransmit.value = true
+}
+async function confirmTransmit() {
+  const s = curSouhait.value
+  if (!s || !justification.value.trim() || transmitting.value) return
+  transmitting.value = true
+  try {
+    await apiService.communiquerRH(
+      `Recommandation — ${s.memberName} : ${s.title}`,
+      `Souhait d'évolution « ${s.title} » (${s.horizon}). Pourquoi je recommande `
+        + `${s.memberName} : ${justification.value.trim()}`,
+    )
+    s.status = 'transmis RH'
+    showTransmit.value = false
+    toast('Souhait transmis à la RH avec votre recommandation', 'ok')
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la transmission', 'error')
+  } finally {
+    transmitting.value = false
+  }
 }
 
 const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
@@ -82,11 +115,38 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
               Refuser
             </BaseButton>
           </template>
-          <BaseButton v-else size="sm" @click="act(s, 'transmis RH', 'Souhait transmis à la RH')">
+          <BaseButton v-else size="sm" @click="openTransmit(s)">
             <AppIcon name="send" :size="14" /> Transmettre à la RH
           </BaseButton>
         </div>
       </BaseCard>
     </div>
+
+    <BaseModal v-model="showTransmit" title="Transmettre à la RH">
+      <div v-if="curSouhait" class="space-y-3">
+        <div class="rounded-xl border border-green-line bg-green-ghost p-3">
+          <h4 class="text-sm font-bold text-green-deep">{{ curSouhait.title }}</h4>
+          <p class="text-xs text-ink-2">{{ curSouhait.memberName }} · {{ curSouhait.horizon }}</p>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">
+            Pourquoi recommandez-vous {{ curSouhait.memberName }} ? <span class="text-danger">*</span>
+          </label>
+          <textarea
+            v-model="justification"
+            rows="4"
+            placeholder="Points forts, réalisations, potentiel observé, adéquation avec l'évolution visée…"
+            class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-green-line"
+          />
+          <p class="mt-1 text-[11px] text-ink-3">Votre recommandation est envoyée à la RH avec le souhait.</p>
+        </div>
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" size="sm" @click="showTransmit = false">Annuler</BaseButton>
+        <BaseButton size="sm" :disabled="!justification.trim() || transmitting" @click="confirmTransmit">
+          <AppIcon name="send" :size="14" /> {{ transmitting ? 'Transmission…' : 'Transmettre' }}
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
