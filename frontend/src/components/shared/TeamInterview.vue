@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
-import { Sparkles, Send, MessageSquare } from '@lucide/vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { Sparkles, Send, MessageSquare, Check, Clock } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
 import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
- * Entretien annuel MENÉ par l'utilisateur, où l'IA INCARNE la personne interrogée.
+ * Préparation GUIDÉE de l'entretien d'un COLLABORATEUR par son MANAGER.
  *
- * Le RÔLE est NATIF côté backend (mode `entretien_roleplay`) : le backend construit
- * le personnage à partir du `sujet` envoyé (nom/poste/aspiration/écarts/pôle) et
- * n'utilise aucun outil. Le front ne fait que déclarer le mode + le sujet + le tour.
- * Générique : sert manager↔équipe et RH↔collaborateur.
+ * L'IA n'incarne PLUS le collaborateur : elle est le COPILOTE du manager. Elle
+ * l'interroge section par section SUR son collaborateur (objectifs, réussites,
+ * difficultés, compétences, souhaits) ; le manager répond à son propos ; l'IA lui
+ * donne un retour puis des conseils pour conduire l'entretien. Mode backend natif
+ * `entretien_copilote_equipe`, ancré sur le profil du collaborateur (sujet).
  */
 
 export interface InterviewSubject {
@@ -25,16 +26,21 @@ export interface InterviewSubject {
 
 const props = defineProps<{ subject: InterviewSubject }>()
 
-// Trame indicative pour guider l'intervieweur (non contraignante).
-const TRAME = [
-  'Objectifs & missions',
-  'Réussites',
-  'Échecs & difficultés',
-  'Compétences',
-  'Souhaits & perspectives',
-  'Synthèse',
-]
+const STEPS = computed<{ label: string; focus: string }[]>(() => {
+  const n = props.subject.name
+  return [
+    { label: 'Introduction', focus: '' },
+    { label: 'Objectifs & missions', focus: `le bilan des objectifs et missions de ${n} sur l'année écoulée` },
+    { label: 'Réussites', focus: `les principales réussites de ${n} (faits concrets, résultats observés)` },
+    { label: 'Difficultés', focus: `les difficultés rencontrées par ${n} et la façon de l'accompagner` },
+    { label: 'Compétences', focus: `l'évaluation des compétences de ${n} et ses axes de progression` },
+    { label: 'Souhaits & perspectives', focus: `les souhaits d'évolution, de mobilité ou de formation de ${n}` },
+    { label: "Conseils de l'agent", focus: '' },
+    { label: 'Synthèse finale', focus: '' },
+  ]
+})
 
+const currentStep = ref(0)
 const chat = ref<ChatMessage[]>([])
 const input = ref('')
 const busy = ref(false)
@@ -42,6 +48,12 @@ const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
+
+const atLastStep = computed(() => currentStep.value >= STEPS.value.length - 1)
+const progressPct = computed(() => Math.round((currentStep.value / (STEPS.value.length - 1)) * 100))
+function stepState(i: number): 'done' | 'current' | 'todo' {
+  return i < currentStep.value ? 'done' : i === currentStep.value ? 'current' : 'todo'
+}
 
 watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => {
   await nextTick()
@@ -54,7 +66,41 @@ function sujet() {
   return { nom: s.name, poste: s.role, aspiration: s.aspiration, ecarts: s.gaps ?? [], pole: s.pole }
 }
 
-async function runTurn(message: string, ouverture: boolean) {
+function isConseils(i: number): boolean {
+  return i === STEPS.value.length - 2
+}
+function isLast(i: number): boolean {
+  return i >= STEPS.value.length - 1
+}
+function openFocus(i: number): string {
+  const s = STEPS.value[i]
+  const n = props.subject.name
+  if (i === 0) {
+    return (
+      `INTRODUCTION UNIQUEMENT. Présente-toi en une phrase comme le copilote du manager pour préparer `
+      + `l'entretien annuel de ${n}. Explique en une phrase que vous allez parcourir ensemble, section par `
+      + `section (objectifs, réussites, difficultés, compétences, souhaits), pour préparer cet entretien. `
+      + `NE traite PAS encore le contenu. Termine en demandant au manager s'il est prêt à commencer.`
+    )
+  }
+  if (isConseils(i)) {
+    return (
+      `En te fondant PRÉCISÉMENT sur ce que le manager a partagé, donne-lui 2 ou 3 conseils concrets pour `
+      + `conduire l'entretien de ${n} (posture, points à valoriser, sujets à aborder avec tact). Termine en `
+      + `lui demandant s'il souhaite ajuster un point.`
+    )
+  }
+  if (isLast(i)) {
+    return (
+      `Fais une synthèse structurée de la préparation (bilan des objectifs, réussites, difficultés, axes de `
+      + `progrès, souhaits) pour l'entretien de ${n}, en te fondant sur les réponses du manager. Termine en `
+      + `l'encourageant pour l'entretien.`
+    )
+  }
+  return `Ouvre la section « ${s.label} » : invite le manager à faire le point sur ${s.focus}. Termine par UNE seule question ouverte.`
+}
+
+async function runTurn(section: string, focus: string | undefined, ouverture: boolean, message: string) {
   if (busy.value) return
   busy.value = true
   streamStatus.value = ''
@@ -66,11 +112,11 @@ async function runTurn(message: string, ouverture: boolean) {
       message,
       history,
       {
-        onTool: () => { streamStatus.value = `${props.subject.name} réfléchit…` },
+        onTool: () => { streamStatus.value = 'Le coach consulte le profil…' },
         onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
         onReset: () => { raw = ''; streamingHtml.value = '' },
       },
-      { mode: 'entretien_roleplay', sujet: sujet(), ouverture },
+      { mode: 'entretien_copilote_equipe', section, focus, ouverture, sujet: sujet() },
     )
     chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
   } catch {
@@ -82,36 +128,59 @@ async function runTurn(message: string, ouverture: boolean) {
   }
 }
 
-async function ask(text?: string) {
+function openSection(i: number) {
+  return runTurn(STEPS.value[i].label, openFocus(i), true, '')
+}
+async function answer(text?: string) {
   const t = (text ?? input.value).trim()
   if (!t || busy.value) return
   chat.value.push({ from: 'me', text: t })
   input.value = ''
-  await runTurn(t, false)
+  await runTurn(STEPS.value[currentStep.value].label, undefined, false, t)
+}
+async function nextStep() {
+  if (busy.value || atLastStep.value) return
+  currentStep.value++
+  await openSection(currentStep.value)
 }
 
-onMounted(() => runTurn('', true))
+onMounted(() => openSection(0))
 </script>
 
 <template>
   <div class="grid gap-5 lg:grid-cols-[240px_1fr]">
     <div class="space-y-5">
       <div class="rounded-2xl border border-border bg-paper p-4 shadow-card">
-        <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-green-deep">Trame d'entretien</div>
+        <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-green-deep">Étapes</div>
         <div class="space-y-1">
-          <div v-for="t in TRAME" :key="t" class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-ink-2">
-            <MessageSquare :size="15" class="text-ink-3" />
-            <span>{{ t }}</span>
+          <div
+            v-for="(s, i) in STEPS"
+            :key="s.label"
+            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+            :class="stepState(i) === 'current' ? 'bg-green-soft font-semibold text-green-deep' : 'text-ink-2'"
+          >
+            <Check v-if="stepState(i) === 'done'" :size="15" class="text-green" />
+            <MessageSquare v-else-if="stepState(i) === 'current'" :size="15" />
+            <Clock v-else :size="15" class="text-ink-3" />
+            <span>{{ s.label }}</span>
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="mb-1 flex justify-between text-xs">
+            <span class="text-ink-3">Progression</span><b class="text-green-deep">{{ progressPct }} %</b>
+          </div>
+          <div class="h-2 overflow-hidden rounded-full bg-panel-2">
+            <div class="h-full rounded-full bg-green transition-all" :style="{ width: progressPct + '%' }" />
           </div>
         </div>
       </div>
       <div class="rounded-2xl border border-green-line bg-green-ghost p-4">
         <div class="mb-1 inline-flex items-center gap-1.5 text-xs font-bold text-green-deep">
-          <Sparkles :size="13" /> Simulation d'entretien · IA
+          <Sparkles :size="13" /> Préparation guidée · IA
         </div>
         <p class="text-xs text-ink-2">
-          Vous <b>menez</b> l'entretien : posez vos questions. <b>{{ subject.name }}</b> (IA) répond
-          dans son rôle, selon son profil. Idéal pour vous entraîner à conduire l'échange.
+          L'IA vous <b>interroge sur {{ subject.name }}</b>, section par section. Vous répondez ;
+          elle vous donne un retour et des conseils pour <b>conduire l'entretien</b>.
         </p>
       </div>
     </div>
@@ -137,23 +206,34 @@ onMounted(() => runTurn('', true))
             </template>
             <span v-else class="inline-flex items-center gap-1.5 text-ink-3">
               <Sparkles :size="14" class="animate-pulse text-green-deep" />
-              {{ streamStatus || `${subject.name} prépare sa réponse…` }}
+              {{ streamStatus || 'Le coach prépare la suite…' }}
             </span>
           </div>
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2">
-        <MessageSquare :size="16" class="shrink-0 text-green-deep" />
-        <input
-          v-model="input"
-          placeholder="Posez votre question au collaborateur…"
+      <div class="mt-3 flex items-center gap-2">
+        <div class="flex flex-1 items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2">
+          <MessageSquare :size="16" class="shrink-0 text-green-deep" />
+          <input
+            v-model="input"
+            :placeholder="`Votre réponse au sujet de ${subject.name}…`"
+            :disabled="busy"
+            class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
+            @keydown.enter="answer()"
+          />
+          <BaseButton size="sm" :disabled="busy || !input.trim()" @click="answer()">
+            <Send :size="14" /> Répondre
+          </BaseButton>
+        </div>
+        <BaseButton
+          v-if="!atLastStep"
+          variant="secondary"
+          size="sm"
           :disabled="busy"
-          class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
-          @keydown.enter="ask()"
-        />
-        <BaseButton size="sm" :disabled="busy || !input.trim()" @click="ask()">
-          <Send :size="14" /> Demander
+          @click="nextStep"
+        >
+          Section suivante →
         </BaseButton>
       </div>
     </div>
