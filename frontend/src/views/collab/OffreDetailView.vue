@@ -43,26 +43,41 @@ const showApply = ref(false)
 const step = ref(0)
 const motiv = ref('')
 const consent = ref(false)
+const cvFile = ref<File | null>(null)
 const totalSteps = computed(() => (offer.value?.managerInformed ? 3 : 2))
+// Étape motivation validée seulement si motivation ET CV PDF fournis.
+const step0Ok = computed(() => !!motiv.value.trim() && !!cvFile.value)
 
 function openApply() {
   step.value = 0
   motiv.value = ''
   consent.value = false
+  cvFile.value = null
   showApply.value = true
 }
+function onCvChange(e: Event) {
+  const f = (e.target as HTMLInputElement).files?.[0] ?? null
+  if (f && f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) {
+    toast('Le CV doit être un fichier PDF.', 'error')
+    cvFile.value = null
+    return
+  }
+  cvFile.value = f
+}
 function next() {
+  if (step.value === 0 && !step0Ok.value) return
   if (offer.value?.managerInformed && step.value === 1 && !consent.value) return
   step.value++
 }
 const sending = ref(false)
 async function send() {
-  if (!offer.value || sending.value) return
+  if (!offer.value || sending.value || !cvFile.value) return
   sending.value = true
   try {
-    await apiService.postuler(offer.value.key, motiv.value.trim() || undefined)
+    const id = await apiService.postuler(offer.value.key, motiv.value.trim() || undefined)
+    await apiService.uploaderCandidatureCv(id, cvFile.value)
     showApply.value = false
-    toast('Candidature envoyée')
+    toast('Candidature envoyée avec votre CV')
     router.push({ name: 'collab.mesCandidatures' })
   } catch (e) {
     toast(e instanceof Error ? e.message : "Échec de l'envoi de la candidature", 'error')
@@ -180,6 +195,20 @@ async function send() {
         <div class="mt-2 flex items-start gap-2 rounded-xl border border-green-line bg-green-ghost px-3 py-2 text-xs text-green-deep">
           <Sparkles :size="14" /> Astuce : reliez cette opportunité à une compétence à développer.
         </div>
+
+        <div class="mt-4">
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">CV à jour (PDF) · requis</label>
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            class="block w-full text-xs text-ink-2 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-green file:px-3 file:py-1.5 file:text-white hover:file:bg-green-deep"
+            @change="onCvChange"
+          />
+          <p v-if="cvFile" class="mt-1.5 inline-flex items-center gap-1 text-xs text-green-deep">
+            <AppIcon name="check" :size="12" /> {{ cvFile.name }} · {{ Math.max(1, Math.round(cvFile.size / 1024)) }} Ko
+          </p>
+          <p v-else class="mt-1.5 text-[11px] text-ink-3">Joignez votre CV à jour au format PDF (10 Mo max).</p>
+        </div>
       </div>
 
       <!-- Étape 1 : consentement (missions/projets) -->
@@ -204,6 +233,10 @@ async function send() {
           <span class="text-ink-3">Motivation</span>
           <span class="max-w-[60%] text-right text-ink-2">{{ motiv || '—' }}</span>
         </div>
+        <div class="flex justify-between gap-3 border-b border-border pb-2">
+          <span class="text-ink-3">CV joint</span>
+          <span class="max-w-[60%] truncate text-right text-ink-2">{{ cvFile?.name || '—' }}</span>
+        </div>
         <div class="flex justify-between gap-3">
           <span class="text-ink-3">Manager informé</span>
           <b class="text-right" :class="offer.managerInformed ? 'text-green-deep' : 'text-ink'">
@@ -217,10 +250,10 @@ async function send() {
         <BaseButton
           v-if="step < totalSteps - 1"
           size="sm"
-          :disabled="offer.managerInformed && step === 1 && !consent"
+          :disabled="(step === 0 && !step0Ok) || (offer.managerInformed && step === 1 && !consent)"
           @click="next"
         >Suivant →</BaseButton>
-        <BaseButton v-else size="sm" :disabled="sending" @click="send">
+        <BaseButton v-else size="sm" :disabled="sending || !cvFile" @click="send">
           <AppIcon name="send" :size="14" /> {{ sending ? 'Envoi…' : 'Envoyer ma candidature' }}
         </BaseButton>
       </template>

@@ -21,7 +21,7 @@ import type {
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
-import { apiFetch, getCsrf, ApiError } from './http'
+import { apiFetch, apiUpload, getCsrf, ApiError } from './http'
 import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
 import {
@@ -795,16 +795,27 @@ export const apiService = {
   // ============================================================ Écritures
   /** Postuler à une offre (collab). `offerKey` = id backend (mapOffre). Le profil
    *  du candidat est résolu depuis la session (/profils/me/carriere). */
-  async postuler(offerKey: string, motivation?: string): Promise<void> {
+  async postuler(offerKey: string, motivation?: string): Promise<string> {
     if (MODE === 'mock') {
       await delay(220)
-      return
+      return `mock-${Date.now()}`
     }
     const me = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
-    await apiFetch('/candidatures', {
+    const c = await apiFetch<{ id: number }>('/candidatures', {
       method: 'POST',
       body: { offre_id: Number(offerKey), profil_id: me.profil_id, motivation: motivation ?? null },
     })
+    return String(c.id)
+  },
+  /** Téléverse le CV (PDF) à jour lié à une candidature (multipart). */
+  async uploaderCandidatureCv(candidatureId: string, file: File): Promise<void> {
+    if (MODE === 'mock') {
+      await delay(300)
+      return
+    }
+    const fd = new FormData()
+    fd.append('fichier', file)
+    await apiUpload(`/candidatures/${candidatureId}/cv`, fd)
   },
   /** Marquer une notification comme lue. */
   async markNotificationRead(id: string): Promise<void> {

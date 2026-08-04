@@ -39,14 +39,22 @@ const OFFER_LIGNES = computed(() => {
   return ['Tout', ...lignes]
 })
 
-const filtered = computed(() =>
-  offers.value.filter((o) => {
-    const okLigne = ligne.value === 'Tout' || o.ligne === ligne.value
-    const q = query.value.trim().toLowerCase()
-    const okQuery = !q || (o.title + ' ' + o.sub + ' ' + o.skills.join(' ')).toLowerCase().includes(q)
-    return okLigne && okQuery
-  }),
+const ligneFiltered = computed(() =>
+  offers.value.filter((o) => ligne.value === 'Tout' || o.ligne === ligne.value),
 )
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return ligneFiltered.value.filter(
+    (o) => !q || (o.title + ' ' + o.sub + ' ' + o.skills.join(' ')).toLowerCase().includes(q),
+  )
+})
+// Depuis une passerelle, la recherche par métier ne correspond pas toujours à un
+// intitulé d'offre. Plutôt qu'une page vide, on RETOMBE sur les vraies offres ouvertes
+// (aucune offre fabriquée) avec un avis clair — toutes les offres affichées existent.
+const noMatch = computed(
+  () => !!query.value.trim() && filtered.value.length === 0 && offers.value.length > 0,
+)
+const displayed = computed(() => (noMatch.value ? ligneFiltered.value : filtered.value))
 </script>
 
 <template>
@@ -92,14 +100,23 @@ const filtered = computed(() =>
       <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
     </ErrorState>
     <EmptyState
-      v-else-if="filtered.length === 0"
-      title="Aucune offre pour ce filtre"
-      text="Essayez une autre famille métier ou élargissez votre recherche."
+      v-else-if="displayed.length === 0"
+      title="Aucune offre ouverte"
+      text="Aucune offre interne n'est ouverte pour ce filtre actuellement."
     />
 
-    <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <template v-else>
+      <div v-if="noMatch" class="flex items-start gap-2.5 rounded-xl border border-green-line bg-green-soft p-3 text-xs text-ink-2">
+        <AppIcon name="search" :size="15" class="mt-0.5 shrink-0 text-green-deep" />
+        <span>
+          Aucune offre interne ne correspond exactement à <b class="text-ink">« {{ query }} »</b>.
+          Voici les offres internes actuellement ouvertes — explorez celles proches de votre projet.
+        </span>
+      </div>
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <RouterLink
-        v-for="o in filtered"
+        v-for="o in displayed"
         :key="o.key"
         :to="{ name: 'collab.offreDetail', params: { key: o.key } }"
         class="group flex flex-col rounded-2xl border border-border bg-paper p-4 shadow-card transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float"
@@ -131,5 +148,6 @@ const filtered = computed(() =>
         </div>
       </RouterLink>
     </div>
+    </template>
   </div>
 </template>

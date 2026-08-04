@@ -21,7 +21,9 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -46,6 +48,31 @@ def deposer_candidature(data: CandidatureCreate,
         return candidature_service.create_candidature(db, data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+_CV_DIR = os.path.join("data", "cv")   # relatif au cwd du backend (data/cv/{id}.pdf)
+
+
+@router.post("/{candidature_id}/cv",
+             summary="Téléverser le CV (PDF) à jour d'une candidature")
+async def uploader_cv(candidature_id: int, fichier: UploadFile = File(...),
+                      user: User = Depends(get_current_user),
+                      db: Session = Depends(get_db)) -> dict:
+    """Le candidat (propriétaire) ou RH/ADMIN téléverse le CV à jour (PDF) lié à la
+    candidature. Stocké côté serveur (`data/cv/{id}.pdf`)."""
+    ownership.require_own_candidature(db, user, candidature_id)   # 404 si absent, 403 hors périmètre
+    nom = (fichier.filename or "").lower()
+    if (fichier.content_type or "") != "application/pdf" and not nom.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le CV doit être un fichier PDF.")
+    data = await fichier.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Fichier CV vide.")
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="CV trop volumineux (max 10 Mo).")
+    os.makedirs(_CV_DIR, exist_ok=True)
+    with open(os.path.join(_CV_DIR, f"{candidature_id}.pdf"), "wb") as f:
+        f.write(data)
+    return {"stored": True, "taille": len(data)}
 
 
 @router.get("", response_model=list[CandidatureOut],

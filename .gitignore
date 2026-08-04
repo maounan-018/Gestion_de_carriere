@@ -46,3 +46,6 @@ ia/referentiels/*
 Thumbs.db
 .idea/
 .vscode/
+
+# CV téléversés (candidatures) — non versionnés
+backend/data/cv/
