@@ -70,7 +70,7 @@ export interface CoachStreamHandlers {
 /** Options d'un tour de conversation coach. Vide/omis = coach carrière (défaut).
  *  Les modes `entretien_*` activent le rôle NATIF backend (system prompt dédié). */
 export interface CoachTurnOpts {
-  mode?: 'carriere' | 'entretien_copilote' | 'entretien_roleplay'
+  mode?: 'carriere' | 'entretien_copilote' | 'entretien_roleplay' | 'entretien_copilote_equipe'
   section?: string
   focus?: string
   ouverture?: boolean

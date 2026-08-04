@@ -39,8 +39,10 @@ class CoachRequest(BaseModel):
     history: list[CoachMessage] = Field(default_factory=list, description="Tours précédents (contexte).")
 
     # --- Mode conversationnel (défaut : coach carrière agentique, inchangé) ---
-    mode: Literal["carriere", "entretien_copilote", "entretien_roleplay"] = Field(
-        "carriere", description="carriere = coach agentique ; entretien_* = préparation d'entretien annuel.")
+    mode: Literal["carriere", "entretien_copilote", "entretien_roleplay",
+                  "entretien_copilote_equipe"] = Field(
+        "carriere", description="carriere = coach agentique ; entretien_* = préparation d'entretien annuel "
+        "(copilote = l'utilisateur prépare le sien ; copilote_equipe = le manager prépare celui d'un collaborateur).")
     # Entretien co-pilote (l'utilisateur prépare SON entretien ; l'IA le coache, ancrée sur son profil) :
     section: str | None = Field(None, max_length=120, description="Libellé de la section en cours.")
     focus: str | None = Field(None, max_length=800, description="Consigne de la section pour un tour d'ouverture.")

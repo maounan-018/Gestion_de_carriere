@@ -76,7 +76,8 @@ onMounted(load)
         <button class="text-sm font-semibold text-green-deep hover:underline" @click="selected = null">
           ← Retour à l'équipe
         </button>
-        <!-- Vrai entretien IA : le manager mène, l'IA incarne le collaborateur (ancré profil). -->
+        <!-- Préparation guidée : l'IA interroge le manager SUR son collaborateur (ancré profil),
+             il répond, l'IA le conseille pour conduire l'entretien. -->
         <TeamInterview :key="selected.id" :subject="selected" />
       </div>
     </template>

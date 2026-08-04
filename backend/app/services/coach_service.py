@@ -303,6 +303,46 @@ def _roleplay_turn(ouverture: bool, message: str) -> str:
     return f"Question de l'intervieweur : {message.strip()}"
 
 
+def _copilote_equipe_system(sujet) -> str:
+    """L'IA est le COPILOTE du MANAGER pour préparer l'entretien annuel de SON
+    collaborateur : elle interroge le manager section par section SUR ce
+    collaborateur (le manager répond à sa place / à son propos), puis le conseille.
+    Ancré sur le profil du collaborateur (sujet)."""
+    poste = (sujet.poste or "").strip()
+    if sujet.pole:
+        poste = f"{poste} · {sujet.pole}" if poste else str(sujet.pole)
+    tete = f"{sujet.nom}, {poste}".strip().rstrip(",")
+    asp = f" Son aspiration : « {sujet.aspiration} »." if sujet.aspiration else ""
+    ecarts = f" Points à développer : {', '.join(sujet.ecarts)}." if sujet.ecarts else ""
+    return (
+        f"Tu es un COACH RH qui aide un MANAGER de la BMCI (groupe BNP Paribas) à PRÉPARER "
+        f"l'entretien annuel de SON collaborateur {tete}.{asp}{ecarts} "
+        "Le collaborateur n'est PAS présent : c'est le MANAGER qui te répond, à propos de lui. "
+        "Tu accompagnes le manager section par section : tu l'INTERROGES sur son collaborateur "
+        "(objectifs atteints, réussites, difficultés, compétences, souhaits), il te répond, tu lui "
+        "donnes un retour et des conseils concrets pour conduire l'entretien.\n"
+        "RÈGLES DE STYLE (impératives) :\n"
+        "- Écris EXCLUSIVEMENT en français, sans un seul mot d'anglais.\n"
+        "- Phrases complètes, aucun markdown, aucune puce, aucun astérisque ni symbole décoratif.\n"
+        "- Sois concis : au plus 3 phrases.\n"
+        "- Rebondis TOUJOURS sur ce que le manager vient de dire ; ne répète jamais une question posée.\n"
+        "- Reste STRICTEMENT dans le thème de la section ; termine par UNE seule question ouverte.\n"
+        "Ne parle ni d'offres internes ni du catalogue de formations. Vouvoie le manager."
+    )
+
+
+def _copilote_equipe_turn(section: str | None, focus: str | None, ouverture: bool, message: str) -> str:
+    """Tour co-pilote d'équipe : ouverture (consigne de section) ou réaction à ce
+    que le manager dit de son collaborateur."""
+    if ouverture:
+        return (focus or f"Ouvre la section « {section or 'Introduction'} » : invite le MANAGER à faire "
+                "le point sur son collaborateur pour ce thème, puis termine par UNE seule question ouverte.")
+    return (f"Réagis en une phrase à ce que le manager dit de son collaborateur (retour ou conseil "
+            f"concret pour l'entretien), puis pose UNE seule NOUVELLE question — jamais déjà posée — pour "
+            f"approfondir « {section or 'cette section'} », sans déborder sur les autres sections.\n\n"
+            f"Ce que dit le manager : {message.strip()}")
+
+
 def _clean(text: str | None) -> str:
     """Retire un éventuel bloc <think>…</think> (modèles 'thinking' type qwen3)."""
     return re.sub(r"<think>.*?</think>", "", text or "", flags=re.IGNORECASE | re.DOTALL).strip()
@@ -396,6 +436,11 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
         return
     if mode == "entretien_roleplay" and sujet is not None:
         yield from _entretien_stream(_roleplay_system(sujet), history, _roleplay_turn(ouverture, message))
+        return
+    if mode == "entretien_copilote_equipe" and sujet is not None:
+        yield from _entretien_stream(
+            _copilote_equipe_system(sujet), history,
+            _copilote_equipe_turn(section, focus, ouverture, message))
         return
 
     # --- Mode carrière (agentique, avec outils) — inchangé ---
