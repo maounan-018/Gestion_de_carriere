@@ -47,6 +47,8 @@ class Offre(Base):
     type: Mapped[str] = mapped_column(String(16), default=OffreType.OFFRE_POSTE, index=True)
     titre: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, default=None)
+    localisation: Mapped[str | None] = mapped_column(String(120), default=None)  # ville / site
+    duree: Mapped[str | None] = mapped_column(String(64), default=None)          # ex : « 6 mois » (mission/projet)
     perimetre_bmci: Mapped[str | None] = mapped_column(String(160), default=None)
     departement_key: Mapped[str | None] = mapped_column(String(48), default=None, index=True)
     statut: Mapped[str] = mapped_column(String(12), default=OffreStatut.BROUILLON, index=True)

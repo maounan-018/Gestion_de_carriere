@@ -183,7 +183,8 @@ def create_offre(db: Session, data: OffreCreate) -> OffreOut:
 
     o = Offre(
         fiche_id=data.fiche_id, type=data.type, titre=data.titre,
-        description=data.description, perimetre_bmci=data.perimetre_bmci,
+        description=data.description, localisation=data.localisation, duree=data.duree,
+        perimetre_bmci=data.perimetre_bmci,
         departement_key=data.departement_key, statut=data.statut,
         created_by=data.created_by, manager_id=data.manager_id,
         date_ouverture=data.date_ouverture, date_cloture=data.date_cloture,

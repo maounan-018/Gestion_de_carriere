@@ -2,12 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import { useToast } from '@/composables/useToast'
 import type { Offer } from '@/types/domain'
 import type { Vacancy } from '@/types/manager'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
-import BaseModal from '@/components/ui/BaseModal.vue'
+import PublishOffreModal from '@/components/shared/PublishOffreModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -17,7 +16,6 @@ const vacancies = ref<Vacancy[]>([])
 const loading = ref(true)
 const error = ref('')
 const ligne = ref<string>('Tout')
-const { toast } = useToast()
 
 async function load() {
   loading.value = true
@@ -45,27 +43,9 @@ const filtered = computed(() =>
   offers.value.filter((o) => ligne.value === 'Tout' || o.ligne === ligne.value),
 )
 
-// Publier une offre — cycle de vie (manque G9)
+// Publier une offre — formulaire riche partagé (fiche de poste + détails).
+// Un manager publie des missions/projets ; les POSTES relèvent de la RH (allowPoste=false).
 const showPublish = ref(false)
-// Un manager publie des missions/projets ; les POSTES relèvent de la RH (règle backend).
-const pubType = ref<'Mission transverse' | 'Projet innovation'>('Mission transverse')
-const pubTitle = ref('')
-const publishing = ref(false)
-async function publish() {
-  if (publishing.value || !pubTitle.value.trim()) return
-  publishing.value = true
-  try {
-    await apiService.publishOffer({ titre: pubTitle.value.trim(), type: pubType.value })
-    showPublish.value = false
-    toast('Offre créée en brouillon · envoyée en validation à la ligne RH', 'info')
-    pubTitle.value = ''
-    await load()
-  } catch (e) {
-    toast(e instanceof Error ? e.message : 'Échec de la publication', 'error')
-  } finally {
-    publishing.value = false
-  }
-}
 
 const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
   ouvert: 'new', validation: 'warn', brouillon: 'mut', 'clôturé': 'mut',
@@ -166,44 +146,6 @@ const statusLabel: Record<string, string> = {
       </div>
     </template>
 
-    <BaseModal v-model="showPublish" title="Publier une offre">
-      <div class="space-y-4">
-        <div>
-          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Type</label>
-          <div class="grid grid-cols-2 gap-1.5">
-            <button
-              v-for="t in (['Mission transverse', 'Projet innovation'] as const)"
-              :key="t"
-              type="button"
-              class="rounded-lg border px-2 py-1.5 text-xs font-semibold transition"
-              :class="pubType === t
-                ? 'border-green bg-green text-white'
-                : 'border-border bg-paper text-ink-2 hover:text-ink'"
-              @click="pubType = t"
-            >
-              {{ t }}
-            </button>
-          </div>
-        </div>
-        <div>
-          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Intitulé</label>
-          <input
-            v-model="pubTitle"
-            placeholder="Ex : Analyste Risque Senior"
-            class="w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm outline-none focus:border-green-line"
-          />
-        </div>
-        <div class="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning-soft px-3 py-2 text-xs text-warning">
-          <AppIcon name="shield" :size="14" />
-          <span>L'offre part en <b>brouillon</b> puis en <b>validation par la ligne RH</b> avant diffusion. Les <b>postes</b> sont publiés par la RH.</span>
-        </div>
-      </div>
-      <template #footer>
-        <BaseButton variant="secondary" size="sm" @click="showPublish = false">Annuler</BaseButton>
-        <BaseButton size="sm" :disabled="!pubTitle.trim() || publishing" @click="publish">
-          <AppIcon name="send" :size="14" /> {{ publishing ? 'Envoi…' : 'Envoyer en validation' }}
-        </BaseButton>
-      </template>
-    </BaseModal>
+    <PublishOffreModal v-model="showPublish" :allow-poste="false" @published="load" />
   </div>
 </template>

@@ -15,7 +15,7 @@ import {
   RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
@@ -825,6 +825,10 @@ export const apiService = {
   async publishOffer(input: {
     titre: string
     type: 'Poste' | 'Mission transverse' | 'Projet innovation'
+    ficheId?: number | null
+    description?: string
+    localisation?: string
+    duree?: string
   }): Promise<void> {
     if (MODE === 'mock') {
       await delay(220)
@@ -837,8 +841,29 @@ export const apiService = {
     } as const
     await apiFetch('/offres', {
       method: 'POST',
-      body: { titre: input.titre, type: typeMap[input.type], statut: 'brouillon', synthetique: true },
+      body: {
+        titre: input.titre, type: typeMap[input.type], statut: 'brouillon',
+        fiche_id: input.ficheId ?? null,
+        heriter_competences: !!input.ficheId,
+        description: input.description || null,
+        localisation: input.localisation || null,
+        duree: input.duree || null,
+        synthetique: false,
+      },
     })
+  },
+  /** Fiches de poste (sélecteur « Publier une offre »). Filtre optionnel sur l'intitulé. */
+  async getFiches(q?: string): Promise<FicheListItem[]> {
+    if (MODE === 'mock') {
+      await delay(150)
+      return []
+    }
+    const qs = q ? `?q=${encodeURIComponent(q)}` : ''
+    return apiFetch<FicheListItem[]>(`/fiches${qs}`)
+  },
+  /** Détail d'une fiche de poste (mission, activités, compétences attendues). */
+  async getFiche(id: number): Promise<FicheDetail> {
+    return apiFetch<FicheDetail>(`/fiches/${id}`)
   },
   /** Transition de statut d'une offre (RH/manager). Les dates d'ouverture/clôture
    *  sont posées automatiquement côté serveur. `id` = id backend. */

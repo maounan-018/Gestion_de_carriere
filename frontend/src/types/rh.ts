@@ -105,3 +105,25 @@ export interface VeilleType {
   planned: number
   late: number
 }
+
+/* --------------------------------------------------- Fiches de poste (lecture) */
+/** Item de liste pour le sélecteur « Publier une offre ». */
+export interface FicheListItem {
+  id: number
+  intitule_poste: string
+  departement_key: string
+  perimetre_bmci: string
+  famille_metier: string | null
+}
+export interface FicheCompetenceLite {
+  libelle: string
+  categorie: string | null
+}
+/** Détail d'une fiche de poste (affiché quand une fiche est choisie). */
+export interface FicheDetail extends FicheListItem {
+  mission: string | null
+  activites_principales: string | null
+  langues: string | null
+  indicateurs_performances: string | null
+  competences: FicheCompetenceLite[]
+}
