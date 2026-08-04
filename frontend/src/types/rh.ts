@@ -127,3 +127,19 @@ export interface FicheDetail extends FicheListItem {
   indicateurs_performances: string | null
   competences: FicheCompetenceLite[]
 }
+
+/* --------------------------------------------- Entretiens : cas à traiter (RH) */
+/** Cas concret : entretien en retard / à planifier, avec collaborateur, manager
+ *  responsable et ancienneté du dernier entretien réalisé (mois ; null = jamais). */
+export interface EntretienCas {
+  profilId: number
+  nom: string
+  prenom: string | null
+  posteActuel: string | null
+  departementKey: string | null
+  type: 'annuel' | 'rh'
+  statut: 'en_retard' | 'planifie'
+  datePrevue: string | null
+  moisDepuisDernier: number | null
+  managerNom: string | null
+}

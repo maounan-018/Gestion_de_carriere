@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
-import type { VeilleType } from '@/types/rh'
+import type { VeilleType, EntretienCas } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BasePill from '@/components/ui/BasePill.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
 const veille = ref<VeilleType[]>([])
+const cas = ref<EntretienCas[]>([])
 const loading = ref(true)
 const error = ref('')
 const filter = ref<'both' | 'annuels' | 'rh'>('both')
@@ -17,6 +19,8 @@ async function load() {
   error.value = ''
   try {
     veille.value = await apiService.getVeille()
+    // Cas concrets : best-effort (n'empêche pas l'affichage de la veille).
+    apiService.getEntretiensATraiter().then((c) => { cas.value = c }).catch(() => { cas.value = [] })
   } catch {
     error.value = 'Impossible de charger la veille des entretiens.'
   } finally {
@@ -28,6 +32,19 @@ onMounted(load)
 const shown = computed(() =>
   filter.value === 'both' ? veille.value : veille.value.filter((v) => v.key === filter.value),
 )
+const casShown = computed(() =>
+  filter.value === 'both'
+    ? cas.value
+    : cas.value.filter((c) => (filter.value === 'annuels' ? c.type === 'annuel' : c.type === 'rh')),
+)
+function ancien(c: EntretienCas): string {
+  if (c.moisDepuisDernier == null) return 'Jamais'
+  return c.moisDepuisDernier <= 0 ? "moins d'un mois" : `${c.moisDepuisDernier} mois`
+}
+function echeance(c: EntretienCas): string {
+  if (!c.datePrevue) return '—'
+  return new Date(c.datePrevue).toLocaleDateString('fr-FR', { dateStyle: 'medium' })
+}
 const totals = computed(() => {
   const s = shown.value
   return {
@@ -86,6 +103,50 @@ const totals = computed(() => {
           </div>
         </BaseCard>
       </div>
+
+      <!-- Cas concrets à traiter : qui recevoir, quel manager, depuis quand. -->
+      <BaseCard v-if="casShown.length" title="Cas à traiter">
+        <p class="mb-3 text-sm text-ink-3">
+          Collaborateurs à recevoir en entretien et managers qui doivent le réaliser — en retard d'abord.
+        </p>
+        <div class="max-h-[520px] overflow-auto rounded-xl border border-border">
+          <table class="w-full text-left text-sm">
+            <thead class="sticky top-0 bg-panel text-xs uppercase tracking-wide text-ink-3">
+              <tr>
+                <th class="px-3 py-2 font-semibold">Collaborateur</th>
+                <th class="px-3 py-2 font-semibold">Type</th>
+                <th class="px-3 py-2 font-semibold">Statut</th>
+                <th class="px-3 py-2 font-semibold">Manager</th>
+                <th class="px-3 py-2 font-semibold">Échéance</th>
+                <th class="px-3 py-2 font-semibold">Dernier entretien</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in casShown" :key="`${c.profilId}-${c.type}`" class="border-t border-border">
+                <td class="px-3 py-2">
+                  <div class="font-semibold text-ink">{{ c.prenom }} {{ c.nom }}</div>
+                  <div class="text-xs text-ink-3">{{ c.posteActuel || '—' }}</div>
+                </td>
+                <td class="px-3 py-2">
+                  <BasePill :tone="c.type === 'annuel' ? 'ai' : 'new'">
+                    {{ c.type === 'annuel' ? 'Annuel' : 'RH' }}
+                  </BasePill>
+                </td>
+                <td class="px-3 py-2">
+                  <BasePill :tone="c.statut === 'en_retard' ? 'warn' : 'mut'">
+                    {{ c.statut === 'en_retard' ? 'En retard' : 'À planifier' }}
+                  </BasePill>
+                </td>
+                <td class="px-3 py-2 text-ink-2">{{ c.managerNom || '—' }}</td>
+                <td class="px-3 py-2 text-ink-2">{{ echeance(c) }}</td>
+                <td class="px-3 py-2">
+                  <span :class="c.moisDepuisDernier == null ? 'text-warning' : 'text-ink-2'">{{ ancien(c) }}</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </BaseCard>
     </template>
   </div>
 </template>

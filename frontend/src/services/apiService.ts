@@ -15,7 +15,7 @@ import {
   RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
@@ -628,6 +628,25 @@ export const apiService = {
     }
     const rows = await apiFetch<VeilleOut[]>('/rh/veille')
     return rows.map(mapVeille)
+  },
+  /** Cas concrets d'entretiens à traiter (en retard / à planifier) avec collaborateur,
+   *  manager responsable et ancienneté du dernier entretien. */
+  async getEntretiensATraiter(): Promise<EntretienCas[]> {
+    if (MODE === 'mock') {
+      await delay(150)
+      return []
+    }
+    const rows = await apiFetch<{
+      profil_id: number; nom: string; prenom: string | null; poste_actuel: string | null
+      departement_key: string | null; type: string; statut: string
+      date_prevue: string | null; mois_depuis_dernier: number | null; manager_nom: string | null
+    }[]>('/dashboards/entretiens/a-traiter')
+    return rows.map((r) => ({
+      profilId: r.profil_id, nom: r.nom, prenom: r.prenom, posteActuel: r.poste_actuel,
+      departementKey: r.departement_key, type: r.type as 'annuel' | 'rh',
+      statut: r.statut as 'en_retard' | 'planifie', datePrevue: r.date_prevue,
+      moisDepuisDernier: r.mois_depuis_dernier, managerNom: r.manager_nom,
+    }))
   },
   async getRhOffers(): Promise<RhOffer[]> {
     if (MODE === 'mock') {

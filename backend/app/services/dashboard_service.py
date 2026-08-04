@@ -17,6 +17,8 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import Session
 
@@ -28,7 +30,7 @@ from app.models.user import User
 from app.models.formation import Formation
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
 from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne, FamilleCompetence,
-                                    HautPotentielItem, VeilleItem, AlerteItem)
+                                    HautPotentielItem, VeilleItem, AlerteItem, EntretienCasItem)
 
 
 def _count(db: Session, stmt) -> int:
@@ -308,6 +310,44 @@ def veille(db: Session) -> list[VeilleItem]:
             planifies=a.get(EntretienStatut.PLANIFIE, 0),
             en_retard=a.get(EntretienStatut.EN_RETARD, 0)))
     return out
+
+
+def entretiens_a_traiter(db: Session, *, limit: int = 60) -> list[EntretienCasItem]:
+    """CAS CONCRETS à traiter : entretiens en retard ou planifiés, avec le
+    collaborateur, son manager (qui doit le réaliser) et l'ancienneté (mois) de son
+    dernier entretien réalisé. En retard d'abord, puis par échéance croissante."""
+    rows = db.execute(
+        select(Entretien, Profil)
+        .join(Profil, Profil.id == Entretien.profil_id)
+        .where(Entretien.statut.in_([EntretienStatut.EN_RETARD, EntretienStatut.PLANIFIE]))).all()
+
+    # Dernier entretien RÉALISÉ par profil (pour l'ancienneté).
+    dernier = dict(db.execute(
+        select(Entretien.profil_id, func.max(Entretien.date_realisee))
+        .where(Entretien.date_realisee.isnot(None))
+        .group_by(Entretien.profil_id)).all())
+    # Noms des managers concernés.
+    mgr_ids = {p.manager_id for (_, p) in rows if p.manager_id}
+    mgr_noms = dict(db.execute(
+        select(User.id, User.name).where(User.id.in_(mgr_ids))).all()) if mgr_ids else {}
+
+    def _naive(dt: datetime) -> datetime:
+        return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+    now = datetime.utcnow()
+    items: list[EntretienCasItem] = []
+    for e, p in rows:
+        dr = dernier.get(p.id)
+        mois = int((now - _naive(dr)).days // 30) if dr else None
+        items.append(EntretienCasItem(
+            profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
+            departement_key=p.departement_key, type=e.type, statut=e.statut,
+            date_prevue=e.date_prevue, mois_depuis_dernier=mois,
+            manager_nom=mgr_noms.get(p.manager_id)))
+    # En retard d'abord, puis échéance la plus proche.
+    items.sort(key=lambda i: (0 if i.statut == EntretienStatut.EN_RETARD else 1,
+                              _naive(i.date_prevue) if i.date_prevue else now))
+    return items[:limit]
 
 
 # ------------------------------------------------------------------- Alertes
