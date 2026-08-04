@@ -97,6 +97,24 @@ def update_self(db: Session, user_id: int, data: ProfilSelfUpdate) -> ProfilOut 
     return _to_out(db, p)
 
 
+def appliquer_infos_cv(db: Session, profil_id: int, *, aspirations: str | None,
+                       poste_vise: str | None) -> None:
+    """Renseigne aspirations / poste visé extraits d'un CV, SANS écraser une valeur
+    déjà saisie par le collaborateur (remplit uniquement les champs vides)."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        return
+    changed = False
+    if aspirations and not (p.aspirations or "").strip():
+        p.aspirations = aspirations
+        changed = True
+    if poste_vise and not (p.poste_vise or "").strip():
+        p.poste_vise = poste_vise
+        changed = True
+    if changed:
+        db.commit()
+
+
 def list_profils(db: Session, *, departement_key: str | None = None,
                  synthetique: bool | None = None, manager_id: int | None = None,
                  limit: int = 50, offset: int = 0) -> list[ProfilOut]:

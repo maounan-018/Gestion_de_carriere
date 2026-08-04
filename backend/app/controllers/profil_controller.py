@@ -188,11 +188,14 @@ def extraire_cv_vers_profil(profil_id: int, data: CvExtractionRequest,
     profil (COLLAB) ou RH/ADMIN. Les compétences détenues extraites sont ajoutées avec
     `source=cv` ; par défaut on remplace les précédentes issues d'un CV (idempotent)."""
     ownership.require_profil_edit(db, user, profil_id)          # 404 si absent, 403 hors périmètre
-    comps = cv_extraction_service.extraire_cv(db, data.texte, data.top_k)
+    result = cv_extraction_service.extraire_cv_complet(db, data.texte, data.top_k)
     out = profil_service.enregistrer_competences_extraites(
-        db, profil_id, comps, CompetenceSource.CV, remplacer=data.remplacer)
+        db, profil_id, result["competences"], CompetenceSource.CV, remplacer=data.remplacer)
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
+    # Aspirations / poste visé détectés dans le CV : renseignent les champs vides.
+    profil_service.appliquer_infos_cv(
+        db, profil_id, aspirations=result["aspirations"], poste_vise=result["poste_vise"])
     return out
 
 
