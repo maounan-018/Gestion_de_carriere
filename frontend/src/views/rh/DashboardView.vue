@@ -57,6 +57,26 @@ const statutLabel = (s: string) => STATUT_LABEL[s] ?? s
 function goPole(name: string) {
   router.push({ name: 'rh.cartoDetail', params: { pole: name } })
 }
+
+// Analyse stratégique IA (G) — à la demande : l'IA lit les indicateurs consolidés.
+const analyse = ref('')
+const analyseModel = ref('')
+const analyseDate = ref('')
+const analysing = ref(false)
+async function lancerAnalyse() {
+  if (analysing.value) return
+  analysing.value = true
+  try {
+    const r = await apiService.lancerAnalyseRh()
+    analyse.value = r.synthese
+    analyseModel.value = r.model
+    analyseDate.value = new Date(r.genere_le).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    analyse.value = "L'analyse n'a pas pu être générée. Réessayez dans un moment."
+  } finally {
+    analysing.value = false
+  }
+}
 </script>
 
 <template>
@@ -86,6 +106,32 @@ function goPole(name: string) {
           <div class="text-xs text-ink-3">{{ k.label }}<span v-if="k.hint"> · {{ k.hint }}</span></div>
         </div>
       </div>
+
+      <BaseCard>
+        <template #header>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><Sparkles :size="16" /></div>
+            <div class="min-w-0 flex-1">
+              <h3 class="font-display text-base font-bold text-ink">Analyse stratégique · IA</h3>
+              <p class="text-xs text-ink-3">L'IA locale lit les indicateurs consolidés de la plateforme et en tire une synthèse actionnable.</p>
+            </div>
+            <BaseButton :disabled="analysing" @click="lancerAnalyse">
+              <Sparkles :size="15" /> {{ analysing ? 'Analyse en cours…' : (analyse ? "Relancer l'analyse" : "Lancer l'analyse") }}
+            </BaseButton>
+          </div>
+        </template>
+        <div v-if="analysing" class="flex items-center gap-2 py-3 text-sm text-ink-3">
+          <Sparkles :size="16" class="animate-pulse text-green-deep" /> L'IA analyse la donnée consolidée — cela peut prendre jusqu'à une minute…
+        </div>
+        <div v-else-if="analyse">
+          <p class="whitespace-pre-line text-sm leading-relaxed text-ink-2">{{ analyse }}</p>
+          <p class="mt-3 text-[11px] text-ink-3">Généré le {{ analyseDate }} · modèle {{ analyseModel }} · fondé sur les données réelles de la plateforme.</p>
+        </div>
+        <p v-else class="py-2 text-sm text-ink-3">
+          Cliquez « Lancer l'analyse » pour une synthèse stratégique : tensions de compétences, hauts
+          potentiels, signaux de rétention et qualité des données.
+        </p>
+      </BaseCard>
 
       <BaseCard v-if="synthese" title="Synthèse RH">
         <div class="grid gap-5 sm:grid-cols-2">

@@ -20,11 +20,11 @@ from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role, User
-from app.schemas.dashboard import VeilleItem, AlerteItem
+from app.schemas.dashboard import VeilleItem, AlerteItem, AnalyseRhOut
 from app.schemas.succession import (
     SuccessionRequest, SuccessionResponse, SuccessionJobLaunched, SuccessionJobStatus,
 )
-from app.services import dashboard_service, succession_service
+from app.services import dashboard_service, succession_service, analyse_service
 
 router = APIRouter(prefix="/api/rh", tags=["RH"],
                    dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))])
@@ -40,6 +40,17 @@ def veille(db: Session = Depends(get_db)) -> list[VeilleItem]:
             summary="Alertes RH dérivées (potentiels, entretiens en retard, mobilité)")
 def alertes(db: Session = Depends(get_db)) -> list[AlerteItem]:
     return dashboard_service.alertes(db)
+
+
+@router.post("/analyse", response_model=AnalyseRhOut,
+             dependencies=[Depends(ia_rate_limit)],
+             summary="Analyse stratégique RH par l'IA (synthèse des indicateurs consolidés)")
+def analyse(db: Session = Depends(get_db)) -> AnalyseRhOut:
+    """⚠️ Utilise le LLM local (mistral-nemo) : quelques secondes. Fait « lire » par
+    l'IA les indicateurs consolidés de la plateforme (tensions de compétences, hauts
+    potentiels, rétention, qualité des données) et produit une synthèse stratégique
+    actionnable pour la RH."""
+    return AnalyseRhOut(**analyse_service.analyser(db))
 
 
 @router.post("/succession", response_model=SuccessionResponse,

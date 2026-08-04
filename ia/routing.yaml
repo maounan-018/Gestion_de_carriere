@@ -54,6 +54,12 @@ taches:
     temperature: 0.4
     num_ctx: 4096
 
+  analyse_rh:                   # synthèse stratégique RH (analyse de la data consolidée)
+    model: mistral-nemo         # meilleur FR pour une synthèse lisible et concise
+    fallback: llama3.1:8b       # repli rapide si mistral-nemo indisponible
+    temperature: 0.2            # factuel, fondé sur les données
+    num_ctx: 8192               # beaucoup d'indicateurs consolidés en entrée
+
   agent:                        # orchestration multi-étapes (function calling)
     model: qwen3:8b             # meilleur tool-calling sur 8 Go VRAM
     fallback: hermes3:8b
