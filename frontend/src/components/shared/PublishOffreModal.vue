@@ -1,0 +1,237 @@
+<script setup lang="ts">
+/**
+ * Publier une offre — composant PARTAGÉ (RH & manager).
+ * Sélecteur de FICHE DE POSTE : on choisit un poste → sa fiche (mission,
+ * compétences attendues) se charge et sert de référence (compétences héritées
+ * comme critères de matching). Champs : type, intitulé, localisation, durée,
+ * description. L'offre est créée en brouillon via POST /offres.
+ */
+import { ref, computed, watch } from 'vue'
+import { apiService } from '@/services/apiService'
+import { useToast } from '@/composables/useToast'
+import type { FicheListItem, FicheDetail } from '@/types/rh'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+
+// `allowPoste` (défaut true) : la RH publie tous les types ; le manager ne publie
+// que missions/projets (les POSTES relèvent de la RH — règle backend).
+const props = withDefaults(defineProps<{ modelValue: boolean; allowPoste?: boolean }>(), {
+  allowPoste: true,
+})
+const emit = defineEmits<{ 'update:modelValue': [boolean]; published: [] }>()
+const { toast } = useToast()
+
+const ALL_TYPES = ['Poste', 'Mission transverse', 'Projet innovation'] as const
+type OffreType = (typeof ALL_TYPES)[number]
+const types = computed<readonly OffreType[]>(() =>
+  props.allowPoste ? ALL_TYPES : ['Mission transverse', 'Projet innovation'],
+)
+const inputCls =
+  'w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-green-line'
+
+const type = ref<OffreType>(props.allowPoste ? 'Poste' : 'Mission transverse')
+const titre = ref('')
+const description = ref('')
+const localisation = ref('')
+const duree = ref('')
+const publishing = ref(false)
+
+// Sélecteur de fiche de poste (recherche → aperçu).
+const search = ref('')
+const results = ref<FicheListItem[]>([])
+const ficheId = ref<number | null>(null)
+const fiche = ref<FicheDetail | null>(null)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+function reset() {
+  type.value = props.allowPoste ? 'Poste' : 'Mission transverse'
+  titre.value = ''
+  description.value = ''
+  localisation.value = ''
+  duree.value = ''
+  search.value = ''
+  results.value = []
+  ficheId.value = null
+  fiche.value = null
+}
+watch(
+  () => props.modelValue,
+  (open) => { if (open) reset() },
+)
+
+function onSearch() {
+  if (searchTimer) clearTimeout(searchTimer)
+  ficheId.value = null
+  fiche.value = null
+  const q = search.value.trim()
+  if (q.length < 2) {
+    results.value = []
+    return
+  }
+  searchTimer = setTimeout(async () => {
+    try {
+      results.value = (await apiService.getFiches(q)).slice(0, 8)
+    } catch {
+      results.value = []
+    }
+  }, 250)
+}
+
+async function selectFiche(f: FicheListItem) {
+  ficheId.value = f.id
+  titre.value = f.intitule_poste
+  search.value = f.intitule_poste
+  results.value = []
+  try {
+    fiche.value = await apiService.getFiche(f.id)
+  } catch {
+    fiche.value = null
+  }
+}
+
+function clearFiche() {
+  ficheId.value = null
+  fiche.value = null
+  search.value = ''
+  results.value = []
+}
+
+async function publish() {
+  if (publishing.value || !titre.value.trim()) return
+  publishing.value = true
+  try {
+    await apiService.publishOffer({
+      titre: titre.value.trim(),
+      type: type.value,
+      ficheId: ficheId.value,
+      description: description.value.trim(),
+      localisation: localisation.value.trim(),
+      duree: duree.value.trim(),
+    })
+    toast('Offre créée en brouillon', 'ok')
+    emit('published')
+    emit('update:modelValue', false)
+  } catch (e) {
+    toast(e instanceof Error ? e.message : 'Échec de la publication', 'error')
+  } finally {
+    publishing.value = false
+  }
+}
+</script>
+
+<template>
+  <BaseModal
+    :model-value="modelValue"
+    title="Publier une offre"
+    @update:model-value="emit('update:modelValue', $event)"
+  >
+    <div class="space-y-4">
+      <!-- Type -->
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-ink-2">Type</label>
+        <div class="flex flex-wrap gap-1.5">
+          <button
+            v-for="t in types"
+            :key="t"
+            type="button"
+            class="flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition"
+            :class="type === t ? 'border-green bg-green text-white' : 'border-border bg-paper text-ink-2 hover:text-ink'"
+            @click="type = t"
+          >
+            {{ t }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Sélecteur de fiche de poste -->
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-ink-2">Fiche de poste (référence)</label>
+        <div class="relative">
+          <input
+            v-model="search"
+            :class="inputCls"
+            placeholder="Rechercher un poste… (ex : Conseiller, Analyste)"
+            @input="onSearch"
+          />
+          <div
+            v-if="results.length"
+            class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border bg-paper shadow-float"
+          >
+            <button
+              v-for="f in results"
+              :key="f.id"
+              type="button"
+              class="block w-full px-3 py-2 text-left text-sm hover:bg-green-ghost"
+              @click="selectFiche(f)"
+            >
+              <span class="font-semibold text-ink">{{ f.intitule_poste }}</span>
+              <span class="ml-1 text-xs text-ink-3">· {{ f.perimetre_bmci }}</span>
+            </button>
+          </div>
+        </div>
+        <p v-if="!ficheId" class="mt-1 text-[11px] text-ink-3">
+          Sélectionnez un poste pour charger sa fiche, ou saisissez un intitulé libre ci-dessous.
+        </p>
+      </div>
+
+      <!-- Aperçu de la fiche choisie -->
+      <div v-if="fiche" class="rounded-xl border border-green-line bg-green-ghost p-3">
+        <div class="flex items-center justify-between">
+          <h4 class="text-sm font-bold text-green-deep">{{ fiche.intitule_poste }}</h4>
+          <button type="button" class="text-xs font-semibold text-ink-3 hover:underline" @click="clearFiche">
+            Retirer
+          </button>
+        </div>
+        <p v-if="fiche.mission" class="mt-1 line-clamp-3 text-xs text-ink-2">{{ fiche.mission }}</p>
+        <div v-if="fiche.competences.length" class="mt-2 flex flex-wrap gap-1">
+          <BaseChip v-for="(c, i) in fiche.competences.slice(0, 8)" :key="i">{{ c.libelle }}</BaseChip>
+        </div>
+        <p class="mt-2 text-[11px] text-green-deep">
+          Les compétences attendues seront héritées comme critères de matching.
+        </p>
+      </div>
+
+      <!-- Intitulé -->
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-ink-2">Intitulé de l'offre</label>
+        <input v-model="titre" :class="inputCls" maxlength="200" placeholder="Ex : Responsable Conformité" />
+      </div>
+
+      <!-- Localisation + Durée -->
+      <div class="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Localisation</label>
+          <input v-model="localisation" :class="inputCls" maxlength="120" placeholder="Ex : Casablanca — Siège" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold text-ink-2">Durée</label>
+          <input v-model="duree" :class="inputCls" maxlength="64" placeholder="Ex : CDI · ou 6 mois (mission)" />
+        </div>
+      </div>
+
+      <!-- Description / précisions -->
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-ink-2">Description / précisions</label>
+        <textarea
+          v-model="description"
+          rows="4"
+          :class="inputCls"
+          placeholder="Contexte, missions, précisions sur le poste / projet…"
+        />
+      </div>
+
+      <div class="flex items-start gap-2 rounded-xl border border-green-line bg-green-ghost px-3 py-2 text-xs text-green-deep">
+        <AppIcon name="shield" :size="14" />
+        <span>L'offre est créée en <b>brouillon</b> ; vous la publierez depuis la liste.</span>
+      </div>
+    </div>
+    <template #footer>
+      <BaseButton variant="secondary" size="sm" @click="emit('update:modelValue', false)">Annuler</BaseButton>
+      <BaseButton size="sm" :disabled="!titre.trim() || publishing" @click="publish">
+        <AppIcon name="send" :size="14" /> {{ publishing ? 'Publication…' : 'Publier' }}
+      </BaseButton>
+    </template>
+  </BaseModal>
+</template>

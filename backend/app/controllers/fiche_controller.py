@@ -15,17 +15,20 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user, client_ip
 from app.core.rate_limit import ia_rate_limit
 from app.models.user import Role, User
+from app.models.fiche import Fiche, FicheCompetence
 from app.models.audit_log import AuditEventType
 from app.schemas.fiche_extraction import (FicheRequest, FicheResponse, GabaritResponse,
                                           DepartementInfo, CartographieDoc,
                                           FicheGenerationRequest, FicheGeneree)
+from app.schemas.fiche import FicheListItem, FicheDetailOut, FicheCompetenceOut
 from app.services import (fiche_config_service, fiche_extraction_service,
                           fiche_generation_service, cartography_service, audit_service)
 
@@ -116,3 +119,35 @@ def extraire_fiche(req: FicheRequest, db: Session = Depends(get_db)) -> FicheRes
     """À partir des rubriques d'une fiche (selon le gabarit), extrait les métadonnées
     du poste + les compétences typées ancrées au graphe + langues + indicateurs."""
     return fiche_extraction_service.extract_from_fiche(db, req.sections, req.top_k)
+
+
+@router.get("", response_model=list[FicheListItem],
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN, Role.MANAGER))],
+            summary="Lister les fiches de poste (sélecteur « Publier une offre »)")
+def lister_fiches(departement_key: str | None = Query(None),
+                  q: str | None = Query(None, description="Filtre sur l'intitulé du poste."),
+                  db: Session = Depends(get_db)) -> list[Fiche]:
+    stmt = select(Fiche).order_by(Fiche.intitule_poste)
+    if departement_key:
+        stmt = stmt.where(Fiche.departement_key == departement_key)
+    if q:
+        stmt = stmt.where(Fiche.intitule_poste.ilike(f"%{q}%"))
+    return list(db.scalars(stmt.limit(300)).all())
+
+
+@router.get("/{fiche_id}", response_model=FicheDetailOut,
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN, Role.MANAGER))],
+            summary="Détail d'une fiche de poste (mission, activités, compétences attendues)")
+def detail_fiche(fiche_id: int, db: Session = Depends(get_db)) -> FicheDetailOut:
+    f = db.get(Fiche, fiche_id)
+    if f is None:
+        raise HTTPException(status_code=404, detail="Fiche introuvable.")
+    comps = db.scalars(
+        select(FicheCompetence).where(FicheCompetence.fiche_id == fiche_id)
+        .order_by(FicheCompetence.id)).all()
+    return FicheDetailOut(
+        id=f.id, intitule_poste=f.intitule_poste, departement_key=f.departement_key,
+        perimetre_bmci=f.perimetre_bmci, famille_metier=f.famille_metier,
+        mission=f.mission, activites_principales=f.activites_principales,
+        langues=f.langues, indicateurs_performances=f.indicateurs_performances,
+        competences=[FicheCompetenceOut.model_validate(c) for c in comps])

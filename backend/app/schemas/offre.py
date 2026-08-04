@@ -60,6 +60,8 @@ class OffreCreate(BaseModel):
     heriter_competences: bool = Field(True, description="Copier les compétences de la Fiche comme attendus (si fiche_id).")
     type: TypeOffre = "offre_poste"
     description: str | None = None
+    localisation: str | None = Field(None, max_length=120, description="Ville / site.")
+    duree: str | None = Field(None, max_length=64, description="Durée (mission/projet), ex : « 6 mois ».")
     perimetre_bmci: str | None = Field(None, max_length=160)
     departement_key: str | None = Field(None, max_length=48)
     statut: StatutOffre = "brouillon"
@@ -93,6 +95,8 @@ class OffreOut(BaseModel):
     type: str
     titre: str
     description: str | None
+    localisation: str | None = None
+    duree: str | None = None
     perimetre_bmci: str | None
     departement_key: str | None
     statut: str
