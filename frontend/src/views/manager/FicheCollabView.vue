@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { apiService } from '@/services/apiService'
 import { byPctDesc, scoreText, scoreBar } from '@/utils/score'
 import { useToast } from '@/composables/useToast'
-import type { TeamMember } from '@/types/manager'
+import type { TeamMember, TeamSkill } from '@/types/manager'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
@@ -42,6 +42,23 @@ const showEval = ref(false)
 const evalScore = ref('4')
 const evalComment = ref('')
 const evalBusy = ref(false)
+
+// Évaluation d'une compétence (1-10) : score persisté (poids prépondérant).
+const evaluating = ref(false)
+async function rate(skill: TeamSkill, value: string) {
+  const score = Number(value)
+  if (!skill.id || !score || evaluating.value) return
+  evaluating.value = true
+  try {
+    await apiService.evaluerCompetence(route.params.id as string, skill.id, score)
+    toast(`« ${skill.label} » évaluée à ${score}/10`, 'ok')
+    await load() // recharge la fiche (% d'acquisition mis à jour)
+  } catch {
+    toast("L'évaluation n'a pas pu être enregistrée.", 'error')
+  } finally {
+    evaluating.value = false
+  }
+}
 
 async function submitEval() {
   const texte = evalComment.value.trim()
@@ -106,14 +123,28 @@ async function submitEval() {
         </BaseCard>
 
         <BaseCard title="Compétences">
-          <div class="space-y-3">
+          <template #actions><BasePill tone="ai">évaluation manager · 1-10</BasePill></template>
+          <div class="space-y-3.5">
             <div v-for="s in byPctDesc(m.skills)" :key="s.label">
-              <div class="mb-1 flex justify-between text-xs">
+              <div class="mb-1 flex items-center justify-between gap-2 text-xs">
                 <span class="font-medium text-ink-2">{{ s.label }}</span>
-                <span class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
+                <span v-if="s.evaluee !== false" class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
+                <span v-else class="rounded-full bg-panel-2 px-2 py-0.5 text-[10px] font-semibold text-ink-3">à évaluer</span>
               </div>
-              <div class="h-1.5 overflow-hidden rounded-full bg-panel-2">
+              <div v-if="s.evaluee !== false" class="h-1.5 overflow-hidden rounded-full bg-panel-2">
                 <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
+              </div>
+              <div v-if="s.id" class="mt-1.5 flex items-center justify-end gap-1.5">
+                <span class="text-[10px] text-ink-3">Maîtrise évaluée</span>
+                <select
+                  :value="s.evaluee === false ? '' : String(Math.max(1, Math.round(s.pct / 10)))"
+                  :disabled="evaluating"
+                  class="rounded-lg border border-border bg-paper px-2 py-1 text-xs text-ink outline-none focus:border-green-line disabled:opacity-60"
+                  @change="rate(s, ($event.target as HTMLSelectElement).value)"
+                >
+                  <option value="" disabled>Évaluer…</option>
+                  <option v-for="n in 10" :key="n" :value="String(n)">{{ n }}/10</option>
+                </select>
               </div>
             </div>
           </div>

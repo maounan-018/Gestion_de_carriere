@@ -358,7 +358,7 @@ describe('mapTeamMember', () => {
     expect(r.initials).toBe('AM')
     expect(r.ring).toBe(80) // moy (5+3)/2 = 4 → 80
     expect(r.strengths).toEqual(['Analyse']) // niveau >= 4
-    expect(r.skills[0]).toEqual({ label: 'Analyse', pct: 100 })
+    expect(r.skills[0]).toEqual({ label: 'Analyse', pct: 100, id: 1, evaluee: true })
   })
   it('replis neutres documentés (§3) : seniority/eval/entretien/gaps/evals/flag', () => {
     const r = mapTeamMember(p)

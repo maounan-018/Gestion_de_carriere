@@ -4,6 +4,8 @@ import type { IconKey, OfferType, PillTone } from '@/types/domain'
 export interface TeamSkill {
   label: string
   pct: number
+  id?: number // id de la compétence détenue (pour l'évaluation manager 1-10)
+  evaluee?: boolean // false = en attente d'évaluation
 }
 export interface TeamEval {
   period: string

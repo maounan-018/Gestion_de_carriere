@@ -34,9 +34,11 @@ from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
                                  EvaluationExtractionRequest, MobiliteItem, AncrageResult,
-                                 ImportResult)
+                                 ImportResult, CompetenceEvaluationIn)
 from app.schemas.carriere import ProfilCarriereOut
-from app.services import profil_service, cv_extraction_service, profil_import_service
+from app.models.profil import ProfilCompetence
+from app.services import (profil_service, cv_extraction_service, profil_import_service,
+                          evaluation_service)
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
 
@@ -253,6 +255,27 @@ def extraire_cv_vers_profil(profil_id: int, data: CvExtractionRequest,
     # Aspirations / poste visé détectés dans le CV : renseignent les champs vides.
     profil_service.appliquer_infos_cv(
         db, profil_id, aspirations=result["aspirations"], poste_vise=result["poste_vise"])
+    return out
+
+
+@router.post("/{profil_id}/competences/{competence_id}/evaluation", response_model=ProfilOut,
+             summary="Évaluer une compétence (manager/RH) : score de maîtrise 1-10 (persisté)")
+def evaluer_competence(profil_id: int, competence_id: int, data: CompetenceEvaluationIn,
+                       user: User = Depends(get_current_user),
+                       db: Session = Depends(get_db)) -> ProfilOut:
+    """Le MANAGER du profil (ou RH/ADMIN) évalue une compétence détenue sur une
+    échelle de maîtrise 1-10. Score PERSISTÉ (source `manager`, poids prépondérant) :
+    il alimente le % d'acquisition de la compétence. Une nouvelle évaluation remplace
+    la précédente (upsert)."""
+    ownership.require_profil_evaluation(db, user, profil_id)     # 404/403 (RH-ADMIN ou manager)
+    pc = db.get(ProfilCompetence, competence_id)
+    if pc is None or pc.profil_id != profil_id:
+        raise HTTPException(status_code=404, detail="Compétence introuvable pour ce profil.")
+    evaluation_service.evaluer_competence(
+        db, competence_id, score=data.score, evaluateur_id=user.id, commentaire=data.commentaire)
+    out = profil_service.get_profil(db, profil_id)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
 
 

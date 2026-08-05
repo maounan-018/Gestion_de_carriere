@@ -103,6 +103,7 @@ export interface TodoItem {
 export interface SkillLevel {
   label: string
   pct: number
+  evaluee?: boolean // false = en attente d'évaluation (déclarée, pas encore scorée)
 }
 
 export interface PeerReview {

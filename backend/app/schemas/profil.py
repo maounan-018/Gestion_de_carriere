@@ -39,6 +39,14 @@ class ProfilCompetenceOut(ProfilCompetenceIn):
     id: int
     skill_id: int | None = None
     skill_label_fr: str | None = None
+    acquisition_pct: int | None = None   # % d'acquisition (évaluations + repli niveau)
+    evaluee: bool = False                 # False = en attente d'évaluation
+
+
+class CompetenceEvaluationIn(BaseModel):
+    """Évaluation d'une compétence par le manager (ou RH) : score de maîtrise 1-10."""
+    score: int = Field(..., ge=1, le=10, description="Niveau de maîtrise évalué (1 à 10).")
+    commentaire: str | None = Field(None, max_length=2000)
 
 
 class CvExtractionRequest(BaseModel):

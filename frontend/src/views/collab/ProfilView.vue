@@ -92,9 +92,11 @@ function goOffres(metier: string) {
           <div class="space-y-3">
             <div v-for="s in byPctDesc(profile.skills)" :key="s.label">
               <div class="mb-1 flex items-center justify-between text-sm">
-                <span class="text-ink-2">{{ s.label }}</span><b :class="scoreText(s.pct)">{{ s.pct }} %</b>
+                <span class="text-ink-2">{{ s.label }}</span>
+                <b v-if="s.evaluee !== false" :class="scoreText(s.pct)">{{ s.pct }} %</b>
+                <span v-else class="rounded-full bg-panel-2 px-2 py-0.5 text-[11px] font-semibold text-ink-3">En attente d'évaluation</span>
               </div>
-              <div class="h-2 overflow-hidden rounded-full bg-panel-2">
+              <div v-if="s.evaluee !== false" class="h-2 overflow-hidden rounded-full bg-panel-2">
                 <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
               </div>
             </div>

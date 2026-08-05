@@ -1009,6 +1009,15 @@ export const apiService = {
     const src = type === 'mission' ? 'evaluation_mission' : 'evaluation_performance'
     return (p.competences ?? []).filter((c) => c.source === src).length
   },
+  /** Évaluer une compétence détenue (manager/RH) sur une échelle 1-10. Score
+   *  PERSISTÉ (source manager, poids prépondérant) → alimente le % d'acquisition. */
+  async evaluerCompetence(profilId: string, competenceId: number, score: number,
+                          commentaire?: string): Promise<void> {
+    if (MODE === 'mock') { await delay(200); return }
+    await apiFetch(`/profils/${profilId}/competences/${competenceId}/evaluation`, {
+      method: 'POST', body: { score, commentaire },
+    })
+  },
   /** Self-service collab : extraire MES compétences détenues depuis mon CV et les
    *  ajouter à mon profil (source=cv, remplace les précédentes issues d'un CV).
    *  Résout mon profil via /profils/me/carriere. Renvoie le nb de compétences. */
