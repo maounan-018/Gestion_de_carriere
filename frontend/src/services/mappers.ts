@@ -149,7 +149,7 @@ const SOUHAIT_STATUS: Record<string, { status: SouhaitStatus; tone: PillTone }> 
   refuse: { status: 'En discussion', tone: 'warn' },
 }
 const RECU_STATUS: Record<string, SouhaitRecu['status']> = {
-  brouillon: 'à traiter', pousse: 'à traiter', en_discussion: 'transmis RH',
+  brouillon: 'à traiter', pousse: 'à traiter', en_discussion: 'transmis HRBP',
   accorde: 'accordé', refuse: 'refusé',
 }
 

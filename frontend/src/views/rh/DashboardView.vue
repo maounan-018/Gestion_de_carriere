@@ -83,7 +83,7 @@ async function lancerAnalyse() {
   <div class="space-y-5">
     <BaseCard>
       <div class="text-xs font-semibold uppercase tracking-wide text-green-deep">
-        Espace RH · Groupe BMCI
+        Espace HRBP · Groupe BMCI
       </div>
       <h2 class="font-display text-2xl font-bold text-ink">
         Bonjour {{ session.user?.firstName || 'Nadia' }}
@@ -133,7 +133,7 @@ async function lancerAnalyse() {
         </p>
       </BaseCard>
 
-      <BaseCard v-if="synthese" title="Synthèse RH">
+      <BaseCard v-if="synthese" title="Synthèse HRBP">
         <div class="grid gap-5 sm:grid-cols-2">
           <div class="min-w-0">
             <p class="mb-2 text-xs font-semibold text-ink-2">Effectifs par pôle</p>

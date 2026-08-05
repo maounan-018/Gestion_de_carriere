@@ -48,6 +48,6 @@ export const PERSONAS: Record<Role, User> = {
     email: 'nadia.alami@bnpparibas.com',
     title: 'Responsable Développement RH',
     entity: 'Direction des Ressources Humaines',
-    roleLabel: 'RH',
+    roleLabel: 'HRBP',
   },
 }

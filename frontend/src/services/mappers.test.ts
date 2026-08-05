@@ -233,7 +233,7 @@ describe('mapSouhaitRecu', () => {
     expect(r.memberName).toBe('Karim Idrissi')
     expect(r.memberInitials).toBe('KI')
     expect(r.kind).toBe('carriere')
-    expect(r.status).toBe('transmis RH') // en_discussion
+    expect(r.status).toBe('transmis HRBP') // en_discussion
   })
   it('kind mission ; statut inconnu → « à traiter »', () => {
     expect(mapSouhaitRecu({ ...base, kind: 'mission' }).kind).toBe('mission')

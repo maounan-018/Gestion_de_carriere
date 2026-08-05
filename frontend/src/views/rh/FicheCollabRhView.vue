@@ -136,7 +136,7 @@ async function save() {
             <p class="mt-1 text-xs text-ink-2">Horizon {{ p.aspirationHorizon }}</p>
           </div>
         </BaseCard>
-        <BaseCard title="Suivi RH">
+        <BaseCard title="Suivi HRBP">
           <div class="flex items-center justify-between text-sm">
             <span class="text-ink-3">Dernier entretien RH</span>
             <b :class="p.riskDeparture ? 'text-danger' : 'text-ink'">{{ p.lastRh }}</b>
