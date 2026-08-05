@@ -59,8 +59,8 @@ def on_souhait_pousse(db: Session, souhait: Souhait, profil: Profil,
     nom = f"{(profil.prenom or '').strip()} {profil.nom}".strip()
     notification_service.create_notification(
         db, user_id=manager_user_id, type=NotificationType.SOUHAIT,
-        titre="Nouveau souhait d'évolution",
-        texte=f"{nom} vous a poussé un souhait : « {souhait.titre} ».",
+        titre="Nouvelle demande d'évolution",
+        texte=f"{nom} vous a transmis une demande : « {souhait.titre} ».",
         to_route="souhaits-recus", commit=False)
 
 
@@ -71,6 +71,6 @@ def on_souhait_decide(db: Session, souhait: Souhait, profil: Profil) -> None:
         return
     notification_service.create_notification(
         db, user_id=profil.user_id, type=NotificationType.SOUHAIT,
-        titre="Réponse à votre souhait",
-        texte=f"Votre souhait « {souhait.titre} » a été {verdict}.",
+        titre="Réponse à votre demande d'évolution",
+        texte=f"Votre demande « {souhait.titre} » a été {verdict}.",
         to_route="souhaits", commit=False)

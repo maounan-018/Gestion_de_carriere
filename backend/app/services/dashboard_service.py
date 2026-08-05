@@ -373,9 +373,9 @@ def alertes(db: Session) -> list[AlerteItem]:
     if mobilites:
         out.append(AlerteItem(
             kind="retention", severity="info",
-            titre=f"{mobilites} souhait(s) de mobilité exprimé(s)",
-            texte="Des collaborateurs ont poussé un souhait d'évolution — opportunité de rétention.",
-            cta="Voir les souhaits", to_route="souhaitsRecus"))
+            titre=f"{mobilites} demande(s) de mobilité exprimée(s)",
+            texte="Des collaborateurs ont transmis une demande d'évolution · opportunité de rétention.",
+            cta="Voir les demandes", to_route="souhaitsRecus"))
     return out
 
 

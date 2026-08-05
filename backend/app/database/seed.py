@@ -456,14 +456,14 @@ _NOTIFS = {
     "youssef.elamrani@bmci.local": [
         ("offre", "Nouvelle offre compatible",
          "Une offre « Conseiller clientèle » correspond à 78 % à votre profil.", "offres"),
-        ("souhait", "Votre manager a consulté vos souhaits",
-         "Karim Naji a consulté vos souhaits d'évolution.", "souhaitSuivi"),
+        ("souhait", "Votre manager a consulté vos demandes d'évolution",
+         "Karim Naji a consulté vos demandes d'évolution.", "souhaitSuivi"),
         ("entretien", "Entretien annuel à préparer",
          "Pensez à préparer votre entretien de carrière.", "entretien"),
     ],
     "karim.naji@bmci.local": [
-        ("souhait", "Nouveau souhait d'un collaborateur",
-         "Youssef El Amrani a poussé un souhait d'évolution.", "souhaitsRecus"),
+        ("souhait", "Nouvelle demande d'évolution d'un collaborateur",
+         "Youssef El Amrani a transmis une demande d'évolution.", "souhaitsRecus"),
         ("entretien", "Entretiens d'équipe à mener",
          "Il vous reste des entretiens annuels à réaliser ce trimestre.", "entretien"),
     ],
@@ -784,7 +784,7 @@ def _pop_person(db: Session, *, seq: int, key: str, poste: str, role: str, base:
             titre="Mobilité vers un autre pôle" if mission else (aspiration or "Évolution de carrière"),
             kind=SouhaitKind.MISSION if mission else SouhaitKind.CARRIERE,
             horizon=f"{6 + h % 18} mois",
-            description="Souhait synthétique de démonstration.",
+            description="Demande d'évolution synthétique de démonstration.",
             statut=SouhaitStatut.POUSSE if pushed else SouhaitStatut.BROUILLON, pushed=pushed))
 
     # Avis des pairs : ~40 %.
