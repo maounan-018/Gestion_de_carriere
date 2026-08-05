@@ -27,7 +27,8 @@ from app.controllers import (skill_extraction_controller, skill_matching_control
                              profil_controller, offre_controller, candidature_controller,
                              notification_controller, souhait_controller, formation_controller,
                              dashboard_controller, rh_controller, coach_controller,
-                             redaction_controller, normalisation_controller)
+                             redaction_controller, normalisation_controller,
+                             entretien_controller)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -84,6 +85,7 @@ app.include_router(rh_controller.router)
 app.include_router(coach_controller.router)
 app.include_router(redaction_controller.router)
 app.include_router(normalisation_controller.router)
+app.include_router(entretien_controller.router)
 
 
 @app.get("/sante", tags=["Système"], summary="Vérifier que l'API répond")
