@@ -22,6 +22,7 @@ EMPLACEMENT MVC
 """
 
 import hashlib
+import json
 import logging
 import threading
 import time
@@ -33,6 +34,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.skill import Skill, RelationType
 from app.models.profil import Profil, ProfilCompetence
+from app.models.recommandation import Recommandation
 from app.services import (skill_extraction_service, skill_matching_service,
                           occupation_service)
 from app.services.ai_router import generate, fence
@@ -63,6 +65,42 @@ def clear_reco_cache() -> None:
     """Purge complète du cache de reco (utilitaire ; l'invalidation par clé suffit
     normalement, la clé changeant dès que le profil évolue)."""
     _reco_cache.clear()
+
+
+# --- Persistance : source DURABLE de la reco (survit au redémarrage) ----------
+# Le cache mémoire ci-dessus n'est qu'une optimisation. La reco calculée est
+# ÉCRITE en base (table `recommandations`), une ligne par signature (état de
+# profil). Recalculer un profil inchangé met à jour la même ligne (jamais de
+# perte) ; changer l'objectif/les compétences change la signature => nouvelle
+# ligne. Au boot, la base sert de source de vérité (pas de recalcul inutile).
+def _charger_reco_persistee(db: Session, signature: str) -> dict | None:
+    row = db.scalar(select(Recommandation).where(Recommandation.signature == signature))
+    if row is None:
+        return None
+    try:
+        return json.loads(row.contenu_json)
+    except (ValueError, TypeError):
+        return None
+
+
+def _persister_reco(db: Session, profil_id: int, signature: str,
+                    poste_texte: str, result: dict) -> None:
+    """Écrit/actualise la reco (upsert par signature). Best-effort : une erreur de
+    persistance ne doit pas empêcher de servir la reco calculée."""
+    try:
+        payload = json.dumps(result, ensure_ascii=False)
+        score = int(result.get("score_actuel") or 0)
+        poste = (result.get("poste_vise") or poste_texte or "")[:300]
+        row = db.scalar(select(Recommandation).where(Recommandation.signature == signature))
+        if row is None:
+            db.add(Recommandation(profil_id=profil_id, signature=signature,
+                                  poste_vise=poste, score=score, contenu_json=payload))
+        else:
+            row.contenu_json, row.score, row.poste_vise = payload, score, poste
+        db.commit()
+    except Exception as e:  # noqa: BLE001
+        db.rollback()
+        logger.warning("Persistance reco échouée (profil %d) : %s", profil_id, e)
 
 
 # --- Reco ASYNCHRONE : le pipeline Ollama est lent (~85 s) → on ne tient pas une
@@ -261,14 +299,23 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
     if len(poste_texte) < 10:
         poste_texte = f"Évolution professionnelle vers : {poste_texte}"
 
-    # Cache : appel répété à profil inchangé → réponse instantanée (évite ~85 s Ollama).
+    # Profil inchangé → même signature → réponse instantanée, dans cet ordre :
+    #   1) cache mémoire (le plus rapide, process-local) ;
+    #   2) base (source DURABLE, survit au redémarrage) ;
+    #   3) calcul (pipeline Ollama ~85 s) puis persistance + cache.
     sig = _reco_signature(p.id, poste_texte, labels)
     now = time.time()
     hit = _reco_cache.get(sig)
     if hit and now - hit[0] < _CACHE_TTL_S:
-        logger.info("Reco servie depuis le cache (profil %d).", p.id)
+        logger.info("Reco servie depuis le cache mémoire (profil %d).", p.id)
         return hit[1]
+    persistee = _charger_reco_persistee(db, sig)
+    if persistee is not None:
+        _reco_cache[sig] = (now, persistee)
+        logger.info("Reco servie depuis la base (profil %d).", p.id)
+        return persistee
     result = recommander(db, labels, poste_texte)
     result["confiance"] = norm["confiance"]   # 'clair' (normalisé) ou 'indisponible' (brut)
+    _persister_reco(db, p.id, sig, poste_texte, result)
     _reco_cache[sig] = (now, result)
     return result
