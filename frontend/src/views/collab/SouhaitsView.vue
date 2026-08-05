@@ -73,10 +73,10 @@ async function save() {
   try {
     if (editing.value) {
       await apiService.updateSouhait(editing.value.id ?? '', payload)
-      toast('Souhait mis à jour')
+      toast('Demande mise à jour')
     } else {
       await apiService.createSouhait({ ...payload, pushed: form.value.pushNow })
-      toast(form.value.pushNow ? 'Souhait créé et transmis à votre manager' : 'Souhait créé')
+      toast(form.value.pushNow ? "Demande créée et transmise à votre manager" : 'Demande créée')
     }
     showForm.value = false
     await load() // refetch → cohérence sur tous les écrans qui l'affichent
@@ -89,7 +89,7 @@ async function save() {
 
 const crumbs = [
   { label: 'Mon profil', to: { name: 'collab.profil' } },
-  { label: 'Mes souhaits' },
+  { label: "Mes demandes d'évolution" },
 ]
 
 async function load() {
@@ -98,7 +98,7 @@ async function load() {
   try {
     items.value = (await apiService.getSouhaits()).map((s) => ({ ...s }))
   } catch {
-    error.value = 'Impossible de charger vos souhaits.'
+    error.value = 'Impossible de charger vos demandes.'
   } finally {
     loading.value = false
   }
@@ -108,12 +108,12 @@ onMounted(load)
 async function push(s: Souhait) {
   const prev = { pushed: s.pushed, status: s.status, tone: s.tone }
   s.pushed = true
-  s.status = 'Poussé au manager'
+  s.status = 'Transmise au manager'
   s.tone = 'new'
   try {
     await apiService.pushSouhait(s.id ?? '')
-    toast('Souhait transmis à votre manager')
-    await load() // cohérence avec les écrans qui affichent les souhaits reçus
+    toast('Demande transmise à votre manager')
+    await load() // cohérence avec les écrans qui affichent les demandes reçues
   } catch (e) {
     Object.assign(s, prev)
     toast(e instanceof Error ? e.message : "Échec de l'envoi au manager", 'error')
@@ -128,13 +128,13 @@ async function push(s: Souhait) {
     <div class="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-green-line bg-green-soft p-4">
       <div class="grid h-10 w-10 place-items-center rounded-xl bg-green text-white"><AppIcon name="route" :size="18" /></div>
       <div class="min-w-0 flex-1">
-        <h3 class="text-sm font-bold text-green-deep">Vos souhaits guident vos recommandations</h3>
-        <p class="text-xs text-ink-2">Les souhaits que vous poussez sont transmis à votre manager et alimentent le moteur de recommandations.</p>
+        <h3 class="text-sm font-bold text-green-deep">Vos demandes d'évolution guident vos recommandations</h3>
+        <p class="text-xs text-ink-2">Les demandes que vous transmettez sont envoyées à votre manager et alimentent le moteur de recommandations.</p>
       </div>
-      <BaseButton @click="openNew()"><AppIcon name="route" :size="15" /> Nouveau souhait</BaseButton>
+      <BaseButton @click="openNew()"><AppIcon name="route" :size="15" /> Nouvelle demande</BaseButton>
     </div>
 
-    <LoadingState v-if="loading" label="Chargement de vos souhaits…" />
+    <LoadingState v-if="loading" label="Chargement de vos demandes…" />
     <ErrorState v-else-if="error" :message="error">
       <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
     </ErrorState>
@@ -150,16 +150,16 @@ async function push(s: Souhait) {
           <span class="inline-flex items-center gap-1"><AppIcon name="route" :size="12" /> Horizon {{ s.horizon }}</span>
         </div>
         <p class="mt-2 text-sm text-ink-2">{{ s.desc }}</p>
-        <p v-if="!s.pushed" class="mt-2 text-xs text-ink-3">Ce souhait n'est visible que par vous tant que vous ne l'avez pas poussé à votre manager.</p>
+        <p v-if="!s.pushed" class="mt-2 text-xs text-ink-3">Cette demande n'est visible que par vous tant que vous ne l'avez pas transmise à votre manager.</p>
 
         <div class="mt-3 flex flex-wrap gap-2">
           <BaseButton variant="secondary" size="sm" @click="openEdit(s)">Modifier</BaseButton>
-          <BaseButton v-if="!s.pushed" size="sm" @click="push(s)"><AppIcon name="send" :size="14" /> Pousser au manager</BaseButton>
+          <BaseButton v-if="!s.pushed" size="sm" @click="push(s)"><AppIcon name="send" :size="14" /> Transmettre au manager</BaseButton>
         </div>
       </BaseCard>
     </div>
 
-    <BaseModal v-model="showForm" :title="editing ? 'Modifier le souhait' : 'Nouveau souhait'">
+    <BaseModal v-model="showForm" :title="editing ? 'Modifier la demande' : 'Nouvelle demande'">
       <form class="space-y-4" @submit.prevent="save">
         <label class="block">
           <span class="mb-1 block text-xs font-semibold text-ink-2">Intitulé</span>
@@ -204,7 +204,7 @@ async function push(s: Souhait) {
           <textarea
             v-model="form.description"
             rows="3"
-            placeholder="Précisez votre souhait, le contexte, ce qui vous motive…"
+            placeholder="Précisez votre demande, le contexte, ce qui vous motive…"
             class="w-full resize-none rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green"
           />
         </label>
@@ -212,7 +212,7 @@ async function push(s: Souhait) {
           <input v-model="form.pushNow" type="checkbox" class="mt-0.5 h-4 w-4 accent-green" />
           <span class="text-xs text-ink-2">
             <b class="text-green-deep">Transmettre à mon manager maintenant.</b>
-            Sinon, le souhait reste <b>privé</b> · visible de vous seul · jusqu'à ce que vous décidiez de le pousser.
+            Sinon, la demande reste <b>privée</b> · visible de vous seul · jusqu'à ce que vous décidiez de la transmettre.
           </span>
         </label>
       </form>

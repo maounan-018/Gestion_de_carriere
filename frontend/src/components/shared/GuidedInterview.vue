@@ -22,7 +22,7 @@ const STEPS: { label: string; focus: string }[] = [
   { label: 'Réussites', focus: 'ses principales réussites (méthode STAR, résultats chiffrés)' },
   { label: 'Échecs & difficultés', focus: "ses difficultés ou échecs de l'année et ce qu'il en a appris" },
   { label: 'Compétences', focus: 'les compétences développées et ses axes de progression (savoir-être inclus)' },
-  { label: 'Souhaits & perspectives', focus: "ses souhaits d'évolution, de mobilité et de formation" },
+  { label: 'Aspirations & perspectives', focus: "ses aspirations d'évolution, de mobilité et de formation" },
   { label: "Conseils de l'agent", focus: '' },
   { label: 'Synthèse finale', focus: 'objectifs, réussites, axes de progrès et formations souhaitées' },
 ]

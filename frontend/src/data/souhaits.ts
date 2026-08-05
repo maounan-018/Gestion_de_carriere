@@ -5,7 +5,7 @@ export const SOUHAITS: Souhait[] = [
     title: "Manager d'équipe Risques",
     horizon: '12-18 mois',
     desc: "Encadrer une équipe d'analystes et développer une expertise réglementaire (Bâle III).",
-    status: 'Poussé au manager',
+    status: 'Transmise au manager',
     tone: 'new',
     pushed: true,
   },

@@ -142,7 +142,7 @@ export interface ProfilEditable {
 }
 
 /* --------------------------------------------------------------- Souhaits */
-export type SouhaitStatus = 'Brouillon' | 'Poussé au manager' | 'En discussion'
+export type SouhaitStatus = 'Brouillon' | 'Transmise au manager' | 'En discussion'
 export interface Souhait {
   /** Id backend (pour pousser / éditer). Absent en mock. */
   id?: string

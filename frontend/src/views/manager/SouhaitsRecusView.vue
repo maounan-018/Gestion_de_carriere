@@ -24,7 +24,7 @@ async function load() {
   try {
     items.value = await apiService.getSouhaitsRecus()
   } catch {
-    error.value = 'Impossible de charger les souhaits.'
+    error.value = 'Impossible de charger les demandes.'
   } finally {
     loading.value = false
   }
@@ -36,7 +36,7 @@ function act(s: SouhaitRecu, status: SouhaitRecuStatus, msg: string) {
   toast(msg)
 }
 
-// Transmettre un souhait « carrière » à la HRBP : une RECOMMANDATION justifiée est
+// Transmettre une demande « carrière » à la HRBP : une RECOMMANDATION justifiée est
 // exigée (pourquoi le manager appuie ce collaborateur) et réellement envoyée à la HRBP.
 const showTransmit = ref(false)
 const curSouhait = ref<SouhaitRecu | null>(null)
@@ -55,12 +55,12 @@ async function confirmTransmit() {
   try {
     await apiService.communiquerRH(
       `Recommandation · ${s.memberName} : ${s.title}`,
-      `Souhait d'évolution « ${s.title} » (${s.horizon}). Pourquoi je recommande `
+      `Demande d'évolution « ${s.title} » (${s.horizon}). Pourquoi je recommande `
         + `${s.memberName} : ${justification.value.trim()}`,
     )
     s.status = 'transmis HRBP'
     showTransmit.value = false
-    toast('Souhait transmis à la HRBP avec votre recommandation', 'ok')
+    toast('Demande transmise à la HRBP avec votre recommandation', 'ok')
   } catch (e) {
     toast(e instanceof Error ? e.message : 'Échec de la transmission', 'error')
   } finally {
@@ -76,18 +76,18 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
 <template>
   <div class="space-y-4">
     <p class="text-sm text-ink-3">
-      Souhaits d'évolution poussés par votre équipe. <b class="text-ink-2">Mission</b> : vous
+      Demandes d'évolution transmises par votre équipe. <b class="text-ink-2">Mission</b> : vous
       décidez · <b class="text-ink-2">Carrière</b> : vous transmettez à la HRBP.
     </p>
 
-    <LoadingState v-if="loading" label="Chargement des souhaits…" />
+    <LoadingState v-if="loading" label="Chargement des demandes…" />
     <ErrorState v-else-if="error" :message="error">
       <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
     </ErrorState>
     <EmptyState
       v-else-if="!items.length"
-      title="Aucun souhait en attente"
-      text="Aucun souhait d'évolution à traiter pour le moment."
+      title="Aucune demande en attente"
+      text="Aucune demande d'évolution à traiter pour le moment."
     />
 
     <div v-else class="space-y-3">
@@ -108,10 +108,10 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
         </div>
         <div v-if="s.status === 'à traiter'" class="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
           <template v-if="s.kind === 'mission'">
-            <BaseButton size="sm" @click="act(s, 'accordé', 'Souhait accordé')">
+            <BaseButton size="sm" @click="act(s, 'accordé', 'Demande accordée')">
               <AppIcon name="check" :size="14" /> Accorder
             </BaseButton>
-            <BaseButton size="sm" variant="danger" @click="act(s, 'refusé', 'Souhait refusé · motif à préciser')">
+            <BaseButton size="sm" variant="danger" @click="act(s, 'refusé', 'Demande refusée · motif à préciser')">
               Refuser
             </BaseButton>
           </template>
@@ -138,7 +138,7 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
             placeholder="Points forts, réalisations, potentiel observé, adéquation avec l'évolution visée…"
             class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-green-line"
           />
-          <p class="mt-1 text-[11px] text-ink-3">Votre recommandation est envoyée à la HRBP avec le souhait.</p>
+          <p class="mt-1 text-[11px] text-ink-3">Votre recommandation est envoyée à la HRBP avec la demande.</p>
         </div>
       </div>
       <template #footer>

@@ -143,7 +143,7 @@ export interface SouhaitRecuOut extends SouhaitOut {
 
 const SOUHAIT_STATUS: Record<string, { status: SouhaitStatus; tone: PillTone }> = {
   brouillon: { status: 'Brouillon', tone: 'mut' },
-  pousse: { status: 'Poussé au manager', tone: 'ai' },
+  pousse: { status: 'Transmise au manager', tone: 'ai' },
   en_discussion: { status: 'En discussion', tone: 'new' },
   accorde: { status: 'En discussion', tone: 'ok' },
   refuse: { status: 'En discussion', tone: 'warn' },

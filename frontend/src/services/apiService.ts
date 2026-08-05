@@ -238,7 +238,7 @@ export const apiService = {
       await delay()
       return {
         id: `mock-${Date.now()}`, title: input.titre, horizon: input.horizon || '—',
-        desc: input.description || '', status: input.pushed ? 'Poussé au manager' : 'Brouillon',
+        desc: input.description || '', status: input.pushed ? 'Transmise au manager' : 'Brouillon',
         tone: input.pushed ? 'ai' : 'mut', pushed: !!input.pushed,
       }
     }
