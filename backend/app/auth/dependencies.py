@@ -18,6 +18,8 @@ EMPLACEMENT MVC
     Couche "auth" : sécurité transverse (dépendances), sans logique métier.
 """
 
+from typing import Annotated
+
 from fastapi import Request, HTTPException, Depends
 from sqlalchemy.orm import Session
 
@@ -83,3 +85,11 @@ def require_roles(*roles: str):
             raise HTTPException(status_code=403, detail="Droits insuffisants.")
         return user
     return guard
+
+
+# --- Alias de dépendances réutilisables (style Annotated recommandé par FastAPI) ---
+# Remplacent les signatures répétées `= Depends(...)` :
+#   db: DbSession        au lieu de  db: Session = Depends(get_db)
+#   user: CurrentUser    au lieu de  user: User = Depends(get_current_user)
+DbSession = Annotated[Session, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
