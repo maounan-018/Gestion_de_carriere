@@ -107,11 +107,12 @@ async function save() {
         <BaseCard title="Compétences">
           <div class="space-y-3">
             <div v-for="s in byPctDesc(p.skills)" :key="s.label">
-              <div class="mb-1 flex justify-between text-xs">
+              <div class="mb-1 flex items-center justify-between gap-2 text-xs">
                 <span class="font-medium text-ink-2">{{ s.label }}</span>
-                <span class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
+                <span v-if="s.evaluee !== false" class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
+                <span v-else class="rounded-full bg-panel-2 px-2 py-0.5 text-[10px] font-semibold text-ink-3">à évaluer</span>
               </div>
-              <div class="h-1.5 overflow-hidden rounded-full bg-panel-2">
+              <div v-if="s.evaluee !== false" class="h-1.5 overflow-hidden rounded-full bg-panel-2">
                 <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
               </div>
             </div>

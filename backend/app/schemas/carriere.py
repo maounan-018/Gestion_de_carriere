@@ -41,6 +41,8 @@ class SkillNiveauOut(BaseModel):
     libelle: str
     categorie: str | None
     niveau: int | None
+    acquisition_pct: int | None = None   # % d'acquisition (évaluations + repli niveau)
+    evaluee: bool = False                 # False = en attente d'évaluation
 
 
 class ProfilCarriereOut(BaseModel):

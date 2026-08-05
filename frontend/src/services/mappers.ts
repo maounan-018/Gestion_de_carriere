@@ -264,7 +264,10 @@ export function mapAlerte(a: AlerteOut): RhAlert {
 /* ===================================================================== */
 export interface StationOut { periode: string; titre: string; description: string | null; etat: string; ordre: number }
 export interface PeerReviewOut { auteur_nom: string; auteur_role: string | null; initiales: string | null; texte: string; etoiles: number }
-export interface SkillNiveauOut { libelle: string; categorie: string | null; niveau: number | null }
+export interface SkillNiveauOut {
+  libelle: string; categorie: string | null; niveau: number | null
+  acquisition_pct?: number | null; evaluee?: boolean
+}
 export interface ProfilCarriereOut {
   profil_id: number; nom: string; prenom: string | null; poste_actuel: string | null
   departement_key: string | null; aspirations: string | null
@@ -279,9 +282,11 @@ const STATION_STATE: Record<string, ProgressionStation['state']> = {
 }
 
 export function mapCollabProfile(c: ProfilCarriereOut): CollabProfile {
-  const skills: SkillLevel[] = c.competences.map((s) => ({
-    label: s.libelle, pct: Math.min(100, (s.niveau ?? 3) * 20),
-  }))
+  const skills: SkillLevel[] = c.competences.map((s) => {
+    const evaluee = s.evaluee ?? (s.acquisition_pct != null || s.niveau != null)
+    const pct = s.acquisition_pct ?? (s.niveau != null ? s.niveau * 20 : 0)
+    return { label: s.libelle, pct: Math.min(100, pct), evaluee }
+  })
   const stations: ProgressionStation[] = [...c.stations]
     .sort((a, b) => a.ordre - b.ordre)
     .map((s) => ({
@@ -322,6 +327,7 @@ export function mapCollabProfile(c: ProfilCarriereOut): CollabProfile {
 export interface ProfilCompetenceOut {
   id: number; libelle: string; categorie: string | null; niveau: number | null
   source: string; skill_id: number | null; skill_label_fr: string | null
+  acquisition_pct?: number | null; evaluee?: boolean
 }
 export interface ProfilOut {
   id: number; user_id: number | null; nom: string; prenom: string | null; matricule: string | null
@@ -354,7 +360,9 @@ export function mapProfil(p: ProfilOut): RhPerson {
   const niveaux = comps.map((c) => c.niveau).filter((n): n is number => n != null)
   const moy = niveaux.length ? niveaux.reduce((a, b) => a + b, 0) / niveaux.length : 3
   const skills: TeamSkill[] = comps.slice(0, 6).map((c) => ({
-    label: c.skill_label_fr || c.libelle, pct: Math.min(100, (c.niveau ?? 3) * 20),
+    label: c.skill_label_fr || c.libelle, id: c.id,
+    evaluee: c.evaluee ?? (c.acquisition_pct != null || c.niveau != null),
+    pct: Math.min(100, c.acquisition_pct ?? (c.niveau != null ? c.niveau * 20 : 0)),
   }))
   const anc = p.anciennete_annees
   const flag: RhPerson['flag'] = p.potentiel === 'top' ? 'top' : p.potentiel === 'watch' ? 'watch' : null
@@ -564,7 +572,11 @@ export function mapTeamMember(p: ProfilOut): TeamMember {
     ring: Math.round(moy * 20),
     evalScore: '—',
     lastEntretien: '—',
-    skills: comps.slice(0, 6).map((c) => ({ label: c.skill_label_fr || c.libelle, pct: Math.min(100, (c.niveau ?? 3) * 20) })),
+    skills: comps.slice(0, 6).map((c) => ({
+      label: c.skill_label_fr || c.libelle, id: c.id,
+      evaluee: c.evaluee ?? (c.acquisition_pct != null || c.niveau != null),
+      pct: Math.min(100, c.acquisition_pct ?? (c.niveau != null ? c.niveau * 20 : 0)),
+    })),
     strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
     gaps: [],
     aspiration: p.aspirations ?? '',
