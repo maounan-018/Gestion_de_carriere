@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { CartoLigne } from '@/types/rh'
 
 // Heatmap DATA-DRIVEN : les colonnes (`familles`) et les lignes (départements) viennent
-// du backend — aucune taxonomie figée. Une cellule `null` = pas de compétence de cette
+// du backend · aucune taxonomie figée. Une cellule `null` = pas de compétence de cette
 // famille dans ce département. Les lignes sont regroupées par PÔLE macro (intertitres).
 const props = withDefaults(
   defineProps<{ familles: string[]; lignes: CartoLigne[]; big?: boolean }>(),

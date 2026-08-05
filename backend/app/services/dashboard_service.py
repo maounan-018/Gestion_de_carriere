@@ -398,6 +398,6 @@ def supervision(db: Session) -> list[dict]:
         {"titre": "Profils sans compétence renseignée", "found": sans_comp, "total": total_p},
         {"titre": "Profils sans poste renseigné", "found": sans_poste, "total": total_p},
         {"titre": "Profils sans aspiration exprimée", "found": sans_aspi, "total": total_p},
-        {"titre": "Compétences non ancrées au graphe", "found": non_ancrees, "total": total_c},
+        {"titre": "Compétences non reliées au référentiel", "found": non_ancrees, "total": total_c},
         {"titre": "Compétences non catégorisées", "found": non_cat, "total": total_c},
     ]

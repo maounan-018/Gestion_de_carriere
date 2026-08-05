@@ -15,7 +15,7 @@ const { toast } = useToast()
 const visibility = ref({ profil: true, competences: true, avis: false })
 const notifs = ref({ offres: true, souhaits: true, entretiens: true, evaluations: true })
 
-// Journal des accès (démo synthétique — traçabilité G20).
+// Journal des accès (démo synthétique · traçabilité G20).
 const accessLog = [
   { who: 'Nadia Alami', role: 'RH', when: 'Il y a 2 jours', reason: "Préparation d'un entretien RH" },
   { who: 'Jean-Marc Dupont', role: 'Manager', when: 'Il y a 5 jours', reason: "Revue d'équipe" },

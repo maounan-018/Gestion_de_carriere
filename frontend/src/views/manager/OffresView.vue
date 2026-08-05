@@ -43,7 +43,7 @@ const filtered = computed(() =>
   offers.value.filter((o) => ligne.value === 'Tout' || o.ligne === ligne.value),
 )
 
-// Publier une offre — formulaire riche partagé (fiche de poste + détails).
+// Publier une offre · formulaire riche partagé (fiche de poste + détails).
 // Un manager publie des missions/projets ; les POSTES relèvent de la RH (allowPoste=false).
 const showPublish = ref(false)
 

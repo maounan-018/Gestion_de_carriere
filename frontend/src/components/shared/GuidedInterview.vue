@@ -7,11 +7,11 @@ import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
- * Préparation guidée de l'entretien annuel — l'IA en CO-PILOTE, section par section.
+ * Préparation guidée de l'entretien annuel · l'IA en CO-PILOTE, section par section.
  *
  * Le RÔLE est NATIF côté backend (mode `entretien_copilote`) : le coach s'y
  * contextualise tout seul sur le profil du compte connecté et n'utilise aucun outil.
- * Le front ne déclare que `mode / section / focus / ouverture` — plus aucune consigne
+ * Le front ne déclare que `mode / section / focus / ouverture` · plus aucune consigne
  * ni contexte fabriqués ici. Réutilisé par les auto-entretiens (collab, manager « moi »,
  * RH « moi »), qui ne diffèrent que par le compte connecté (résolu côté backend).
  */
@@ -169,7 +169,7 @@ onMounted(() => openSection(0))
           Passer à l'étape suivante <ArrowRight :size="15" />
         </BaseButton>
         <p v-else class="mt-4 rounded-lg bg-green-soft px-3 py-2 text-xs font-semibold text-green-deep">
-          Dernière étape — le coach rédige la synthèse.
+          Dernière étape · le coach rédige la synthèse.
         </p>
       </div>
 

@@ -12,7 +12,7 @@ const route = useRoute()
       {{ (route.meta.title as string) || 'Accès' }}
     </h1>
     <p class="mt-2 text-sm text-ink-2">
-      Écran d'accès en cours de construction — il sera finalisé dans la suite de M2 (inscription,
+      Écran d'accès en cours de construction · il sera finalisé dans la suite de M2 (inscription,
       OTP, onboarding, mot de passe oublié).
     </p>
     <div class="mt-5 flex gap-2">

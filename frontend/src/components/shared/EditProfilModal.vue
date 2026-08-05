@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Éditer mon profil — composant PARTAGÉ (collaborateur / manager / RH).
+ * Éditer mon profil · composant PARTAGÉ (collaborateur / manager / RH).
  * Préremplit depuis /profils/me/carriere et sauvegarde via PATCH /profils/me
  * (champs auto-déclarés uniquement). Calqué sur la maquette : description, poste
  * visé, horizon, type d'évolution, zones géographiques, disponibilité, ambitions.

@@ -50,7 +50,7 @@ const filtered = computed(() => {
 })
 // Depuis une passerelle, la recherche par métier ne correspond pas toujours à un
 // intitulé d'offre. Plutôt qu'une page vide, on RETOMBE sur les vraies offres ouvertes
-// (aucune offre fabriquée) avec un avis clair — toutes les offres affichées existent.
+// (aucune offre fabriquée) avec un avis clair · toutes les offres affichées existent.
 const noMatch = computed(
   () => !!query.value.trim() && filtered.value.length === 0 && offers.value.length > 0,
 )
@@ -110,7 +110,7 @@ const displayed = computed(() => (noMatch.value ? ligneFiltered.value : filtered
         <AppIcon name="search" :size="15" class="mt-0.5 shrink-0 text-green-deep" />
         <span>
           Aucune offre interne ne correspond exactement à <b class="text-ink">« {{ query }} »</b>.
-          Voici les offres internes actuellement ouvertes — explorez celles proches de votre projet.
+          Voici les offres internes actuellement ouvertes · explorez celles proches de votre projet.
         </span>
       </div>
 

@@ -13,7 +13,7 @@ const session = useSessionStore()
 
 // Décalage du tiroir (mobile uniquement). Sur ≥ lg, la règle CSS
 // `transform: none !important` (media query) neutralise cette valeur inline —
-// l'!important auteur l'emporte sur le style inline normal — donc la colonne
+// l'!important auteur l'emporte sur le style inline normal · donc la colonne
 // reste toujours visible sur grand écran, sans dépendre de JS.
 const drawerStyle = computed(() => ({
   transform: props.open ? 'translateX(0)' : 'translateX(-100%)',
@@ -96,7 +96,7 @@ async function logout() {
 
 <style scoped>
 /* Positionnement du tiroir : fixe et plein hauteur sous « lg », statique au-delà.
-   Le décalage (translateX) est appliqué en inline depuis le script — priorité
+   Le décalage (translateX) est appliqué en inline depuis le script · priorité
    sur la cascade. Ouverture instantanée ; c'est le voile qui porte l'animation. */
 .drawer {
   position: fixed;

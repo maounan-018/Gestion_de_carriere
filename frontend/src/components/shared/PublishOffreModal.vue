@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Publier une offre — composant PARTAGÉ (RH & manager).
+ * Publier une offre · composant PARTAGÉ (RH & manager).
  * Sélecteur de FICHE DE POSTE : on choisit un poste → sa fiche (mission,
  * compétences attendues) se charge et sert de référence (compétences héritées
  * comme critères de matching). Champs : type, intitulé, localisation, durée,
@@ -16,7 +16,7 @@ import BaseChip from '@/components/ui/BaseChip.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
 // `allowPoste` (défaut true) : la RH publie tous les types ; le manager ne publie
-// que missions/projets (les POSTES relèvent de la RH — règle backend).
+// que missions/projets (les POSTES relèvent de la RH · règle backend).
 const props = withDefaults(defineProps<{ modelValue: boolean; allowPoste?: boolean }>(), {
   allowPoste: true,
 })
@@ -203,7 +203,7 @@ async function publish() {
       <div class="grid gap-3 sm:grid-cols-2">
         <div>
           <label class="mb-1.5 block text-xs font-semibold text-ink-2">Localisation</label>
-          <input v-model="localisation" :class="inputCls" maxlength="120" placeholder="Ex : Casablanca — Siège" />
+          <input v-model="localisation" :class="inputCls" maxlength="120" placeholder="Ex : Casablanca · Siège" />
         </div>
         <div>
           <label class="mb-1.5 block text-xs font-semibold text-ink-2">Durée</label>

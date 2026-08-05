@@ -58,7 +58,7 @@ function goPole(name: string) {
   router.push({ name: 'rh.cartoDetail', params: { pole: name } })
 }
 
-// Analyse stratégique IA (G) — à la demande : l'IA lit les indicateurs consolidés.
+// Analyse stratégique IA (G) · à la demande : l'IA lit les indicateurs consolidés.
 const analyse = ref('')
 const analyseModel = ref('')
 const analyseDate = ref('')
@@ -121,7 +121,7 @@ async function lancerAnalyse() {
           </div>
         </template>
         <div v-if="analysing" class="flex items-center gap-2 py-3 text-sm text-ink-3">
-          <Sparkles :size="16" class="animate-pulse text-green-deep" /> L'IA analyse la donnée consolidée — cela peut prendre jusqu'à une minute…
+          <Sparkles :size="16" class="animate-pulse text-green-deep" /> L'IA analyse la donnée consolidée · cela peut prendre jusqu'à une minute…
         </div>
         <div v-else-if="analyse">
           <p class="whitespace-pre-line text-sm leading-relaxed text-ink-2">{{ analyse }}</p>

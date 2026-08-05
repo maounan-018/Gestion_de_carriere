@@ -39,7 +39,7 @@ async function changeStatut(o: RhOffer, statut: 'ouverte' | 'pourvue' | 'fermee'
   }
 }
 
-// Publier une offre (RH) — formulaire riche partagé (fiche de poste + détails).
+// Publier une offre (RH) · formulaire riche partagé (fiche de poste + détails).
 const showPublish = ref(false)
 
 async function load() {

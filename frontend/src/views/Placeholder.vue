@@ -10,6 +10,6 @@ const route = useRoute()
   <EmptyState
     :icon="Hammer"
     :title="(route.meta.title as string) || 'Écran'"
-    text="Écran en construction — il sera implémenté dans un prochain jalon (M2–M5). La coquille (shell + design system) est déjà en place autour de lui."
+    text="Écran en construction · il sera implémenté dans un prochain jalon (M2–M5). La coquille (shell + design system) est déjà en place autour de lui."
   />
 </template>
