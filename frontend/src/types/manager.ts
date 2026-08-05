@@ -27,6 +27,7 @@ export interface TeamMember {
   aspirationHorizon: string
   evals: TeamEval[]
   flag?: 'top' | 'watch' | null // haut potentiel / à suivre
+  cvFilename?: string | null // CV conservé du collaborateur (Lot 4) — null si aucun
 }
 
 /* --------------------------------------------- Postes vacants (équipe) */

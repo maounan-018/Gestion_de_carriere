@@ -270,6 +270,7 @@ export interface ProfilCarriereOut {
   departement_key: string | null; aspirations: string | null
   bio?: string | null; poste_vise?: string | null; horizon?: string | null
   type_evolution?: string | null; mobilite_geo?: string | null; disponibilite?: string | null
+  cv_filename?: string | null; cv_uploaded_at?: string | null
   competences: SkillNiveauOut[]; stations: StationOut[]; avis_pairs: PeerReviewOut[]
 }
 
@@ -326,6 +327,7 @@ export interface ProfilOut {
   id: number; user_id: number | null; nom: string; prenom: string | null; matricule: string | null
   poste_actuel: string | null; departement_key: string | null; manager_id: number | null
   aspirations: string | null; synthetique: boolean; created_at: string; competences: ProfilCompetenceOut[]
+  cv_filename?: string | null; cv_uploaded_at?: string | null
   // Insights dérivés côté backend (scan de la donnée).
   score_eval?: number | null; anciennete_annees?: number | null
   risque_depart?: boolean; potentiel?: string | null
@@ -373,6 +375,7 @@ export function mapProfil(p: ProfilOut): RhPerson {
     gaps: comps.filter((c) => (c.niveau ?? 5) <= 2).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
     riskDeparture: !!p.risque_depart,
     flag,
+    cvFilename: p.cv_filename ?? null,
   }
 }
 
@@ -568,6 +571,7 @@ export function mapTeamMember(p: ProfilOut): TeamMember {
     aspirationHorizon: '',
     evals: [],
     flag: null,
+    cvFilename: p.cv_filename ?? null,
   }
 }
 

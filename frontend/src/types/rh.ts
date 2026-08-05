@@ -19,6 +19,7 @@ export interface RhPerson {
   gaps: string[]
   riskDeparture?: boolean
   flag?: 'top' | 'watch' | null
+  cvFilename?: string | null // CV conservé du collaborateur (Lot 4) — null si aucun
 }
 
 /* ------------------------------------------------------------- Cartographie */

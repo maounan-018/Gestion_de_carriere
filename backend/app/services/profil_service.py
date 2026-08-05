@@ -15,6 +15,8 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select, delete
 from sqlalchemy.orm import Session
 
@@ -115,6 +117,26 @@ def appliquer_infos_cv(db: Session, profil_id: int, *, aspirations: str | None,
         db.commit()
 
 
+def profil_id_de_user(db: Session, user_id: int) -> int | None:
+    """Id du profil de carrière lié à un compte (None si aucun)."""
+    p = db.scalar(select(Profil).where(Profil.user_id == user_id))
+    return p.id if p else None
+
+
+def enregistrer_cv_fichier(db: Session, profil_id: int, *, filename: str) -> bool:
+    """Mémorise qu'un CV (fichier PDF) est associé au profil (nom d'origine +
+    horodatage). Le fichier lui-même est écrit par le contrôleur. False si le
+    profil n'existe pas. Source durable : le CV alimente extractions/analyses et
+    est présenté au manager / à la HRBP."""
+    p = db.get(Profil, profil_id)
+    if p is None:
+        return False
+    p.cv_filename = (filename or "cv.pdf")[:255]
+    p.cv_uploaded_at = datetime.now(timezone.utc)
+    db.commit()
+    return True
+
+
 def list_profils(db: Session, *, departement_key: str | None = None,
                  synthetique: bool | None = None, manager_id: int | None = None,
                  limit: int = 50, offset: int = 0) -> list[ProfilOut]:
@@ -184,6 +206,7 @@ def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
         bio=p.bio, poste_vise=p.poste_vise, horizon=p.horizon,
         type_evolution=p.type_evolution, mobilite_geo=p.mobilite_geo,
         disponibilite=p.disponibilite,
+        cv_filename=p.cv_filename, cv_uploaded_at=p.cv_uploaded_at,
         competences=[SkillNiveauOut.model_validate(c) for c in comps],
         stations=[StationOut.model_validate(s) for s in stations],
         avis_pairs=[PeerReviewOut.model_validate(a) for a in avis],

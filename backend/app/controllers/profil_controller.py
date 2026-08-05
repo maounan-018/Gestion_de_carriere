@@ -18,8 +18,11 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue aux services.
 """
 
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -36,6 +39,57 @@ from app.schemas.carriere import ProfilCarriereOut
 from app.services import profil_service, cv_extraction_service, profil_import_service
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
+
+# CV du collaborateur, conservé côté serveur (source durable ; distinct du CV
+# ponctuel attaché à une candidature). Un fichier par profil : data/cv_profil/{id}.pdf.
+_CV_PROFIL_DIR = os.path.join("data", "cv_profil")
+
+
+def _cv_profil_path(profil_id: int) -> str:
+    return os.path.join(_CV_PROFIL_DIR, f"{profil_id}.pdf")
+
+
+@router.post("/me/cv", response_model=ProfilCarriereOut,
+             summary="Téléverser / remplacer MON CV (PDF, conservé et présenté à mon manager / la HRBP)")
+async def uploader_mon_cv(fichier: UploadFile = File(...),
+                          user: User = Depends(get_current_user),
+                          db: Session = Depends(get_db)) -> ProfilCarriereOut:
+    """Le collaborateur dépose (ou remplace) le CV PDF de SON profil. Conservé
+    durablement côté serveur (`data/cv_profil/{id}.pdf`) : il alimente les
+    extractions/analyses et est présenté au manager et à la HRBP. Un nouveau dépôt
+    ÉCRASE le précédent (idempotent)."""
+    profil_id = profil_service.profil_id_de_user(db, user.id)
+    if profil_id is None:
+        raise HTTPException(status_code=404, detail="Aucun profil lié à ce compte.")
+    nom = (fichier.filename or "").lower()
+    if (fichier.content_type or "") != "application/pdf" and not nom.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Le CV doit être un fichier PDF.")
+    data = await fichier.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Fichier CV vide.")
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="CV trop volumineux (max 10 Mo).")
+    os.makedirs(_CV_PROFIL_DIR, exist_ok=True)
+    with open(_cv_profil_path(profil_id), "wb") as f:
+        f.write(data)
+    profil_service.enregistrer_cv_fichier(db, profil_id, filename=fichier.filename or "cv.pdf")
+    out = profil_service.get_carriere(db, profil_id)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    return out
+
+
+@router.get("/{profil_id}/cv",
+            summary="Télécharger le CV d'un profil (propriétaire, son manager, ou RH/ADMIN)")
+def telecharger_cv(profil_id: int, user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)) -> FileResponse:
+    """Sert le CV PDF conservé du profil. Ownership : propriétaire, son manager, ou
+    RH/ADMIN (mêmes règles que la consultation du profil). 404 si aucun CV."""
+    ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
+    path = _cv_profil_path(profil_id)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Aucun CV pour ce profil.")
+    return FileResponse(path, media_type="application/pdf", filename=f"cv-profil-{profil_id}.pdf")
 
 
 @router.post("/import-excel", response_model=ImportResult,

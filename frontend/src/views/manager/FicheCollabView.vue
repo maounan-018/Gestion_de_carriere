@@ -149,6 +149,22 @@ async function submitEval() {
             <p class="mt-1 text-xs text-ink-2">Horizon {{ m.aspirationHorizon }}</p>
           </div>
         </BaseCard>
+        <BaseCard title="CV du collaborateur">
+          <a
+            v-if="m.cvFilename"
+            :href="apiService.cvUrl(Number(m.id))"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-3 rounded-xl border border-green-line bg-green-ghost p-3 transition hover:bg-green-soft"
+          >
+            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><AppIcon name="brief" :size="16" /></div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-bold text-green-deep">{{ m.cvFilename }}</p>
+              <p class="text-xs text-ink-3">Ouvrir le CV (PDF)</p>
+            </div>
+          </a>
+          <p v-else class="text-sm text-ink-3">Aucun CV déposé par ce collaborateur.</p>
+        </BaseCard>
         <BaseCard title="Actions">
           <div class="space-y-2">
             <BaseButton block @click="showEval = true">
