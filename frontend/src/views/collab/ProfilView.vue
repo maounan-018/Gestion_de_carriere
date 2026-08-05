@@ -5,6 +5,7 @@ import { useSessionStore } from '@/stores/session'
 import { useToast } from '@/composables/useToast'
 import { apiService } from '@/services/apiService'
 import type { CollabProfile, MobiliteItem } from '@/types/domain'
+import { byPctDesc, scoreText, scoreBar } from '@/utils/score'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
@@ -121,12 +122,12 @@ function goOffres(metier: string) {
       <div class="space-y-5">
         <BaseCard title="Mes compétences">
           <div class="space-y-3">
-            <div v-for="s in profile.skills" :key="s.label">
+            <div v-for="s in byPctDesc(profile.skills)" :key="s.label">
               <div class="mb-1 flex items-center justify-between text-sm">
-                <span class="text-ink-2">{{ s.label }}</span><b class="text-ink">{{ s.pct }} %</b>
+                <span class="text-ink-2">{{ s.label }}</span><b :class="scoreText(s.pct)">{{ s.pct }} %</b>
               </div>
               <div class="h-2 overflow-hidden rounded-full bg-panel-2">
-                <div class="h-full rounded-full" :class="s.pct < 55 ? 'bg-warning' : 'bg-green'" :style="{ width: s.pct + '%' }" />
+                <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
               </div>
             </div>
           </div>

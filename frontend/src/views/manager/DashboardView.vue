@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
+import { kpiAccent } from '@/utils/kpiAccent'
 import type { TeamMember, KpiCard } from '@/types/manager'
 import type { NotificationItem } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -86,12 +87,12 @@ onMounted(load)
       <!-- KPIs -->
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <RouterLink
-          v-for="k in kpis"
+          v-for="(k, i) in kpis"
           :key="k.label"
           :to="{ name: k.to }"
           class="rounded-2xl border border-border bg-paper p-4 shadow-card transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float"
         >
-          <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-soft text-green-deep">
+          <div class="grid h-9 w-9 place-items-center rounded-lg" :class="kpiAccent(i)">
             <AppIcon :name="k.icon" :size="16" />
           </div>
           <div class="mt-2 font-display text-2xl font-extrabold text-ink">{{ k.value }}</div>

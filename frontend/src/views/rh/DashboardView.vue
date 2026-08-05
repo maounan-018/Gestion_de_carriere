@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
 import { apiService } from '@/services/apiService'
+import { kpiAccent } from '@/utils/kpiAccent'
 import type { RhKpi, RhAlert, CartoMatrix, SyntheseRh } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -98,8 +99,8 @@ async function lancerAnalyse() {
 
     <template v-else>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div v-for="k in kpis" :key="k.label" class="rounded-2xl border border-border bg-paper p-4 shadow-card">
-          <div class="grid h-9 w-9 place-items-center rounded-lg bg-green-soft text-green-deep">
+        <div v-for="(k, i) in kpis" :key="k.label" class="rounded-2xl border border-border bg-paper p-4 shadow-card">
+          <div class="grid h-9 w-9 place-items-center rounded-lg" :class="kpiAccent(i)">
             <AppIcon :name="k.icon" :size="16" />
           </div>
           <div class="mt-2 font-display text-2xl font-extrabold text-ink">{{ k.value }}</div>

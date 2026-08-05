@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/session'
+import { byPctDesc, scoreText, scoreBar } from '@/utils/score'
 import { apiService } from '@/services/apiService'
 import type { CollabProfile } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -79,13 +80,13 @@ onMounted(load)
       <div class="grid gap-5 lg:grid-cols-2">
         <BaseCard title="Mes compétences">
           <div class="space-y-3">
-            <div v-for="s in profile.skills" :key="s.label">
+            <div v-for="s in byPctDesc(profile.skills)" :key="s.label">
               <div class="mb-1 flex justify-between text-xs">
                 <span class="font-medium text-ink-2">{{ s.label }}</span>
-                <span class="text-ink-3">{{ s.pct }}%</span>
+                <span class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
               </div>
               <div class="h-1.5 overflow-hidden rounded-full bg-panel-2">
-                <div class="h-full rounded-full bg-green" :style="{ width: s.pct + '%' }" />
+                <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
               </div>
             </div>
           </div>
