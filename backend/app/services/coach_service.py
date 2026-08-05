@@ -103,15 +103,32 @@ def chat(db: Session, user_id: int, message: str, history: list) -> dict:
 # Le coach interroge lui-même les VRAIES données via des outils déterministes et
 # rapides (pas de LLM imbriqué) : offres compatibles + catalogue de formations.
 
-def _tool_offres_compatibles(db: Session, user_id: int, _args: dict) -> str:
-    """Top offres internes compatibles avec le profil du collaborateur (fondé sur
-    l'évaluateur déterministe, pas d'Ollama)."""
+def _tool_offres_compatibles(db: Session, user_id: int, args: dict) -> str:
+    """Offres internes compatibles avec le profil, PAGINÉES et filtrables (fondé sur
+    l'évaluateur déterministe, pas d'Ollama). Renvoie une page + de quoi demander la
+    SUITE (`offset_suivant`, `reste`) pour que le coach ne répète pas les mêmes offres."""
     from app.services import offre_service
-    offres = offre_service.list_compatibles_for_user(db, user_id)[:5]
-    return json.dumps([
-        {"titre": o.titre, "type": o.type, "compatibilite_pct": o.score_compat,
-         "competences_couvertes": o.couvertes, "a_developper": o.ecarts}
-        for o in offres], ensure_ascii=False)
+    a = args if isinstance(args, dict) else {}
+    try:
+        offset = max(0, int(a.get("offset") or 0))
+        limit = min(10, max(1, int(a.get("limit") or 5)))
+    except (TypeError, ValueError):
+        offset, limit = 0, 5
+    filtre = (a.get("filtre") or "").strip().lower()
+    toutes = offre_service.list_compatibles_for_user(db, user_id)
+    if filtre:
+        toutes = [o for o in toutes
+                  if filtre in (o.titre or "").lower() or filtre in (o.type or "").lower()]
+    page = toutes[offset:offset + limit]
+    return json.dumps({
+        "offres": [
+            {"titre": o.titre, "type": o.type, "compatibilite_pct": o.score_compat,
+             "competences_couvertes": o.couvertes, "a_developper": o.ecarts}
+            for o in page],
+        "total": len(toutes),
+        "reste": max(0, len(toutes) - (offset + len(page))),
+        "offset_suivant": offset + len(page),
+    }, ensure_ascii=False)
 
 
 def _tool_formations(db: Session, _user_id: int, args: dict) -> str:
@@ -129,21 +146,33 @@ def _tool_formations(db: Session, _user_id: int, args: dict) -> str:
         for f in rows], ensure_ascii=False)
 
 
-def _tool_passerelles_mobilite(db: Session, user_id: int, _args: dict) -> str:
+def _tool_passerelles_mobilite(db: Session, user_id: int, args: dict) -> str:
     """Métiers de MOBILITÉ proches (référentiel ESCO/O*NET) fondés sur les compétences
-    DÉTENUES du collaborateur via le graphe (déterministe, pas d'Ollama)."""
+    DÉTENUES du collaborateur via le graphe (déterministe, pas d'Ollama). Paginé pour
+    pouvoir en proposer d'AUTRES à la demande (`offset_suivant`, `reste`)."""
     from app.services import profil_service
     p = db.scalar(select(Profil).where(Profil.user_id == user_id))
     if p is None:
         return json.dumps({"info": "Aucun profil rattaché à ce compte."}, ensure_ascii=False)
-    passerelles = profil_service.passerelles_mobilite(db, p.id, k=5) or []
-    if not passerelles:
+    a = args if isinstance(args, dict) else {}
+    try:
+        offset = max(0, int(a.get("offset") or 0))
+        limit = min(10, max(1, int(a.get("limit") or 5)))
+    except (TypeError, ValueError):
+        offset, limit = 0, 5
+    toutes = profil_service.passerelles_mobilite(db, p.id, k=offset + limit + 5) or []
+    if not toutes:
         return json.dumps({"info": "Aucune passerelle : compétences détenues trop peu "
                            "ancrées au référentiel."}, ensure_ascii=False)
-    return json.dumps([
-        {"metier": m["metier"], "source": m["source"],
-         "competences_partagees": m["competences_partagees"]}
-        for m in passerelles], ensure_ascii=False)
+    page = toutes[offset:offset + limit]
+    return json.dumps({
+        "passerelles": [
+            {"metier": m["metier"], "source": m["source"],
+             "competences_partagees": m["competences_partagees"]}
+            for m in page],
+        "reste": max(0, len(toutes) - (offset + len(page))),
+        "offset_suivant": offset + len(page),
+    }, ensure_ascii=False)
 
 
 def _tool_definir_competence(db: Session, _user_id: int, args: dict) -> str:
@@ -166,11 +195,18 @@ def _tool_definir_competence(db: Session, _user_id: int, args: dict) -> str:
 _TOOLS = [
     {"type": "function", "function": {
         "name": "chercher_offres_compatibles",
-        "description": ("Renvoie les offres internes les plus compatibles avec le profil du "
-                        "collaborateur connecté (titre, type, % de compatibilité, nb de "
-                        "compétences couvertes / à développer). Utilise-le pour recommander "
-                        "des opportunités CONCRÈTES plutôt qu'inventer."),
-        "parameters": {"type": "object", "properties": {}, "required": []}}},
+        "description": ("Renvoie une PAGE d'offres internes compatibles avec le profil du "
+                        "collaborateur connecté (titre, type, % de compatibilité, compétences "
+                        "couvertes / à développer), + `total`, `reste` et `offset_suivant`. "
+                        "Utilise-le pour recommander des opportunités CONCRÈTES. Si le "
+                        "collaborateur demande D'AUTRES offres, rappelle l'outil avec "
+                        "`offset` = l'`offset_suivant` renvoyé au tour précédent (NE répète "
+                        "JAMAIS les mêmes offres). `filtre` restreint par titre/type."),
+        "parameters": {"type": "object", "properties": {
+            "offset": {"type": "integer", "description": "index de départ (0 par défaut ; pour « plus d'offres », reprends offset_suivant)"},
+            "limit": {"type": "integer", "description": "nombre d'offres par page (défaut 5, max 10)"},
+            "filtre": {"type": "string", "description": "filtre optionnel sur le titre/type (ex. « mission », « conseiller »)"}},
+            "required": []}}},
     {"type": "function", "function": {
         "name": "lister_formations",
         "description": ("Renvoie des formations du catalogue interne (titre, organisme, "
@@ -181,11 +217,15 @@ _TOOLS = [
             "required": []}}},
     {"type": "function", "function": {
         "name": "passerelles_mobilite",
-        "description": ("Renvoie les métiers de MOBILITÉ INTERNE proches du profil du "
+        "description": ("Renvoie une PAGE de métiers de MOBILITÉ INTERNE proches du profil du "
                         "collaborateur connecté (fondés sur ses compétences détenues et le "
-                        "graphe ESCO/O*NET). Utilise-le pour suggérer des TRAJECTOIRES "
-                        "concrètes (« vers quel métier évoluer ? »)."),
-        "parameters": {"type": "object", "properties": {}, "required": []}}},
+                        "graphe ESCO/O*NET), + `reste` et `offset_suivant`. Utilise-le pour "
+                        "suggérer des TRAJECTOIRES concrètes. Pour en proposer D'AUTRES, "
+                        "rappelle avec `offset` = `offset_suivant` (ne répète pas)."),
+        "parameters": {"type": "object", "properties": {
+            "offset": {"type": "integer", "description": "index de départ (0 par défaut ; pour « plus », reprends offset_suivant)"},
+            "limit": {"type": "integer", "description": "nombre de métiers par page (défaut 5, max 10)"}},
+            "required": []}}},
     {"type": "function", "function": {
         "name": "definir_competence",
         "description": ("Renvoie la définition et le type d'une compétence depuis le "
