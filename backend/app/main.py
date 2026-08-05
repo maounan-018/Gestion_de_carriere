@@ -17,6 +17,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 from app.core.config import settings
 from app.core.http_hardening import SecurityHeadersMiddleware
@@ -55,6 +56,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*", settings.CSRF_HEADER],
 )
+
+# Compression GZip des réponses (listes offres/candidatures, cartographie, synthèse
+# RH…). N'agit que sur les réponses > 1 Ko qui acceptent gzip ; gère aussi le
+# streaming (SSE non compressé car petits événements). Gain bande passante/latence.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Durcissement HTTP — ajouté APRÈS le CORS => couche la PLUS EXTERNE (Starlette
 # applique les middlewares dans l'ordre inverse d'ajout) : en-têtes de sécurité
