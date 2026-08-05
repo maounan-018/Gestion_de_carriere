@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { RecoData } from '@/types/domain'
+import { scoreText } from '@/utils/score'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -52,7 +53,7 @@ const planParas = computed<string[]>(() =>
           </p>
         </div>
         <div class="text-center">
-          <div class="font-display text-3xl font-extrabold text-green-deep">{{ reco.pct }}%</div>
+          <div class="font-display text-3xl font-extrabold" :class="scoreText(reco.pct)">{{ reco.pct }}%</div>
           <div class="text-xs text-ink-3">adéquation</div>
         </div>
         <RouterLink :to="{ name: 'manager.coach' }">

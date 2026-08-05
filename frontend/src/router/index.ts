@@ -97,7 +97,19 @@ const collabDetailRoutes: RouteRecordRaw[] = [
     path: 'collab/souhaits',
     name: 'collab.souhaits',
     component: () => import('@/views/collab/SouhaitsView.vue'),
-    meta: { roles: ['collab'], title: 'Mes souhaits' },
+    meta: { roles: ['collab'], title: "Mes demandes d'évolution" },
+  },
+  {
+    path: 'collab/passerelles',
+    name: 'collab.passerelles',
+    component: () => import('@/views/collab/PasserellesView.vue'),
+    meta: { roles: ['collab'], title: 'Passerelles métiers' },
+  },
+  {
+    path: 'collab/passerelle/:metier',
+    name: 'collab.passerelleDetail',
+    component: () => import('@/views/collab/PasserelleDetailView.vue'),
+    meta: { roles: ['collab'], title: 'Passerelle métier' },
   },
   {
     path: 'collab/collegue/:id',
@@ -119,7 +131,7 @@ const managerDetailRoutes: RouteRecordRaw[] = [
     path: 'manager/souhaits-recus',
     name: 'manager.souhaitsRecus',
     component: () => import('@/views/manager/SouhaitsRecusView.vue'),
-    meta: { roles: ['manager'], title: "Souhaits d'évolution reçus" },
+    meta: { roles: ['manager'], title: "Demandes d'évolution reçues" },
   },
   {
     path: 'manager/poste/:key/profils',
