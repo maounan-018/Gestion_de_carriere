@@ -13,10 +13,8 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP, délègue au service.
 """
 
-import json
-
 from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.sse import EventSourceResponse, ServerSentEvent
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db, SessionLocal
@@ -40,13 +38,14 @@ def coach(req: CoachRequest, user: User = Depends(get_current_user),
 
 @router.post("/stream", dependencies=[Depends(ia_rate_limit)],
              summary="Dialoguer avec mon Coach Carrière (réponse en streaming SSE)")
-def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> StreamingResponse:
+def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> EventSourceResponse:
     """Même coach agentique, mais la réponse arrive en flux (Server-Sent Events).
 
-    Événements `data:` (JSON) : `{"type":"tool","name":…}` (donnée interrogée),
-    `{"type":"token","text":…}` (fragment de réponse), `{"type":"reset"}`,
-    `{"type":"done","model":…,"outils":[…]}`. Le front lit ce flux via `fetch`
-    (POST + cookie + CSRF), pas `EventSource` (qui ne gère ni en-tête ni corps).
+    SSE natif FastAPI (`EventSourceResponse`) : keep-alive périodique, Cache-Control
+    et X-Accel-Buffering (anti-buffering proxy) gérés AUTOMATIQUEMENT. Chaque
+    événement est un `ServerSentEvent(data=…)` (encodé JSON dans le champ `data:`) :
+    `{"type":"tool",…}` (donnée interrogée), `{"type":"token","text":…}` (fragment),
+    `{"type":"reset"}`, `{"type":"done",…}`. Le front lit via `fetch` (POST+cookie+CSRF).
 
     Session DB DÉDIÉE au flux : celle de la requête se fermerait avant la fin du
     streaming. On lit `user.id` avant de streamer (l'objet User est lié à la
@@ -61,11 +60,8 @@ def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> S
                 mode=req.mode, section=req.section, focus=req.focus,
                 ouverture=req.ouverture, sujet=req.sujet,
             ):
-                yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                yield ServerSentEvent(data=ev)
         finally:
             db.close()
 
-    return StreamingResponse(event_source(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache",
-                                      "X-Accel-Buffering": "no",   # pas de buffering proxy (nginx)
-                                      "Connection": "keep-alive"})
+    return EventSourceResponse(event_source())
