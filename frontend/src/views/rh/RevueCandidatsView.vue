@@ -128,7 +128,7 @@ async function reevaluer(c: RhCandidate) {
         <div class="mt-3 flex items-start gap-2 rounded-xl border border-green-line bg-green-ghost p-3">
           <Sparkles :size="15" class="mt-0.5 shrink-0 text-green-deep" />
           <p class="text-xs text-ink-2">
-            Le <b>score de compatibilité</b> mesure la couverture des compétences du poste — c'est une
+            Le <b>score de compatibilité</b> mesure la couverture des compétences du poste · c'est une
             aide à la décision, <b>pas un filtre</b> : tous les candidats restent consultables, y
             compris ceux sous le seuil.
           </p>

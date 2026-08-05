@@ -26,7 +26,7 @@ const modalOpen = ref(false)
     <div
       class="inline-flex items-center gap-2 rounded-full bg-gold-soft px-3 py-1 text-xs font-extrabold text-gold"
     >
-      M1 · Design system + shell — données de démonstration synthétiques
+      M1 · Design system + shell · données de démonstration synthétiques
     </div>
     <h1 class="mt-3 font-display text-2xl font-extrabold text-ink">
       Bibliothèque de composants « La Courbe »

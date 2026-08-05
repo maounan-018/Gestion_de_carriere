@@ -32,7 +32,7 @@ const router = useRouter()
         </h1>
         <p class="mt-4 max-w-lg text-ink-2">
           Une plateforme qui relie vos entretiens, vos compétences et les opportunités internes du
-          Groupe — pour tracer, avec vous, la suite du parcours.
+          Groupe, pour tracer, avec vous, la suite du parcours.
         </p>
 
         <div class="mt-6 flex flex-wrap gap-3">
@@ -53,14 +53,11 @@ const router = useRouter()
       <div class="hidden lg:block">
         <div class="rounded-3xl border border-border bg-paper p-8 shadow-float">
           <div class="text-xs font-bold uppercase tracking-wide text-green-deep">
-            La Courbe
+            Votre parcours
           </div>
-          <div class="mt-1">
-            <span class="font-display text-xl font-extrabold text-ink">Votre prochaine station</span>
-          </div>
-          <p class="mt-4 text-sm text-ink-2">
-            « La Courbe » relie compétences, aspirations et opportunités pour éclairer chaque
-            prochaine étape de votre parcours.
+          <p class="mt-3 font-display text-lg font-semibold leading-snug text-ink">
+            Reliez compétences, aspirations et opportunités pour éclairer chaque prochaine étape de
+            votre parcours.
           </p>
         </div>
       </div>

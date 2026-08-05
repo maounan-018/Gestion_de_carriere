@@ -65,7 +65,7 @@ async function submitCv() {
   }
 }
 
-// Auto-service : éditer mon profil (composant partagé riche) — PATCH /profils/me.
+// Auto-service : éditer mon profil (composant partagé riche) · PATCH /profils/me.
 const showEdit = ref(false)
 
 const stars = (n: number) => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n)

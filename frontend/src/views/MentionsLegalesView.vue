@@ -21,7 +21,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
         <section>
           <h2 class="font-display text-base font-bold text-ink">Éditeur</h2>
           <p class="mt-1">
-            Plateforme interne « La Courbe » — Groupe BMCI (BNP Paribas). Données de démonstration
+            Plateforme interne « La Courbe » · Groupe BMCI (BNP Paribas). Données de démonstration
             synthétiques : aucune donnée réelle de collaborateur n'est traitée dans cette maquette.
           </p>
         </section>
@@ -45,17 +45,17 @@ import BaseButton from '@/components/ui/BaseButton.vue'
           </p>
           <ul class="mt-2 space-y-2">
             <li class="rounded-xl border border-border bg-paper p-3">
-              <b class="text-ink">ESCO</b> — European Skills, Competences, Qualifications and
+              <b class="text-ink">ESCO</b> · European Skills, Competences, Qualifications and
               Occupations. © Union européenne, Commission européenne. Diffusé sous licence Creative
               Commons Attribution 4.0 (CC BY 4.0).
             </li>
             <li class="rounded-xl border border-border bg-paper p-3">
-              <b class="text-ink">O*NET</b> — Occupational Information Network. © U.S. Department of
+              <b class="text-ink">O*NET</b> · Occupational Information Network. © U.S. Department of
               Labor, Employment and Training Administration. Utilisé sous licence Creative Commons
               Attribution 4.0 (CC BY 4.0).
             </li>
             <li class="rounded-xl border border-border bg-paper p-3">
-              <b class="text-ink">SFIA</b> — Skills Framework for the Information Age. © SFIA
+              <b class="text-ink">SFIA</b> · Skills Framework for the Information Age. © SFIA
               Foundation. Utilisé dans le cadre de la licence SFIA applicable.
             </li>
           </ul>

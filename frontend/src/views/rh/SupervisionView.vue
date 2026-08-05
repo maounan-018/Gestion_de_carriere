@@ -55,7 +55,7 @@ function pct(i: Item): number {
         <div class="min-w-0 flex-1">
           <h3 class="font-display text-base font-bold text-ink">Supervision de la plateforme</h3>
           <p class="text-sm text-ink-3">
-            Analyse de la qualité des données talents — scans réels de la base, à la demande.
+            Analyse de la qualité des données talents · scans réels de la base, à la demande.
           </p>
         </div>
         <BaseButton variant="secondary" size="sm" :disabled="loading" @click="scan(true)">

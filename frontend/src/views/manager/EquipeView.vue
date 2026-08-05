@@ -95,7 +95,7 @@ async function sendRh() {
       </div>
       <LoadingState v-if="cartoLoading" label="Chargement de la cartographie…" />
       <Heatmap v-else-if="carto && carto.lignes.length" :familles="carto.familles" :lignes="carto.lignes" />
-      <p v-else class="text-sm text-ink-3">Aucune compétence ancrée pour cette équipe pour le moment.</p>
+      <p v-else class="text-sm text-ink-3">Aucune compétence évaluée pour cette équipe pour le moment.</p>
     </div>
 
     <LoadingState v-if="loading" label="Chargement de l'équipe…" />
@@ -139,7 +139,7 @@ async function sendRh() {
           <input
             v-model="rhSujet"
             maxlength="200"
-            placeholder="Ex. Besoin de renfort — Retail Banking"
+            placeholder="Ex. Besoin de renfort · Retail Banking"
             class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green-line"
           />
         </div>

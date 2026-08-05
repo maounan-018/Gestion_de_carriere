@@ -117,7 +117,7 @@ async function generateSuccession() {
           </BaseButton>
         </div>
         <p v-if="succBusy" class="mt-2 text-xs text-ink-3">
-          Raisonnement IA en cours — cela peut prendre plus d'une minute.
+          Raisonnement IA en cours · cela peut prendre plus d'une minute.
         </p>
 
         <div v-if="succPlan" class="mt-4 rounded-xl border border-border bg-panel p-4">

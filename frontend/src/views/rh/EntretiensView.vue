@@ -107,7 +107,7 @@ const totals = computed(() => {
       <!-- Cas concrets à traiter : qui recevoir, quel manager, depuis quand. -->
       <BaseCard v-if="casShown.length" title="Cas à traiter">
         <p class="mb-3 text-sm text-ink-3">
-          Collaborateurs à recevoir en entretien et managers qui doivent le réaliser — en retard d'abord.
+          Collaborateurs à recevoir en entretien et managers qui doivent le réaliser · en retard d'abord.
         </p>
         <div class="max-h-[520px] overflow-auto rounded-xl border border-border">
           <table class="w-full text-left text-sm">

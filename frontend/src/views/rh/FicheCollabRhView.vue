@@ -36,7 +36,7 @@ async function load() {
 onMounted(load)
 watch(() => route.params.id, load)
 
-// Édition RH du profil (PATCH /profils/{id} — réservé RH/ADMIN).
+// Édition RH du profil (PATCH /profils/{id} · réservé RH/ADMIN).
 const showEdit = ref(false)
 const saving = ref(false)
 const editPoste = ref('')
@@ -149,7 +149,7 @@ async function save() {
     </div>
 
     <!-- Édition RH du profil -->
-    <BaseModal v-model="showEdit" :title="`Éditer — ${p.name}`">
+    <BaseModal v-model="showEdit" :title="`Éditer · ${p.name}`">
       <div class="space-y-4">
         <div>
           <label for="edit-poste" class="mb-1.5 block text-xs font-semibold text-ink-2">Poste actuel</label>

@@ -55,7 +55,7 @@ function enroll(f: Formation) {
   } else {
     f.status = 'in-progress'
     f.progress = 5
-    toast('Inscription enregistrée — formation ajoutée à « En cours »', 'ok')
+    toast('Inscription enregistrée · formation ajoutée à « En cours »', 'ok')
   }
   detail.value = null
 }
@@ -209,10 +209,10 @@ const STATUS: Record<FormationStatus, { label: string; tone: 'new' | 'ai' | 'ok'
         <div class="my-4 h-px bg-green-line" />
         <p class="text-sm text-ink-2">
           Délivrée à <b class="text-ink">{{ session.user?.name || 'Collaborateur' }}</b>
-          <span v-if="session.user?.title"> — {{ session.user.title }}</span>
+          <span v-if="session.user?.title"> · {{ session.user.title }}</span>
         </p>
         <p class="mt-1 text-xs text-ink-3">Formation suivie avec succès · le {{ today }}</p>
-        <p class="mt-4 text-[11px] italic text-ink-3">Document de démonstration — sans valeur officielle.</p>
+        <p class="mt-4 text-[11px] italic text-ink-3">Document de démonstration · sans valeur officielle.</p>
       </div>
       <template #footer>
         <BaseButton size="sm" @click="showAtt = false">Fermer</BaseButton>

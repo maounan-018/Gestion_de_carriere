@@ -20,7 +20,7 @@ const needsCategorie = (k: GabaritKind) => k === 'freetext' || k === 'skill_list
 const inputCls =
   'w-full rounded-lg border border-border bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-green-line'
 
-// Référentiels ouverts mobilisés (attribution légale — statique, informatif).
+// Référentiels ouverts mobilisés (attribution légale · statique, informatif).
 const referentiels = [
   { code: 'ESCO', name: 'Skills, Competences & Occupations', role: 'Compétences & métiers', licence: 'CC BY 4.0' },
   { code: 'O*NET', name: 'Occupational Information Network', role: 'Aptitudes & activités', licence: 'CC BY 4.0' },
@@ -154,7 +154,7 @@ async function genererFiche() {
           <BookOpen :size="18" />
         </div>
         <div class="min-w-0">
-          <h1 class="font-display text-lg font-bold text-ink">Référentiel & gabarit — édition</h1>
+          <h1 class="font-display text-lg font-bold text-ink">Référentiel & gabarit · édition</h1>
           <p class="text-sm text-ink-3">
             Le socle qui structure les fiches de poste, la cartographie et le matching. Édition réservée RH/Admin ;
             chaque enregistrement est validé côté serveur (un référentiel invalide est refusé).
@@ -188,7 +188,7 @@ async function genererFiche() {
       <BaseCard title="Générer une fiche de poste (IA)">
         <p class="mb-3 text-xs text-ink-3">
           L'IA rédige une fiche synthétique pour un métier d'un département (compétences inférées du
-          graphe ESCO/O*NET/SFIA). Contenu de démonstration — jamais de données réelles.
+          graphe ESCO/O*NET/SFIA). Contenu de démonstration · jamais de données réelles.
         </p>
         <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <select v-model="genDept" :class="inputCls" aria-label="Département">

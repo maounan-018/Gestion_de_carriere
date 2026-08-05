@@ -31,16 +31,16 @@ const heat: Array<[number, string, boolean]> = [
       <div
         class="mb-6 inline-flex items-center gap-2 rounded-full bg-gold-soft px-3 py-1 text-xs font-extrabold text-gold"
       >
-        <Flag :size="13" /> Données de démonstration synthétiques — M0 · fondations
+        <Flag :size="13" /> Données de démonstration synthétiques · M0 · fondations
       </div>
 
       <h1 class="font-display text-4xl font-extrabold tracking-tight text-ink">
-        BMCI Carrière — <span class="text-green">La Courbe</span>
+        BMCI Carrière · <span class="text-green">La Courbe</span>
       </h1>
       <p class="mt-3 max-w-2xl leading-relaxed text-ink-2">
         Fondations du frontend <strong>Vue 3 + TypeScript</strong>. Cette page vérifie que la
         palette, les polices (Bricolage Grotesque + Hanken Grotesk, self-hostées) et Tailwind sont
-        bien câblés — avant de construire le design system (M1).
+        bien câblés · avant de construire le design system (M1).
       </p>
 
       <!-- Typographie -->
@@ -48,10 +48,10 @@ const heat: Array<[number, string, boolean]> = [
         <h2 class="font-display text-lg font-bold text-ink-2">Typographie</h2>
         <div class="mt-3 rounded-2xl border border-border bg-paper p-6 shadow-card">
           <p class="font-display text-2xl font-extrabold text-ink">
-            Bricolage Grotesque — titres &amp; chiffres clés
+            Bricolage Grotesque · titres &amp; chiffres clés
           </p>
           <p class="mt-2 text-ink-2">
-            Hanken Grotesk — corps de texte, interface, tableaux et libellés. Votre carrière suit
+            Hanken Grotesk · corps de texte, interface, tableaux et libellés. Votre carrière suit
             une <em class="text-green not-italic font-semibold">courbe</em>.
           </p>
         </div>
@@ -115,7 +115,7 @@ const heat: Array<[number, string, boolean]> = [
       </section>
 
       <p class="mt-12 text-xs text-ink-3">
-        © 2026 BMCI · Groupe BNP Paribas — plateforme locale « La Courbe ». Maquette de
+        © 2026 BMCI · Groupe BNP Paribas · plateforme locale « La Courbe ». Maquette de
         démonstration, données synthétiques.
       </p>
     </div>

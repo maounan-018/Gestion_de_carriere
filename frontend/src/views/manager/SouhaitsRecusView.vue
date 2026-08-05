@@ -54,7 +54,7 @@ async function confirmTransmit() {
   transmitting.value = true
   try {
     await apiService.communiquerRH(
-      `Recommandation — ${s.memberName} : ${s.title}`,
+      `Recommandation · ${s.memberName} : ${s.title}`,
       `Souhait d'évolution « ${s.title} » (${s.horizon}). Pourquoi je recommande `
         + `${s.memberName} : ${justification.value.trim()}`,
     )

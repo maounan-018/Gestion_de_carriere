@@ -75,7 +75,7 @@ async function transmitPlan() {
     const { delivered } = await apiService.messageProfil(
       target.id, 'Point de carrière proposé', message, 'collab.souhaits')
     toast(delivered
-      ? `Plan de rétention initié — ${target.name} a été invité·e à un point de carrière`
+      ? `Plan de rétention initié · ${target.name} a été invité·e à un point de carrière`
       : `Plan enregistré pour ${target.name} (pas de compte actif)`, 'ok')
     showPlan.value = false
   } catch (e) {

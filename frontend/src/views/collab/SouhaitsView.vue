@@ -212,7 +212,7 @@ async function push(s: Souhait) {
           <input v-model="form.pushNow" type="checkbox" class="mt-0.5 h-4 w-4 accent-green" />
           <span class="text-xs text-ink-2">
             <b class="text-green-deep">Transmettre à mon manager maintenant.</b>
-            Sinon, le souhait reste <b>privé</b> — visible de vous seul — jusqu'à ce que vous décidiez de le pousser.
+            Sinon, le souhait reste <b>privé</b> · visible de vous seul · jusqu'à ce que vous décidiez de le pousser.
           </span>
         </label>
       </form>

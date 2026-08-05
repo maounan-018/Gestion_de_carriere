@@ -49,7 +49,7 @@ function goOffres(metier: string) {
 </script>
 
 <template>
-  <LoadingState v-if="loading" label="Génération de vos recommandations par l'IA locale — quelques secondes…" />
+  <LoadingState v-if="loading" label="Génération de vos recommandations par l'IA locale · quelques secondes…" />
   <ErrorState v-else-if="error" :message="error">
     <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
   </ErrorState>
