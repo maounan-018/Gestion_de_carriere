@@ -47,5 +47,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-# CV téléversés (candidatures) — non versionnés
+# CV téléversés (candidatures + profils) — non versionnés
 backend/data/cv/
+backend/data/cv_profil/
