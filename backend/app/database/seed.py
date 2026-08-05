@@ -4,7 +4,7 @@ database/seed.py — Seed des comptes de démo + personas synthétiques (Bloc C)
 
 RÔLE
     Provisionne les comptes nécessaires pour tester l'authentification et le RBAC
-    route par route, et les personas des maquettes (Marc Bennani / Jean-Marc Dupont
+    route par route, et les personas des maquettes (Youssef El Amrani / Karim Naji
     / Nadia Alami) avec leur `Profil` de carrière. Sans ces comptes, `users=0` et
     aucun guard RBAC n'est éprouvable.
 
@@ -83,7 +83,7 @@ PERSONAS = [
         "competences_from_fiche": None,
     },
     {
-        "email": "jeanmarc.dupont@bmci.local", "name": "Jean-Marc Dupont", "role": Role.MANAGER,
+        "email": "karim.naji@bmci.local", "name": "Karim Naji", "role": Role.MANAGER,
         "departement_key": "retail_banking", "matricule": "MG-1088",
         "poste_actuel": "Directeur d'agence", "manager_email": None,
         "aspirations": "Évoluer vers un poste de Directeur Exécutif du réseau.",
@@ -94,9 +94,9 @@ PERSONAS = [
         "competences_from_fiche": None,
     },
     {
-        "email": "marc.bennani@bmci.local", "name": "Marc Bennani", "role": Role.COLLAB,
+        "email": "youssef.elamrani@bmci.local", "name": "Youssef El Amrani", "role": Role.COLLAB,
         "departement_key": "retail_banking", "matricule": "CB-3390",
-        "poste_actuel": "Conseiller clientèle particuliers", "manager_email": "jeanmarc.dupont@bmci.local",
+        "poste_actuel": "Conseiller clientèle particuliers", "manager_email": "karim.naji@bmci.local",
         "aspirations": "Devenir Chargé d'affaires professionnels.",
         # Compétences dérivées de la vraie fiche #1 (matching réaliste, partiel).
         "competences": [],
@@ -164,29 +164,29 @@ def _get_or_create_profil(db: Session, user: User, spec: dict) -> tuple[Profil |
 _OFFRE_PLAN = [
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #1
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #2
-    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),   # cible Marc (#2)
-    ("gig",         "ouverte",   "jeanmarc.dupont@bmci.local", True),
-    ("projet",      "brouillon", "jeanmarc.dupont@bmci.local", True),
+    ("mission",     "ouverte",   "karim.naji@bmci.local", True),   # cible Youssef (#2)
+    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
+    ("projet",      "brouillon", "karim.naji@bmci.local", True),
     ("offre_poste", "pourvue",   "nadia.alami@bmci.local",     False),
     # --- Catalogue élargi : postes/missions/projets répartis sur les départements ---
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("projet",      "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("projet",      "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("gig",         "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("projet",      "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("projet",      "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
     ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("gig",         "ouverte",   "jeanmarc.dupont@bmci.local", True),
+    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
 ]
 _TYPE_LABEL = {"mission": "Mission", "projet": "Projet", "gig": "Gig"}  # offre_poste = pas de suffixe
 
@@ -225,7 +225,7 @@ def _seed_offres(db: Session, fiches: list[Fiche],
     Renvoie (offre_ids alignés sur `fiches`, résumé créées/existantes)."""
     res = {"offres_created": [], "offres_existing": []}
     offre_ids: list[int] = []
-    mgr = users_by_email.get("jeanmarc.dupont@bmci.local")
+    mgr = users_by_email.get("karim.naji@bmci.local")
     for i, fiche in enumerate(fiches):
         type_, statut, creator_email, avec_mgr = _OFFRE_PLAN[i % len(_OFFRE_PLAN)]
         suffix = _TYPE_LABEL.get(type_)
@@ -313,7 +313,7 @@ def _seed_candidatures(db: Session, offre_ids: list[int],
     for profil, cible_idx in candidate_profils:
         _postuler(_offre(cible_idx), profil.id, "[DÉMO] Candidature synthétique")
 
-    # Le collaborateur Marc Bennani -> cible #0 (poste) + la mission (#2).
+    # Le collaborateur Youssef El Amrani -> cible #0 (poste) + la mission (#2).
     if marc_profil is not None:
         _postuler(_offre(0), marc_profil.id, "[DÉMO] Intéressé par cette évolution.")
         _postuler(_offre(2), marc_profil.id, "[DÉMO] Disponible pour cette mission.")
@@ -453,17 +453,17 @@ def _seed_formations(db: Session) -> list[str]:
 # --- Notifications synthétiques par persona -----------------------------------
 # email -> [(type, titre, texte, route_destination)]
 _NOTIFS = {
-    "marc.bennani@bmci.local": [
+    "youssef.elamrani@bmci.local": [
         ("offre", "Nouvelle offre compatible",
          "Une offre « Conseiller clientèle » correspond à 78 % à votre profil.", "offres"),
         ("souhait", "Votre manager a consulté vos souhaits",
-         "Jean-Marc Dupont a consulté vos souhaits d'évolution.", "souhaitSuivi"),
+         "Karim Naji a consulté vos souhaits d'évolution.", "souhaitSuivi"),
         ("entretien", "Entretien annuel à préparer",
          "Pensez à préparer votre entretien de carrière.", "entretien"),
     ],
-    "jeanmarc.dupont@bmci.local": [
+    "karim.naji@bmci.local": [
         ("souhait", "Nouveau souhait d'un collaborateur",
-         "Marc Bennani a poussé un souhait d'évolution.", "souhaitsRecus"),
+         "Youssef El Amrani a poussé un souhait d'évolution.", "souhaitsRecus"),
         ("entretien", "Entretiens d'équipe à mener",
          "Il vous reste des entretiens annuels à réaliser ce trimestre.", "entretien"),
     ],
@@ -493,7 +493,7 @@ def _seed_notifications(db: Session, users_by_email: dict[str, User]) -> int:
     return created
 
 
-# --- Souhaits d'évolution du collaborateur Marc (dont un poussé au manager) ----
+# --- Souhaits d'évolution du collaborateur Youssef (dont un poussé au manager) ----
 _SOUHAITS_MARC = [
     ("Évoluer vers Chargé d'affaires professionnels", "carriere", "1-2 ans",
      "Je souhaite évoluer vers un poste de chargé d'affaires professionnels.", True),
@@ -503,7 +503,7 @@ _SOUHAITS_MARC = [
 
 
 def _seed_souhaits(db: Session, marc_profil: Profil | None) -> int:
-    """Souhaits de démo pour Marc (idempotent par profil+titre). Le souhait poussé
+    """Souhaits de démo pour Youssef (idempotent par profil+titre). Le souhait poussé
     devient visible du manager via /api/souhaits/recus."""
     if marc_profil is None:
         return 0
@@ -526,17 +526,17 @@ def _seed_souhaits(db: Session, marc_profil: Profil | None) -> int:
 # email -> (stations [(periode, titre, desc, etat, ordre)], avis [(auteur, role, initiales, texte, etoiles)])
 _P, _A, _O = StationEtat.PASSE, StationEtat.ACTUEL, StationEtat.OBJECTIF
 _CARRIERE = {
-    "marc.bennani@bmci.local": (
+    "youssef.elamrani@bmci.local": (
         [("2017", "Téléconseiller banque à distance", "Entrée à la BMCI, centre de relation client.", _P, 0),
          ("2020", "Conseiller clientèle digitale", "Accompagnement des clients sur les canaux en ligne.", _P, 1),
          ("Aujourd'hui", "Conseiller clientèle particuliers", "Poste actuel — portefeuille de clients particuliers.", _A, 2),
          ("Objectif", "Chargé d'affaires professionnels", "Évolution visée (1-2 ans).", _O, 3)],
-        [("Jean-Marc Dupont", "Directeur d'agence", "JD",
+        [("Karim Naji", "Directeur d'agence", "KN",
           "Très fiable, excellent relationnel client. Prêt pour plus de responsabilités.", 5),
          ("Salma Idrissi", "Collègue", "SI",
           "Toujours prêt à aider l'équipe, rigoureux sur la conformité.", 4)],
     ),
-    "jeanmarc.dupont@bmci.local": (
+    "karim.naji@bmci.local": (
         [("2016", "Conseiller professionnels", "Portefeuille PME.", _P, 0),
          ("2020", "Directeur adjoint", "Pilotage d'équipe commerciale.", _P, 1),
          ("Aujourd'hui", "Directeur d'agence", "Poste actuel.", _A, 2),
@@ -650,7 +650,7 @@ _FAM_LIBELLES: dict[str, list[str]] = {
 _CARTO_PRENOMS = ["Youssef", "Fatima", "Rachid", "Sophia", "Omar", "Leïla", "Yassine",
                   "Nadia", "Karim", "Salma", "Mehdi", "Imane", "Hamza", "Sara",
                   "Anas", "Khadija", "Reda", "Meryem"]
-_CARTO_NOMS = ["Alaoui", "Bennani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri",
+_CARTO_NOMS = ["Alaoui", "El Amrani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri",
                "Ouali", "Amrani", "Benjelloun", "El Malki", "Berrada", "Kabbaj",
                "Lahlou", "Naciri", "Squalli", "Tazi", "Zniber"]
 
@@ -715,7 +715,7 @@ _POP_PRENOMS = ["Youssef", "Fatima", "Rachid", "Sophia", "Omar", "Leila", "Yassi
     "Amine", "Hajar", "Nabil", "Ghita", "Tarik", "Nawal", "Zakaria", "Douae", "Ismail", "Wafaa",
     "Adil", "Loubna", "Soufiane", "Asmaa", "Bilal", "Rim", "Hicham", "Chaimae", "Othmane",
     "Siham", "Marouane", "Kenza"]
-_POP_NOMS = ["Alaoui", "Bennani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri", "Ouali",
+_POP_NOMS = ["Alaoui", "El Amrani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "Tahiri", "Ouali",
     "Amrani", "Benjelloun", "El Malki", "Berrada", "Kabbaj", "Lahlou", "Naciri", "Squalli",
     "Tazi", "Zniber", "Bennis", "Cherkaoui", "Guessous", "Haddad", "Jaidi", "Kadiri", "Lamrani",
     "Mansouri", "Nejjar", "Ouazzani", "Sbai", "Bouazza", "Filali", "Hilali", "Karimi", "Saidi",
@@ -907,12 +907,12 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
     #    attendus depuis la Fiche, score calculé côté serveur). Après l'audit
     #    ci-dessus : plus aucune connexion d'audit n'écrit en concurrence.
     if synthetic_offers and demo_accounts:
-        marc_user = users_by_email.get("marc.bennani@bmci.local")
+        marc_user = users_by_email.get("youssef.elamrani@bmci.local")
         marc_profil = (db.scalar(select(Profil).where(Profil.user_id == marc_user.id))
                        if marc_user else None)
         fiches = _pick_offre_fiches(db, n=len(_OFFRE_PLAN))
-        # Manager de l'équipe de démo (Jean-Marc) : rattache Marc + les candidats.
-        jm_user = users_by_email.get("jeanmarc.dupont@bmci.local")
+        # Manager de l'équipe de démo (Karim) : rattache Youssef + les candidats.
+        jm_user = users_by_email.get("karim.naji@bmci.local")
         jm_id = jm_user.id if jm_user else None
         if marc_profil is not None and jm_id and marc_profil.manager_id is None:
             marc_profil.manager_id = jm_id  # le collaborateur reporte au manager
@@ -983,8 +983,8 @@ def main() -> None:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")
         print("  RH      : nadia.alami@bmci.local")
-        print("  MANAGER : jeanmarc.dupont@bmci.local")
-        print("  COLLAB  : marc.bennani@bmci.local  (managé par Jean-Marc Dupont)")
+        print("  MANAGER : karim.naji@bmci.local")
+        print("  COLLAB  : youssef.elamrani@bmci.local  (managé par Karim Naji)")
 
 
 if __name__ == "__main__":

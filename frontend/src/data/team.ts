@@ -1,14 +1,14 @@
 import type { TeamMember, Vacancy, SouhaitRecu } from '@/types/manager'
 
 /**
- * Équipe du manager Jean-Marc Dupont (Directeur de Pôle Risques) — fixtures synthétiques.
+ * Équipe du manager Karim Naji (Directeur de Pôle Risques) — fixtures synthétiques.
  * Jeu de données partagé (les mêmes personnes reviennent côté RH — manque G23).
  */
 export const TEAM: TeamMember[] = [
   {
     id: 'aya',
     initials: 'AB',
-    name: 'Aya Bennani',
+    name: 'Aya El Amrani',
     role: "Chargée d'Affaires Senior",
     seniority: '6 ans',
     ring: 88,
@@ -26,8 +26,8 @@ export const TEAM: TeamMember[] = [
     aspiration: "Manager d'équipe Risques",
     aspirationHorizon: '12 mois',
     evals: [
-      { period: '2025', score: '4,8/5', comment: 'Performance commerciale remarquable, très bonne maîtrise du risque.', by: 'Jean-Marc Dupont' },
-      { period: '2024', score: '4,7/5', comment: 'Rigueur analytique au-dessus de la moyenne.', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '4,8/5', comment: 'Performance commerciale remarquable, très bonne maîtrise du risque.', by: 'Karim Naji' },
+      { period: '2024', score: '4,7/5', comment: 'Rigueur analytique au-dessus de la moyenne.', by: 'Karim Naji' },
     ],
     flag: 'top',
   },
@@ -52,7 +52,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Expert Modélisation Risque',
     aspirationHorizon: '12·18 mois',
     evals: [
-      { period: '2025', score: '4,3/5', comment: 'Solide sur la modélisation, à développer sur la communication.', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '4,3/5', comment: 'Solide sur la modélisation, à développer sur la communication.', by: 'Karim Naji' },
     ],
     flag: null,
   },
@@ -77,7 +77,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Management de transition',
     aspirationHorizon: '6·12 mois',
     evals: [
-      { period: '2025', score: '4,6/5', comment: 'Haut potentiel identifié par le moteur IA (score 92).', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '4,6/5', comment: 'Haut potentiel identifié par le moteur IA (score 92).', by: 'Karim Naji' },
     ],
     flag: 'top',
   },
@@ -101,7 +101,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Contrôleur de Gestion Senior',
     aspirationHorizon: '18 mois',
     evals: [
-      { period: '2025', score: '3,9/5', comment: 'Progression régulière, à ouvrir sur le partenariat métier.', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '3,9/5', comment: 'Progression régulière, à ouvrir sur le partenariat métier.', by: 'Karim Naji' },
     ],
     flag: null,
   },
@@ -125,7 +125,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Responsable Conformité',
     aspirationHorizon: '12 mois',
     evals: [
-      { period: '2025', score: '4,5/5', comment: 'Référente conformité, prête pour plus de responsabilités.', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '4,5/5', comment: 'Référente conformité, prête pour plus de responsabilités.', by: 'Karim Naji' },
     ],
     flag: 'top',
   },
@@ -149,7 +149,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'À clarifier en entretien',
     aspirationHorizon: '—',
     evals: [
-      { period: '2024', score: '3,4/5', comment: 'Signaux de désengagement · entretien RH en retard à programmer.', by: 'Jean-Marc Dupont' },
+      { period: '2024', score: '3,4/5', comment: 'Signaux de désengagement · entretien RH en retard à programmer.', by: 'Karim Naji' },
     ],
     flag: 'watch',
   },
@@ -173,7 +173,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Analyste Crédit confirmé',
     aspirationHorizon: '24 mois',
     evals: [
-      { period: '2025', score: '3,8/5', comment: "Bon démarrage, à accompagner vers l'autonomie.", by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '3,8/5', comment: "Bon démarrage, à accompagner vers l'autonomie.", by: 'Karim Naji' },
     ],
     flag: null,
   },
@@ -197,7 +197,7 @@ export const TEAM: TeamMember[] = [
     aspiration: 'Lead Data Risque',
     aspirationHorizon: '18 mois',
     evals: [
-      { period: '2025', score: '4,2/5', comment: 'Apporte une vraie valeur data à l’équipe.', by: 'Jean-Marc Dupont' },
+      { period: '2025', score: '4,2/5', comment: 'Apporte une vraie valeur data à l’équipe.', by: 'Karim Naji' },
     ],
     flag: null,
   },
@@ -249,7 +249,7 @@ export const SOUHAITS_RECUS: SouhaitRecu[] = [
   {
     id: 's1',
     memberId: 'aya',
-    memberName: 'Aya Bennani',
+    memberName: 'Aya El Amrani',
     memberInitials: 'AB',
     title: "Manager d'équipe Risques",
     kind: 'carriere',

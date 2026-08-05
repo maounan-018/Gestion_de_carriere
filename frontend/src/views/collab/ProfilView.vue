@@ -98,9 +98,9 @@ function goOffres(metier: string) {
   <div v-else-if="profile" class="space-y-5">
     <BaseCard>
       <div class="flex flex-wrap items-center gap-4">
-        <BaseAvatar :initials="session.user?.initials || 'MB'" size="xl" :photo="session.user?.photo" />
+        <BaseAvatar :initials="session.user?.initials || 'YE'" size="xl" :photo="session.user?.photo" />
         <div class="min-w-0 flex-1">
-          <h2 class="font-display text-xl font-bold text-ink">{{ session.user?.name || 'Marc Bennani' }}</h2>
+          <h2 class="font-display text-xl font-bold text-ink">{{ session.user?.name || 'Youssef El Amrani' }}</h2>
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
           <p class="mt-2 max-w-2xl text-sm text-ink-2">{{ profile.description }}</p>
         </div>

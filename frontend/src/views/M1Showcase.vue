@@ -89,11 +89,11 @@ const modalOpen = ref(false)
         <BasePill tone="ai">exemple</BasePill>
       </template>
       <div class="flex items-center gap-4">
-        <BaseAvatar initials="MB" size="sm" />
-        <BaseAvatar initials="MB" size="md" />
-        <BaseAvatar initials="MB" size="xl" />
+        <BaseAvatar initials="YE" size="sm" />
+        <BaseAvatar initials="YE" size="md" />
+        <BaseAvatar initials="YE" size="xl" />
         <div class="text-sm text-ink-2">
-          <div class="font-semibold text-ink">Marc Bennani</div>
+          <div class="font-semibold text-ink">Youssef El Amrani</div>
           <div class="text-xs text-ink-3">Analyste Risque Senior</div>
         </div>
       </div>

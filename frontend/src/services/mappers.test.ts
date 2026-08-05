@@ -172,7 +172,7 @@ describe('mapCandidature', () => {
 describe('mapProfil', () => {
   it('id, initiales, ring = niveau moyen ×20, pôle libellé', () => {
     const p: ProfilOut = {
-      id: 3, user_id: 4, nom: 'Bennani', prenom: 'Marc', matricule: 'CB-3390',
+      id: 3, user_id: 4, nom: 'El Amrani', prenom: 'Youssef', matricule: 'CB-3390',
       poste_actuel: 'Analyste', departement_key: 'risques', manager_id: 3,
       aspirations: 'Évoluer', synthetique: true, created_at: new Date().toISOString(),
       competences: [
@@ -182,7 +182,7 @@ describe('mapProfil', () => {
     }
     const r = mapProfil(p)
     expect(r.id).toBe('3')
-    expect(r.initials).toBe('MB')
+    expect(r.initials).toBe('YE')
     expect(r.ring).toBe(60) // moyenne (4+2)/2 = 3 → 60
     expect(r.pole).toBe('Risques')
   })
@@ -287,7 +287,7 @@ describe('mapVeille', () => {
 
 describe('mapCollabProfile', () => {
   const c: ProfilCarriereOut = {
-    profil_id: 3, nom: 'Bennani', prenom: 'Marc', poste_actuel: 'Analyste',
+    profil_id: 3, nom: 'El Amrani', prenom: 'Youssef', poste_actuel: 'Analyste',
     departement_key: 'risques', aspirations: 'Manager',
     competences: [
       { libelle: 'A', categorie: null, niveau: 4 },
@@ -298,7 +298,7 @@ describe('mapCollabProfile', () => {
       { periode: 'Objectif', titre: 'Manager', description: 'cible', etat: 'objectif', ordre: 3 },
       { periode: '2023', titre: 'Senior', description: null, etat: 'actuel', ordre: 2 },
     ],
-    avis_pairs: [{ auteur_nom: 'Jean Dupont', auteur_role: 'Manager', initiales: null, texte: 'top', etoiles: 5 }],
+    avis_pairs: [{ auteur_nom: 'Jean Naji', auteur_role: 'Manager', initiales: null, texte: 'top', etoiles: 5 }],
   }
   it('progression, stations triées, avis, poste visé', () => {
     const r = mapCollabProfile(c)
@@ -307,7 +307,7 @@ describe('mapCollabProfile', () => {
     expect(r.skills.map((s) => s.pct)).toEqual([80, 40])
     expect(r.stations.map((s) => s.title)).toEqual(['Junior', 'Senior', 'Manager']) // trié par ordre
     expect(r.stations[2].state).toBe('goal')
-    expect(r.peerReviews[0].initials).toBe('JD') // initiales null → dérivées du nom
+    expect(r.peerReviews[0].initials).toBe('JN') // initiales null → dérivées du nom
   })
   it('replis neutres documentés (horizon/zones/todos)', () => {
     const r = mapCollabProfile(c)
@@ -374,7 +374,7 @@ describe('mapTeamMember', () => {
 
 describe('mapProfil (replis neutres §3)', () => {
   const p: ProfilOut = {
-    id: 3, user_id: 4, nom: 'Bennani', prenom: 'Marc', matricule: 'CB-3390',
+    id: 3, user_id: 4, nom: 'El Amrani', prenom: 'Youssef', matricule: 'CB-3390',
     poste_actuel: 'Analyste', departement_key: 'risques', manager_id: 3,
     aspirations: null, synthetique: true, created_at: new Date().toISOString(),
     competences: [{ id: 1, libelle: 'A', categorie: null, niveau: 4, source: 'declaratif', skill_id: null, skill_label_fr: null }],

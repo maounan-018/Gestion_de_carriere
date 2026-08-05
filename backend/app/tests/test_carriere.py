@@ -13,7 +13,7 @@ def _profil_id(client, nom: str) -> int:
 
 def test_carriere_profil(client):
     auth(client, "rh")
-    pid = _profil_id(client, "Bennani")
+    pid = _profil_id(client, "El Amrani")
     r = client.get(f"/api/profils/{pid}/carriere")
     assert r.status_code == 200
     body = r.json()
@@ -39,5 +39,5 @@ def test_liste_profils_filtre_equipe(client):
     me = client.get("/api/auth/me").json()
     r = client.get("/api/profils", params={"manager_id": me["id"]})
     assert r.status_code == 200
-    # Marc Bennani est managé par Jean-Marc -> présent dans son équipe.
-    assert any(p["nom"] == "Bennani" for p in r.json())
+    # Youssef El Amrani est managé par Karim -> présent dans son équipe.
+    assert any(p["nom"] == "El Amrani" for p in r.json())

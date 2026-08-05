@@ -20,7 +20,7 @@ const entities = [
 ]
 const postes = ['Analyste', "Chargé d'Affaires", 'Chef de projet', 'Manager', 'Directeur de Pôle']
 
-const displayName = ref('Marc')
+const displayName = ref('Youssef')
 const entity = ref('')
 const poste = ref('')
 const verifying = ref(false)
@@ -55,7 +55,7 @@ function finish() {
           <input
             id="onb-name"
             v-model="displayName"
-            placeholder="Ex : Marc"
+            placeholder="Ex : Youssef"
             class="w-full bg-transparent py-2.5 text-sm text-ink outline-none"
           />
         </div>

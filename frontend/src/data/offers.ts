@@ -2,7 +2,7 @@ import type { Offer } from '@/types/domain'
 
 /**
  * Offres internes — miroir des maquettes (fixtures mock-first).
- * Persona manager du collaborateur = Jean-Marc Dupont (jeu de données unifié).
+ * Persona manager du collaborateur = Karim Naji (jeu de données unifié).
  */
 export const OFFERS: Offer[] = [
   {
@@ -37,7 +37,7 @@ export const OFFERS: Offer[] = [
     title: 'Ambassadeur Digital · Retail Banking',
     sub: 'Déploiement des outils digitaux en agence (20 % sur 3 mois).',
     meta: [{ icon: 'pin', label: 'Hybride' }, { icon: 'cal', label: 'Dès octobre' }],
-    managerInformed: true, managerName: 'Jean-Marc Dupont',
+    managerInformed: true, managerName: 'Karim Naji',
     ctx: "Direction de la Banque de Détail · Réseau d'agences du Grand Casablanca",
     missionTitle: 'La mission', tpill: '20 % de votre temps',
     mission: [
@@ -87,7 +87,7 @@ export const OFFERS: Offer[] = [
     title: 'Task Force · IA Générative & Compliance',
     sub: "Cas d'usage IA pour la conformité bancaire.",
     meta: [{ icon: 'team', label: 'Cross-métiers' }, { icon: 'clock', label: '6 mois' }],
-    managerInformed: true, managerName: 'Jean-Marc Dupont',
+    managerInformed: true, managerName: 'Karim Naji',
     ctx: "Direction de la Conformité · Programme d'innovation Groupe",
     missionTitle: 'Le projet', tpill: null,
     mission: [
@@ -137,7 +137,7 @@ export const OFFERS: Offer[] = [
     title: 'Relecture Expertise · Rapport ESG 2026',
     sub: 'Relecture du volet environnemental du rapport annuel.',
     meta: [{ icon: 'clock', label: '8 h' }, { icon: 'book', label: 'Synthèse' }],
-    managerInformed: true, managerName: 'Jean-Marc Dupont',
+    managerInformed: true, managerName: 'Karim Naji',
     ctx: 'Direction Finance & RSE · Rapport annuel intégré 2026',
     missionTitle: 'La mission', tpill: '8 h',
     mission: [

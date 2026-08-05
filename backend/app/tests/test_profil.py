@@ -12,7 +12,7 @@ from app.services import profil_service
 
 def test_create_and_get(db):
     out = profil_service.create_profil(db, ProfilCreate(
-        nom="Bennani", prenom="Aya", poste_actuel="Chargée d'Affaires Senior",
+        nom="El Amrani", prenom="Aya", poste_actuel="Chargée d'Affaires Senior",
         departement_key="risques", aspirations="Manager d'équipe Risques",
         synthetique=True,
         competences=[ProfilCompetenceIn(libelle="Analyse crédit", niveau=4, source="declaratif")],
@@ -25,7 +25,7 @@ def test_create_and_get(db):
 
     got = profil_service.get_profil(db, out.id)
     assert got is not None
-    assert got.nom == "Bennani"
+    assert got.nom == "El Amrani"
     assert len(got.competences) == 1
 
 
@@ -34,13 +34,13 @@ def test_get_missing_returns_none(db):
 
 
 def test_update_partial_aspirations(db):
-    out = profil_service.create_profil(db, ProfilCreate(nom="Dupont", poste_actuel="Analyste"))
+    out = profil_service.create_profil(db, ProfilCreate(nom="Naji", poste_actuel="Analyste"))
     upd = profil_service.update_profil(db, out.id, ProfilUpdate(
         aspirations="Directeur Exécutif Risques", poste_actuel="Directeur de Pôle"))
     assert upd is not None
     assert upd.aspirations == "Directeur Exécutif Risques"
     assert upd.poste_actuel == "Directeur de Pôle"
-    assert upd.nom == "Dupont"  # champ non fourni : inchangé
+    assert upd.nom == "Naji"  # champ non fourni : inchangé
 
 
 def test_update_missing_returns_none(db):

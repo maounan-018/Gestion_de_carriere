@@ -2,7 +2,7 @@ import type { Colleague } from '@/types/domain'
 
 /** Annuaire des collègues (informations publiques). */
 export const COLLEAGUES: Colleague[] = [
-  { id: 'aya', initials: 'AB', name: 'Aya Bennani', role: "Chargée d'Affaires Entreprises", entity: 'Corporate Banking', skills: ['Analyse crédit', 'Anglais financier', 'Négociation'] },
+  { id: 'aya', initials: 'AB', name: 'Aya El Amrani', role: "Chargée d'Affaires Entreprises", entity: 'Corporate Banking', skills: ['Analyse crédit', 'Anglais financier', 'Négociation'] },
   { id: 'karim', initials: 'KI', name: 'Karim Idrissi', role: 'Analyste Risque', entity: 'Pôle Risques', skills: ['Scoring', 'IFRS 9', 'Modélisation'] },
   { id: 'nadia-e', initials: 'NE', name: 'Nadia El Amrani', role: 'Chargée de Clientèle Pro', entity: 'Banque de Détail', skills: ['Relation client', 'Négociation', 'Analyse financière'] },
   { id: 'youssef', initials: 'YA', name: 'Youssef Amrani', role: 'Contrôleur de Gestion', entity: 'Finance', skills: ['Reporting', 'Excel / SQL', 'Budget'] },

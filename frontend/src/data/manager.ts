@@ -1,7 +1,7 @@
 import type { CollabProfile, RecoData, Offer, NotificationItem } from '@/types/domain'
 import type { KpiCard } from '@/types/manager'
 
-/** Profil du manager Jean-Marc Dupont (Directeur de Pôle Risques → Directeur Exécutif). */
+/** Profil du manager Karim Naji (Directeur de Pôle Risques → Directeur Exécutif). */
 export const MANAGER_PROFILE: CollabProfile = {
   progressionPct: 84,
   posteVise: 'Directeur Exécutif des Risques',
@@ -135,7 +135,7 @@ export const MANAGER_OFFER_LIGNES = ['Tout', 'Risque', 'Finance', 'Clientèle'] 
 
 /** Notifications du manager (destinations = routes manager, sans paramètre). */
 export const MANAGER_NOTIFICATIONS: NotificationItem[] = [
-  { id: 'mn1', icon: 'route', title: "Nouveau souhait d'évolution", text: 'Aya Bennani souhaite évoluer vers Manager d’équipe Risques.', time: 'Il y a 2 h', unread: true, to: 'manager.souhaitsRecus' },
+  { id: 'mn1', icon: 'route', title: "Nouveau souhait d'évolution", text: 'Aya El Amrani souhaite évoluer vers Manager d’équipe Risques.', time: 'Il y a 2 h', unread: true, to: 'manager.souhaitsRecus' },
   { id: 'mn2', icon: 'chat', title: 'Entretien en retard', text: 'Mehdi Chraibi n’a pas eu d’entretien depuis 15 mois.', time: 'Il y a 5 h', unread: true, to: 'manager.entretien' },
   { id: 'mn3', icon: 'spark', title: 'Haut potentiel détecté', text: 'Sofia Haddad (score 92) · apte au management de transition.', time: 'Hier', unread: true, to: 'manager.equipe' },
   { id: 'mn4', icon: 'brief', title: 'Poste à pourvoir', text: '3 candidats internes recommandés pour « Analyste Risque Senior ».', time: 'Il y a 2 j', unread: false, to: 'manager.offres' },

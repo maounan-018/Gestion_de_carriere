@@ -21,7 +21,7 @@ def _make_collab(db, email: str, **profil_kw) -> User:
 
 
 def test_coach_injecte_le_profil_reel(db, monkeypatch):
-    u, p = _make_collab(db, "coach1@bmci.local", prenom="Marc",
+    u, p = _make_collab(db, "coach1@bmci.local", prenom="Youssef",
                         poste_actuel="Conseiller", aspirations="Devenir manager risques")
     db.add(ProfilCompetence(profil_id=p.id, libelle="Analyse crédit", niveau=4))
     db.commit()

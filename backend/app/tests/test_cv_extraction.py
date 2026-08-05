@@ -53,7 +53,7 @@ def test_cv_extraction_interdite_sur_profil_autrui(client, monkeypatch):
     monkeypatch.setattr(cv, "search_skills", lambda *a, **k: [])
 
     auth(client, "rh")
-    autre = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] != "Bennani")
+    autre = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] != "El Amrani")
     csrf = auth(client, "collab")
     r = client.post(f"/api/profils/{autre}/extraction-cv", headers=hdr(csrf),
                     json={"texte": "un CV quelconque pour autrui"})
