@@ -356,6 +356,26 @@ export const apiService = {
       }
     }
   },
+  /** Conserver la synthèse de MA préparation d'entretien (sortie IA persistée, upsert). */
+  async enregistrerMaSynthese(synthese: string): Promise<{ enregistre_le: string } | null> {
+    if (MODE === 'mock') { await delay(120); return { enregistre_le: new Date().toISOString() } }
+    try {
+      return await apiFetch<{ synthese: string; enregistre_le: string }>('/entretiens/ma-synthese', {
+        method: 'PUT', body: { synthese },
+      })
+    } catch {
+      return null // best-effort : ne bloque pas l'export PDF
+    }
+  },
+  /** Relire la synthèse persistée de MA préparation d'entretien (null si aucune). */
+  async chargerMaSynthese(): Promise<{ synthese: string; enregistre_le: string } | null> {
+    if (MODE === 'mock') { await delay(100); return null }
+    try {
+      return await apiFetch<{ synthese: string; enregistre_le: string } | null>('/entretiens/ma-synthese')
+    } catch {
+      return null
+    }
+  },
   async getFormations(): Promise<Formation[]> {
     if (MODE === 'mock') {
       await delay()

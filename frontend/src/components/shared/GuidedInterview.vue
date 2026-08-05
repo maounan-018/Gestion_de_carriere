@@ -1,20 +1,29 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { Check, MessageSquare, Clock, Sparkles, Send, ArrowRight } from '@lucide/vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { Check, MessageSquare, Sparkles, Send, ArrowRight, Play, Download, FileText } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
+import { useSessionStore } from '@/stores/session'
+import { useToast } from '@/composables/useToast'
 import type { ChatMessage } from '@/types/domain'
+import { downloadPdf, type PdfBlock } from '@/utils/pdf'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 /**
  * Préparation guidée de l'entretien annuel · l'IA en CO-PILOTE, section par section.
  *
- * Le RÔLE est NATIF côté backend (mode `entretien_copilote`) : le coach s'y
- * contextualise tout seul sur le profil du compte connecté et n'utilise aucun outil.
- * Le front ne déclare que `mode / section / focus / ouverture` · plus aucune consigne
- * ni contexte fabriqués ici. Réutilisé par les auto-entretiens (collab, manager « moi »,
- * RH « moi »), qui ne diffèrent que par le compte connecté (résolu côté backend).
+ * Parcours : un écran d'INTRODUCTION explique qu'il s'agit d'une SIMULATION pour
+ * préparer le vrai entretien annuel (et l'évaluation de l'année), puis un échange
+ * guidé en étapes NUMÉROTÉES. On avance dans le FIL de la conversation (pas de bouton
+ * détaché). À la fin, la synthèse est CONSERVÉE (persistée) et exportable en PDF.
+ *
+ * Le RÔLE est natif côté backend (mode `entretien_copilote`) : le coach se
+ * contextualise seul sur le profil du compte connecté. Réutilisé par les
+ * auto-entretiens (collab, manager « moi », RH « moi »).
  */
+
+const session = useSessionStore()
+const { toast } = useToast()
 
 const STEPS: { label: string; focus: string }[] = [
   { label: 'Introduction', focus: '' },
@@ -27,6 +36,7 @@ const STEPS: { label: string; focus: string }[] = [
   { label: 'Synthèse finale', focus: 'objectifs, réussites, axes de progrès et formations souhaitées' },
 ]
 
+const phase = ref<'intro' | 'chat'>('intro')
 const currentStep = ref(0)
 const chat = ref<ChatMessage[]>([])
 const input = ref('')
@@ -34,11 +44,16 @@ const busy = ref(false)
 const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
+const answeredInStep = ref(false)   // l'utilisateur a répondu dans l'étape courante → propose d'avancer
+const synthesePlain = ref('')       // synthèse finale en texte brut (persistée + PDF)
+const savedAt = ref('')
 
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 const atLastStep = computed(() => currentStep.value >= STEPS.length - 1)
-// Progression = étapes franchies / total → 0 % à l'introduction, 100 % à la dernière étape.
 const progressPct = computed(() => Math.round((currentStep.value / (STEPS.length - 1)) * 100))
+const nextLabel = computed(() => (atLastStep.value ? '' : STEPS[currentStep.value + 1].label))
+// Affordance d'avancement DANS LE FIL : visible dès que l'utilisateur a échangé sur l'étape.
+const canAdvance = computed(() => !busy.value && !atLastStep.value && answeredInStep.value)
 function stepState(i: number): 'done' | 'current' | 'todo' {
   return i < currentStep.value ? 'done' : i === currentStep.value ? 'current' : 'todo'
 }
@@ -48,13 +63,9 @@ watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => 
   if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
 })
 
-/* ---- Contenu de section (la STRUCTURE d'entretien reste côté front ; le RÔLE est backend) ---- */
-function isConseils(i: number): boolean {
-  return i === STEPS.length - 2
-}
-function isLast(i: number): boolean {
-  return i >= STEPS.length - 1
-}
+/* ---- Contenu de section (STRUCTURE côté front ; RÔLE côté backend) ---- */
+const isConseils = (i: number) => i === STEPS.length - 2
+const isLast = (i: number) => i >= STEPS.length - 1
 function openFocus(i: number): string {
   const s = STEPS[i]
   if (i === 0) {
@@ -103,6 +114,11 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
       { mode: 'entretien_copilote', section, focus, ouverture },
     )
     chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
+    // Étape finale : la synthèse est produite → on la CONSERVE (persistée) pour l'export.
+    if (isLast(currentStep.value) && ouverture && raw.trim()) {
+      synthesePlain.value = htmlToText(formatCoachReply(raw))
+      await persistSynthese()
+    }
   } catch {
     chat.value.push({ from: 'bot', text: ERR })
   } finally {
@@ -112,28 +128,96 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
   }
 }
 
-function openSection(i: number) {
-  return runTurn(STEPS[i].label, openFocus(i), true, '')
-}
+const openSection = (i: number) => runTurn(STEPS[i].label, openFocus(i), true, '')
+
 async function answer(text?: string) {
   const t = (text ?? input.value).trim()
   if (!t || busy.value) return
   chat.value.push({ from: 'me', text: t })
   input.value = ''
+  answeredInStep.value = true
   await runTurn(STEPS[currentStep.value].label, undefined, false, t)
 }
+
 async function nextStep() {
   if (busy.value || atLastStep.value) return
   currentStep.value++
+  answeredInStep.value = false
   await openSection(currentStep.value)
 }
 
-// Démarrage : le coach ouvre l'introduction.
-onMounted(() => openSection(0))
+function start() {
+  phase.value = 'chat'
+  openSection(0)
+}
+
+/* ---- Synthèse : persistance + export PDF ---- */
+async function persistSynthese() {
+  const res = await apiService.enregistrerMaSynthese(synthesePlain.value)
+  if (res) savedAt.value = res.enregistre_le
+}
+
+function htmlToText(html: string): string {
+  const d = document.createElement('div')
+  d.innerHTML = html
+  return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function exportPdf() {
+  const who = session.user?.name || 'Collaborateur'
+  const when = new Date().toLocaleDateString('fr-FR', { dateStyle: 'long' })
+  const blocks: PdfBlock[] = [
+    { type: 'h1', text: "Synthèse de préparation · entretien annuel" },
+    { type: 'p', text: `${who} · ${when} · Simulation BMCI (préparation, non contractuelle)` },
+    { type: 'spacer' },
+    { type: 'h2', text: 'Synthèse' },
+    { type: 'p', text: synthesePlain.value || 'Synthèse non disponible.' },
+    { type: 'spacer' },
+    { type: 'h2', text: 'Déroulé de la préparation' },
+  ]
+  for (const m of chat.value) {
+    const txt = htmlToText(m.text)
+    if (!txt) continue
+    blocks.push({ type: 'p', text: `${m.from === 'me' ? 'Vous' : 'Coach'} : ${txt}` })
+  }
+  downloadPdf(`synthese-entretien-${when.replace(/\s+/g, '-')}`, blocks)
+  toast('Synthèse exportée en PDF', 'ok')
+}
 </script>
 
 <template>
-  <div class="grid gap-5 lg:grid-cols-[240px_1fr]">
+  <!-- ÉCRAN D'INTRODUCTION (transition) : cadre la simulation avant de démarrer. -->
+  <div v-if="phase === 'intro'" class="mx-auto max-w-2xl">
+    <div class="rounded-2xl border border-border bg-paper p-6 shadow-card">
+      <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-green-soft px-3 py-1 text-xs font-bold text-green-deep">
+        <Sparkles :size="14" /> Simulation guidée par l'IA
+      </div>
+      <h2 class="font-display text-2xl font-bold text-ink">Préparez votre entretien annuel</h2>
+      <p class="mt-2 text-sm leading-relaxed text-ink-2">
+        Cet espace est une <b>simulation</b> : un entraînement pour préparer votre véritable entretien
+        annuel et l'évaluation de l'année. Votre copilote IA vous guide, section par section, pour
+        structurer vos objectifs, vos réussites, vos difficultés et vos aspirations. Rien n'est transmis
+        à votre manager : vous repartez avec une <b>synthèse personnelle</b>, exportable en PDF.
+      </p>
+
+      <div class="mt-5 rounded-xl border border-green-line bg-green-ghost p-4">
+        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-green-deep">Les étapes</p>
+        <ol class="space-y-1.5">
+          <li v-for="(s, i) in STEPS" :key="s.label" class="flex items-center gap-2.5 text-sm text-ink-2">
+            <span class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-green text-[11px] font-bold text-white">{{ i + 1 }}</span>
+            {{ s.label }}
+          </li>
+        </ol>
+      </div>
+
+      <BaseButton class="mt-5" @click="start">
+        <Play :size="16" /> Commencer la simulation
+      </BaseButton>
+    </div>
+  </div>
+
+  <!-- ÉCHANGE GUIDÉ -->
+  <div v-else class="grid gap-5 lg:grid-cols-[240px_1fr]">
     <div class="space-y-5">
       <div class="rounded-2xl border border-border bg-paper p-4 shadow-card">
         <div class="mb-3 text-xs font-semibold uppercase tracking-wide text-green-deep">Étapes</div>
@@ -145,8 +229,11 @@ onMounted(() => openSection(0))
             :class="stepState(i) === 'current' ? 'bg-green-soft font-semibold text-green-deep' : 'text-ink-2'"
           >
             <Check v-if="stepState(i) === 'done'" :size="15" class="text-green" />
-            <MessageSquare v-else-if="stepState(i) === 'current'" :size="15" />
-            <Clock v-else :size="15" class="text-ink-3" />
+            <span
+              v-else
+              class="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold"
+              :class="stepState(i) === 'current' ? 'bg-green text-white' : 'bg-panel-2 text-ink-3'"
+            >{{ i + 1 }}</span>
             <span>{{ s.label }}</span>
           </div>
         </div>
@@ -158,19 +245,6 @@ onMounted(() => openSection(0))
             <div class="h-full rounded-full bg-green transition-all" :style="{ width: progressPct + '%' }" />
           </div>
         </div>
-        <BaseButton
-          v-if="!atLastStep"
-          block
-          size="sm"
-          class="mt-4"
-          :disabled="busy"
-          @click="nextStep"
-        >
-          Passer à l'étape suivante <ArrowRight :size="15" />
-        </BaseButton>
-        <p v-else class="mt-4 rounded-lg bg-green-soft px-3 py-2 text-xs font-semibold text-green-deep">
-          Dernière étape · le coach rédige la synthèse.
-        </p>
       </div>
 
       <div class="rounded-2xl border border-green-line bg-green-ghost p-4">
@@ -178,9 +252,8 @@ onMounted(() => openSection(0))
           <Sparkles :size="13" /> Préparation guidée · IA
         </div>
         <p class="text-xs text-ink-2">
-          Votre coach IA vous accompagne section par section pour préparer votre entretien annuel.
-          Exprimez-vous : il réagit, vous conseille et vous aide à structurer, puis avancez avec
-          « Passer à l'étape suivante ».
+          Répondez au fil de l'échange. Quand une section est prête, poursuivez directement vers la
+          suivante depuis la conversation. À la fin, votre synthèse est enregistrée et exportable en PDF.
         </p>
       </div>
     </div>
@@ -210,6 +283,31 @@ onMounted(() => openSection(0))
               {{ streamStatus || 'Le coach prépare la section…' }}
             </span>
           </div>
+        </div>
+
+        <!-- Avancement DANS LE FIL : poursuivre vers la section suivante. -->
+        <div v-if="canAdvance" class="flex">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-full border border-green-line bg-paper px-3.5 py-2 text-sm font-semibold text-green-deep shadow-card transition hover:bg-green-soft"
+            @click="nextStep"
+          >
+            Poursuivre vers « {{ nextLabel }} » <ArrowRight :size="15" />
+          </button>
+        </div>
+
+        <!-- Étape finale : synthèse conservée + export PDF. -->
+        <div v-if="atLastStep && synthesePlain && !busy" class="rounded-xl border border-green-line bg-green-ghost p-4">
+          <div class="flex items-center gap-2 text-green-deep">
+            <FileText :size="16" /><b class="text-sm">Votre synthèse est prête</b>
+          </div>
+          <p class="mt-1 text-xs text-ink-2">
+            Elle est enregistrée dans votre espace<span v-if="savedAt"> · {{ new Date(savedAt).toLocaleDateString('fr-FR') }}</span>.
+            Emportez-la à votre entretien.
+          </p>
+          <BaseButton class="mt-3" size="sm" @click="exportPdf">
+            <Download :size="15" /> Télécharger la synthèse (PDF)
+          </BaseButton>
         </div>
       </div>
 
