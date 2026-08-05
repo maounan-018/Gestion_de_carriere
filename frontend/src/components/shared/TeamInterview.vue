@@ -34,7 +34,7 @@ const STEPS = computed<{ label: string; focus: string }[]>(() => {
     { label: 'Réussites', focus: `les principales réussites de ${n} (faits concrets, résultats observés)` },
     { label: 'Difficultés', focus: `les difficultés rencontrées par ${n} et la façon de l'accompagner` },
     { label: 'Compétences', focus: `l'évaluation des compétences de ${n} et ses axes de progression` },
-    { label: 'Souhaits & perspectives', focus: `les souhaits d'évolution, de mobilité ou de formation de ${n}` },
+    { label: 'Aspirations & perspectives', focus: `les aspirations d'évolution, de mobilité ou de formation de ${n}` },
     { label: "Conseils de l'agent", focus: '' },
     { label: 'Synthèse finale', focus: '' },
   ]

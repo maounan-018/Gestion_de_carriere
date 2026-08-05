@@ -121,7 +121,7 @@ describe('mapSouhait', () => {
     }
     const r = mapSouhait(s)
     expect(r.id).toBe('2')
-    expect(r.status).toBe('Poussé au manager')
+    expect(r.status).toBe('Transmise au manager')
     expect(r.tone).toBe('ai')
     expect(r.pushed).toBe(true)
   })

@@ -136,7 +136,7 @@ onMounted(load)
             </div>
             <h3 class="font-display text-base font-bold text-ink">Votre assistant carrière</h3>
             <p class="mt-1 flex-1 text-sm text-ink-3">
-              Posez vos questions sur votre évolution, vos compétences et vos souhaits · en toute
+              Posez vos questions sur votre évolution, vos compétences et vos aspirations · en toute
               confidentialité.
             </p>
             <RouterLink :to="{ name: 'collab.coach' }" class="mt-3 block">

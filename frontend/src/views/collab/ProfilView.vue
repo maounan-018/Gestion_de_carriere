@@ -165,7 +165,7 @@ function goOffres(metier: string) {
             <AppIcon name="pin" :size="12" class="inline" /> Zones · {{ profile.zones }}<span v-if="profile.disponibilite"> · Dispo {{ profile.disponibilite }}</span>
           </p>
           <RouterLink :to="{ name: 'collab.souhaits' }" class="mt-3 block">
-            <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Mes souhaits</BaseButton>
+            <BaseButton variant="ai" block><AppIcon name="route" :size="15" /> Mes demandes d'évolution</BaseButton>
           </RouterLink>
         </BaseCard>
 

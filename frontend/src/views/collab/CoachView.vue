@@ -10,7 +10,7 @@ const askCoach = (message: string, history: ChatMessage[], h: CoachStreamHandler
   apiService.streamCoachMessage(message, history, h)
 
 const messages: ChatMessage[] = [
-  { from: 'bot', text: 'Bonjour Marc 👋 Je suis votre <b>Coach Carrière</b>. Je connais votre parcours, vos compétences et vos souhaits : posez-moi vos questions sur votre évolution, en toute confidentialité.' },
+  { from: 'bot', text: 'Bonjour Marc 👋 Je suis votre <b>Coach Carrière</b>. Je connais votre parcours, vos compétences et vos aspirations : posez-moi vos questions sur votre évolution, en toute confidentialité.' },
   { from: 'bot', text: "Par exemple : « Comment évoluer vers <b>Manager d'équipe Risques</b> ? » ou « Quelles formations suivre cette année ? »" },
 ]
 const suggestions: ChatSuggestion[] = [

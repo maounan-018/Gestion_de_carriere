@@ -63,7 +63,7 @@ onMounted(load)
     <BaseCard title="Actions rapides">
       <div class="flex flex-wrap gap-2">
         <RouterLink :to="{ name: 'manager.souhaitsRecus' }">
-          <BaseButton variant="secondary" size="sm"><AppIcon name="route" :size="15" /> Souhaits reçus</BaseButton>
+          <BaseButton variant="secondary" size="sm"><AppIcon name="route" :size="15" /> Demandes d'évolution</BaseButton>
         </RouterLink>
         <RouterLink :to="{ name: 'manager.offres' }">
           <BaseButton variant="secondary" size="sm"><AppIcon name="brief" :size="15" /> Publier une offre</BaseButton>
