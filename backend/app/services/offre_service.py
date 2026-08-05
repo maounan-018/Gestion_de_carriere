@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, func, case
 from sqlalchemy.orm import Session
 
 from app.models.fiche import FicheCompetence
@@ -94,23 +94,34 @@ def rh_offres(db: Session) -> list[RhOffreOut]:
     """Liste des offres côté RH avec statistiques de candidatures (total,
     compatibles au-dessus du seuil, candidat retenu)."""
     offres = db.scalars(select(Offre).order_by(Offre.id.desc())).all()
+    if not offres:
+        return []
+
+    # Agrégats candidatures PAR OFFRE en UNE requête (total + compatibles) au lieu
+    # d'une requête par offre (N+1). NULL score -> compté comme non compatible.
+    stats: dict[int, tuple[int, int]] = {}
+    for oid, total, compat in db.execute(
+            select(Candidature.offre_id, func.count(Candidature.id),
+                   func.sum(case((Candidature.score >= _SEUIL_COMPAT, 1), else_=0)))
+            .group_by(Candidature.offre_id)).all():
+        stats[oid] = (total or 0, int(compat or 0))
+
+    # Candidat retenu par offre en UNE requête (le 1er retenu rencontré par offre).
+    retenus: dict[int, str] = {}
+    for oid, nom, prenom in db.execute(
+            select(Candidature.offre_id, Profil.nom, Profil.prenom)
+            .join(Profil, Profil.id == Candidature.profil_id)
+            .where(Candidature.statut == CandidatureStatut.RETENUE)).all():
+        retenus.setdefault(oid, f"{prenom or ''} {nom}".strip())
+
     out: list[RhOffreOut] = []
     for o in offres:
-        cands = db.execute(
-            select(Candidature.score, Candidature.statut, Profil.nom, Profil.prenom)
-            .join(Profil, Profil.id == Candidature.profil_id)
-            .where(Candidature.offre_id == o.id)
-        ).all()
-        retenu = next(
-            (f"{prenom or ''} {nom}".strip()
-             for score, statut, nom, prenom in cands if statut == CandidatureStatut.RETENUE),
-            None)
+        total, compat = stats.get(o.id, (0, 0))
         out.append(RhOffreOut(
             id=o.id, titre=o.titre, type=o.type, departement_key=o.departement_key,
             perimetre_bmci=o.perimetre_bmci, statut=o.statut,
-            candidats_total=len(cands),
-            candidats_compatibles=sum(1 for s, *_ in cands if (s or 0) >= _SEUIL_COMPAT),
-            retenu_nom=retenu,
+            candidats_total=total, candidats_compatibles=compat,
+            retenu_nom=retenus.get(o.id),
         ))
     return out
 
@@ -214,12 +225,19 @@ def list_compatibles(db: Session, profil_id: int | None) -> list[OffreCompatOut]
     via candidature_service.evaluer — pas d'Ollama). Triées par adéquation
     décroissante. Si profil_id est None, renvoie les offres sans score."""
     offres = db.scalars(select(Offre).order_by(Offre.id.desc())).all()
+    if not offres:
+        return []
+    # Compétences de TOUTES les offres en UNE requête (au lieu d'une par offre),
+    # regroupées par offre puis tronquées à 8 pour l'affichage.
+    comps_par_offre: dict[int, list[OffreCompetence]] = {}
+    for c in db.scalars(
+            select(OffreCompetence).where(OffreCompetence.offre_id.in_([o.id for o in offres]))
+            .order_by(OffreCompetence.offre_id, OffreCompetence.id)).all():
+        comps_par_offre.setdefault(c.offre_id, []).append(c)
+
     out: list[OffreCompatOut] = []
     for o in offres:
-        comps = db.scalars(
-            select(OffreCompetence).where(OffreCompetence.offre_id == o.id)
-            .order_by(OffreCompetence.id).limit(8)
-        ).all()
+        comps = comps_par_offre.get(o.id, [])[:8]
         score = couv = ecr = None
         if profil_id is not None:
             ev = candidature_service.evaluer(db, o.id, profil_id)
