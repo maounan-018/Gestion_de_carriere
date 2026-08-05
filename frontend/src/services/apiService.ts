@@ -17,7 +17,7 @@ import {
 import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas } from '@/types/rh'
 import type {
-  Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable,
+  Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable, MyCvStatus,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
@@ -1003,5 +1003,30 @@ export const apiService = {
       body: { texte, remplacer: true },
     })
     return (p.competences ?? []).filter((c) => c.source === 'cv').length
+  },
+  /** Statut du CV conservé de MON profil (présence + horodatage + id pour le lien). */
+  async getMyCvStatus(): Promise<MyCvStatus | null> {
+    if (MODE === 'mock') {
+      await delay(120)
+      return { profilId: 1, filename: null, uploadedAt: null }
+    }
+    try {
+      const c = await apiFetch<ProfilCarriereOut>('/profils/me/carriere')
+      return { profilId: c.profil_id, filename: c.cv_filename ?? null, uploadedAt: c.cv_uploaded_at ?? null }
+    } catch {
+      return null
+    }
+  },
+  /** Téléverser / remplacer MON CV (PDF, conservé côté serveur). Renvoie le statut à jour. */
+  async uploaderMonCv(file: File): Promise<MyCvStatus> {
+    const fd = new FormData()
+    fd.append('fichier', file)
+    const c = await apiUpload<ProfilCarriereOut>('/profils/me/cv', fd)
+    return { profilId: c.profil_id, filename: c.cv_filename ?? null, uploadedAt: c.cv_uploaded_at ?? null }
+  },
+  /** URL de téléchargement du CV d'un profil (même origine via proxy ; cookies inclus
+   *  par la navigation). Le backend applique l'ownership (propriétaire / manager / RH). */
+  cvUrl(profilId: number): string {
+    return `/api/profils/${profilId}/cv`
   },
 }

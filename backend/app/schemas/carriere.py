@@ -13,6 +13,8 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -54,6 +56,8 @@ class ProfilCarriereOut(BaseModel):
     type_evolution: str | None = None
     mobilite_geo: str | None = None
     disponibilite: str | None = None
+    cv_filename: str | None = None
+    cv_uploaded_at: datetime | None = None
     competences: list[SkillNiveauOut] = []
     stations: list[StationOut] = []
     avis_pairs: list[PeerReviewOut] = []

@@ -137,6 +137,22 @@ async function save() {
             <p class="mt-1 text-xs text-ink-2">Horizon {{ p.aspirationHorizon }}</p>
           </div>
         </BaseCard>
+        <BaseCard title="CV du collaborateur">
+          <a
+            v-if="p.cvFilename"
+            :href="apiService.cvUrl(Number(p.id))"
+            target="_blank"
+            rel="noopener"
+            class="flex items-center gap-3 rounded-xl border border-green-line bg-green-ghost p-3 transition hover:bg-green-soft"
+          >
+            <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><AppIcon name="brief" :size="16" /></div>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-bold text-green-deep">{{ p.cvFilename }}</p>
+              <p class="text-xs text-ink-3">Ouvrir le CV (PDF)</p>
+            </div>
+          </a>
+          <p v-else class="text-sm text-ink-3">Aucun CV déposé par ce collaborateur.</p>
+        </BaseCard>
         <BaseCard title="Suivi HRBP">
           <div class="flex items-center justify-between text-sm">
             <span class="text-ink-3">Dernier entretien RH</span>

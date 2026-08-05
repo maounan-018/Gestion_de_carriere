@@ -53,6 +53,10 @@ class Profil(Base):
     type_evolution: Mapped[str | None] = mapped_column(String(48), default=None)   # management / expertise / mobilité géo / mission transverse
     mobilite_geo: Mapped[str | None] = mapped_column(String(200), default=None)    # zones géographiques
     disponibilite: Mapped[str | None] = mapped_column(String(64), default=None)    # ex : « 6 à 12 mois »
+    # CV du collaborateur (fichier PDF conservé côté serveur, data/cv_profil/{id}.pdf).
+    # Source durable : alimente extractions/analyses et est présenté au manager / à la HRBP.
+    cv_filename: Mapped[str | None] = mapped_column(String(255), default=None)      # nom d'origine
+    cv_uploaded_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     synthetique: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))

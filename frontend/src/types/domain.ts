@@ -141,6 +141,14 @@ export interface ProfilEditable {
   disponibilite?: string
 }
 
+/** État du CV conservé de MON profil (Lot 4) : présence + horodatage + lien de
+ *  téléchargement. `profilId` sert à construire l'URL de service du fichier. */
+export interface MyCvStatus {
+  profilId: number
+  filename: string | null
+  uploadedAt: string | null
+}
+
 /* --------------------------------------------------------------- Souhaits */
 export type SouhaitStatus = 'Brouillon' | 'Transmise au manager' | 'En discussion'
 export interface Souhait {

@@ -114,6 +114,8 @@ class ProfilOut(BaseModel):
     type_evolution: str | None = None
     mobilite_geo: str | None = None
     disponibilite: str | None = None
+    cv_filename: str | None = None
+    cv_uploaded_at: datetime | None = None
     synthetique: bool
     created_at: datetime
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)

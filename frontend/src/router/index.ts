@@ -100,6 +100,12 @@ const collabDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['collab'], title: "Mes demandes d'évolution" },
   },
   {
+    path: 'collab/mon-profil/editer',
+    name: 'collab.editProfil',
+    component: () => import('@/views/collab/EditProfilView.vue'),
+    meta: { roles: ['collab'], title: 'Éditer mon profil' },
+  },
+  {
     path: 'collab/passerelles',
     name: 'collab.passerelles',
     component: () => import('@/views/collab/PasserellesView.vue'),
