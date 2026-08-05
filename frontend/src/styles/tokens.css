@@ -36,6 +36,12 @@
   --color-gold: #b8892e;
   --color-gold-soft: #f6eed9;
 
+  /* Accents KPI — variété maîtrisée dans la charte (jamais de noir/sombre) */
+  --color-teal: #0e8a80;
+  --color-teal-soft: #d8f0ec;
+  --color-sky: #2f6fb0;
+  --color-sky-soft: #dfeaf7;
+
   /* Alerte */
   --color-warning: #8a5c12;
   --color-warning-soft: #f7efdb;

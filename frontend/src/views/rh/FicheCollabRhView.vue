@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiService } from '@/services/apiService'
+import { byPctDesc, scoreText, scoreBar } from '@/utils/score'
 import { useToast } from '@/composables/useToast'
 import type { RhPerson } from '@/types/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -105,13 +106,13 @@ async function save() {
 
         <BaseCard title="Compétences">
           <div class="space-y-3">
-            <div v-for="s in p.skills" :key="s.label">
+            <div v-for="s in byPctDesc(p.skills)" :key="s.label">
               <div class="mb-1 flex justify-between text-xs">
                 <span class="font-medium text-ink-2">{{ s.label }}</span>
-                <span class="text-ink-3">{{ s.pct }}%</span>
+                <span class="font-semibold" :class="scoreText(s.pct)">{{ s.pct }}%</span>
               </div>
               <div class="h-1.5 overflow-hidden rounded-full bg-panel-2">
-                <div class="h-full rounded-full bg-green" :style="{ width: s.pct + '%' }" />
+                <div class="h-full rounded-full" :class="scoreBar(s.pct)" :style="{ width: s.pct + '%' }" />
               </div>
             </div>
           </div>
