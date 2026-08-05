@@ -1,19 +1,17 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import { Sparkles, Info } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import type { RecoData, Passerelle } from '@/types/domain'
+import type { RecoData } from '@/types/domain'
+import { scoreText, byPctDesc } from '@/utils/score'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
-import BaseModal from '@/components/ui/BaseModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
-const router = useRouter()
 const reco = ref<RecoData | null>(null)
 const loading = ref(true)
 const error = ref('')
@@ -30,22 +28,6 @@ async function load() {
   }
 }
 onMounted(load)
-
-// Passerelle : clic sur l'intitulé → description + direction (offres correspondantes).
-const selPass = ref<Passerelle | null>(null)
-const showPass = computed({
-  get: () => selPass.value !== null,
-  set: (v: boolean) => { if (!v) selPass.value = null },
-})
-function passDesc(p: Passerelle): string {
-  return `« ${p.title} » présente une ${p.label.toLowerCase()} avec votre profil `
-    + `(${p.pct} % de compétences en commun), identifiée par recherche sémantique sur le référentiel `
-    + `${p.source.toUpperCase()}. Explorez les offres internes correspondantes pour envisager cette évolution.`
-}
-function goOffres(metier: string) {
-  selPass.value = null
-  router.push({ name: 'collab.offres', query: { q: metier } })
-}
 </script>
 
 <template>
@@ -78,7 +60,7 @@ function goOffres(metier: string) {
           <p class="text-xs text-ink-3">Recommandations ancrées sur les compétences du poste · ESCO · O*NET · SFIA</p>
         </div>
         <div class="text-center">
-          <div class="font-display text-4xl font-bold leading-none text-green-deep">{{ reco.pct }} %</div>
+          <div class="font-display text-4xl font-bold leading-none" :class="scoreText(reco.pct)">{{ reco.pct }} %</div>
           <div class="text-[11px] text-ink-3">adéquation actuelle</div>
         </div>
         <RouterLink :to="{ name: 'collab.coach' }">
@@ -119,30 +101,38 @@ function goOffres(metier: string) {
         </div>
       </BaseCard>
 
-      <div class="space-y-5">
-        <BaseCard title="Passerelles métiers">
-          <template #actions><BasePill tone="ai"><Sparkles :size="12" /> recherche sémantique</BasePill></template>
-          <p class="mb-2.5 text-xs text-ink-3">Cliquez une passerelle pour sa description et les offres correspondantes.</p>
-          <div class="space-y-2.5">
-            <button
-              v-for="(p, i) in reco.passerelles"
-              :key="i"
-              type="button"
-              class="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-panel p-3 text-left transition hover:border-green-line hover:bg-green-ghost"
-              @click="selPass = p"
-            >
-              <div class="flex items-center gap-3 min-w-0">
-                <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-green text-white"><AppIcon name="brief" :size="15" /></div>
-                <h4 class="truncate text-sm font-bold text-ink">{{ p.title }}</h4>
-              </div>
-              <div class="flex shrink-0 items-center gap-2">
-                <BasePill :tone="p.tone">{{ p.pct }} % · {{ p.label }}</BasePill>
-                <BaseChip>{{ p.source }}</BaseChip>
-              </div>
-            </button>
-          </div>
-        </BaseCard>
-      </div>
+      <!-- Passerelles RÉSUMÉES → écran dédié listant toutes les recommandations. -->
+      <BaseCard title="Passerelles métiers">
+        <template #actions><BasePill tone="ai"><Sparkles :size="12" /> recherche sémantique</BasePill></template>
+        <p class="mb-2.5 text-xs text-ink-3">
+          Évolutions alternatives fondées sur vos compétences transférables. Cliquez pour l'analyse détaillée.
+        </p>
+        <div v-if="reco.passerelles.length" class="space-y-2.5">
+          <RouterLink
+            v-for="p in byPctDesc(reco.passerelles).slice(0, 3)"
+            :key="p.title"
+            :to="{ name: 'collab.passerelleDetail', params: { metier: p.title } }"
+            class="flex items-center justify-between gap-3 rounded-xl border border-border bg-panel p-3 transition hover:border-green-line hover:bg-green-ghost"
+          >
+            <div class="flex min-w-0 items-center gap-3">
+              <div class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-green-soft text-green-deep"><AppIcon name="brief" :size="15" /></div>
+              <h4 class="truncate text-sm font-bold text-ink">{{ p.title }}</h4>
+            </div>
+            <div class="flex shrink-0 items-center gap-2">
+              <span class="font-display text-sm font-bold" :class="scoreText(p.pct)">{{ p.pct }} %</span>
+              <BaseChip>{{ p.source }}</BaseChip>
+            </div>
+          </RouterLink>
+        </div>
+        <p v-else class="text-sm text-ink-3">Aucune passerelle pour le moment.</p>
+        <RouterLink
+          v-if="reco.passerelles.length"
+          :to="{ name: 'collab.passerelles' }"
+          class="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-green-deep hover:underline"
+        >
+          Voir toutes les passerelles ({{ reco.passerelles.length }}) →
+        </RouterLink>
+      </BaseCard>
     </div>
 
     <!-- Plan de développement : pleine largeur, aéré -->
@@ -162,21 +152,5 @@ function goOffres(metier: string) {
       </RouterLink>
     </BaseCard>
     </template>
-
-    <BaseModal v-model="showPass" :title="selPass?.title || 'Passerelle métier'">
-      <div v-if="selPass" class="space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <BasePill :tone="selPass.tone">{{ selPass.pct }} % · {{ selPass.label }}</BasePill>
-          <BaseChip>{{ selPass.source.toUpperCase() }}</BaseChip>
-        </div>
-        <p class="text-sm leading-relaxed text-ink-2">{{ passDesc(selPass) }}</p>
-      </div>
-      <template #footer>
-        <BaseButton variant="secondary" size="sm" @click="showPass = false">Fermer</BaseButton>
-        <BaseButton size="sm" @click="goOffres(selPass!.title)">
-          <AppIcon name="search" :size="14" /> Voir les offres
-        </BaseButton>
-      </template>
-    </BaseModal>
   </div>
 </template>
