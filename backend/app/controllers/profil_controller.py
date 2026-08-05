@@ -19,6 +19,7 @@ EMPLACEMENT MVC
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -47,7 +48,9 @@ async def importer_excel(fichier: UploadFile = File(...),
     (séparées par des virgules). Une ligne fautive n'interrompt pas l'import."""
     data = await fichier.read()
     try:
-        return ImportResult(**profil_import_service.importer_profils(db, data))
+        # Parsing openpyxl + écritures DB = bloquant → threadpool (ne gèle pas l'event loop).
+        res = await run_in_threadpool(profil_import_service.importer_profils, db, data)
+        return ImportResult(**res)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
