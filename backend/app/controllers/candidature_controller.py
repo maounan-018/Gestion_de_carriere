@@ -24,6 +24,7 @@ EMPLACEMENT MVC
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -69,9 +70,14 @@ async def uploader_cv(candidature_id: int, fichier: UploadFile = File(...),
         raise HTTPException(status_code=400, detail="Fichier CV vide.")
     if len(data) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="CV trop volumineux (max 10 Mo).")
-    os.makedirs(_CV_DIR, exist_ok=True)
-    with open(os.path.join(_CV_DIR, f"{candidature_id}.pdf"), "wb") as f:
-        f.write(data)
+
+    def _ecrire() -> None:
+        os.makedirs(_CV_DIR, exist_ok=True)
+        with open(os.path.join(_CV_DIR, f"{candidature_id}.pdf"), "wb") as f:
+            f.write(data)
+
+    # Écriture disque bloquante → threadpool (ne bloque pas l'event loop).
+    await run_in_threadpool(_ecrire)
     return {"stored": True, "taille": len(data)}
 
 
