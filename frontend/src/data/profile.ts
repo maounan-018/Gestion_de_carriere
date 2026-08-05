@@ -1,6 +1,6 @@
 import type { CollabProfile } from '@/types/domain'
 
-/** Profil de carrière du collaborateur (persona Marc Bennani). */
+/** Profil de carrière du collaborateur (persona Youssef El Amrani). */
 export const COLLAB_PROFILE: CollabProfile = {
   progressionPct: 68,
   posteVise: "Manager d'équipe Risques",
@@ -30,7 +30,7 @@ export const COLLAB_PROFILE: CollabProfile = {
     { label: "Diriger une équipe", pct: 45 },
   ],
   peerReviews: [
-    { initials: 'JM', name: 'Jean-Marc Dupont · Manager', role: 'Mars 2026', text: 'Analyste rigoureux, livrables fiables ; a pris en main le scoring corporate avec autonomie.', stars: 5 },
+    { initials: 'KN', name: 'Karim Naji · Manager', role: 'Mars 2026', text: 'Analyste rigoureux, livrables fiables ; a pris en main le scoring corporate avec autonomie.', stars: 5 },
     { initials: 'YA', name: 'Yasmine Alaoui · Collègue', role: 'Fév. 2026', text: "Toujours disponible pour aider l'équipe sur les dossiers complexes.", stars: 5 },
     { initials: 'SC', name: 'Salma Cherkaoui · Collègue', role: 'Janv. 2026', text: 'Bonne pédagogie sur les sujets réglementaires.', stars: 4 },
   ],

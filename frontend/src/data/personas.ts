@@ -12,29 +12,29 @@ import type { Role, User } from '@/types/domain'
  * ⚠ Démo/local uniquement. Le rôle réel est déterminé par le backend au login.
  */
 export const DEMO_CREDENTIALS: Record<Role, { email: string; password: string }> = {
-  collab: { email: 'marc.bennani@bmci.local', password: 'Bmci-Demo-2026!' },
-  manager: { email: 'jeanmarc.dupont@bmci.local', password: 'Bmci-Demo-2026!' },
+  collab: { email: 'youssef.elamrani@bmci.local', password: 'Bmci-Demo-2026!' },
+  manager: { email: 'karim.naji@bmci.local', password: 'Bmci-Demo-2026!' },
   rh: { email: 'nadia.alami@bmci.local', password: 'Bmci-Demo-2026!' },
 }
 export const PERSONAS: Record<Role, User> = {
   collab: {
-    id: 'u-marc',
+    id: 'u-youssef',
     role: 'collab',
-    name: 'Marc Bennani',
-    firstName: 'Marc',
-    initials: 'MB',
-    email: 'marc.bennani@bmci.local',
+    name: 'Youssef El Amrani',
+    firstName: 'Youssef',
+    initials: 'YE',
+    email: 'youssef.elamrani@bnpparibas.com',
     title: 'Conseiller clientèle particuliers',
     entity: 'Retail Banking',
     roleLabel: 'Collaborateur',
   },
   manager: {
-    id: 'u-jeanmarc',
+    id: 'u-karim',
     role: 'manager',
-    name: 'Jean-Marc Dupont',
-    firstName: 'Jean-Marc',
-    initials: 'JM',
-    email: 'jean-marc.dupont@bnpparibas.com',
+    name: 'Karim Naji',
+    firstName: 'Karim',
+    initials: 'KN',
+    email: 'karim.naji@bnpparibas.com',
     title: 'Directeur de Pôle Risques',
     entity: 'Direction des Risques',
     roleLabel: 'Manager',

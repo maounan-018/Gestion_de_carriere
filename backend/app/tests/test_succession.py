@@ -14,7 +14,7 @@ from app.tests.conftest import auth, hdr
 def test_contexte_reel_du_pole(db, monkeypatch):
     p1 = Profil(nom="Alami", prenom="Nadia", poste_actuel="Responsable RH",
                 departement_key="rh", aspirations="Directrice des Talents", synthetique=True)
-    p2 = Profil(nom="Bennani", prenom="Marc", poste_actuel="Conseiller",
+    p2 = Profil(nom="El Amrani", prenom="Youssef", poste_actuel="Conseiller",
                 departement_key="rh", synthetique=True)
     db.add_all([p1, p2])
     db.flush()

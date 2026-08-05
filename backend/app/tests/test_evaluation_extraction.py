@@ -35,7 +35,7 @@ def test_manager_extrait_evaluation_de_son_equipe(client, monkeypatch):
     monkeypatch.setattr(cv, "extraire_evaluation", _fake_comps)
 
     auth(client, "rh")
-    bennani = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] == "Bennani")
+    bennani = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] == "El Amrani")
     csrf = auth(client, "manager")
     r = client.post(f"/api/profils/{bennani}/extraction-evaluation", headers=hdr(csrf),
                     json={"texte": "Évaluation de mission : excellent leadership démontré.",

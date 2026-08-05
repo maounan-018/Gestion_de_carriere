@@ -37,10 +37,10 @@ onMounted(load)
   <div class="space-y-5">
     <BaseCard>
       <div class="flex flex-wrap items-center gap-4">
-        <BaseAvatar :initials="session.user?.initials || 'JM'" size="xl" :photo="session.user?.photo" />
+        <BaseAvatar :initials="session.user?.initials || 'KN'" size="xl" :photo="session.user?.photo" />
         <div class="min-w-0 flex-1">
           <h2 class="font-display text-2xl font-bold text-ink">
-            {{ session.user?.name || 'Jean-Marc Dupont' }}
+            {{ session.user?.name || 'Karim Naji' }}
           </h2>
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
         </div>

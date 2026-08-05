@@ -43,13 +43,13 @@ onMounted(load)
     <!-- Hero -->
     <BaseCard>
       <div class="flex flex-wrap items-center gap-4">
-        <BaseAvatar :initials="session.user?.initials || 'MB'" size="xl" :photo="session.user?.photo" />
+        <BaseAvatar :initials="session.user?.initials || 'YE'" size="xl" :photo="session.user?.photo" />
         <div class="min-w-0 flex-1">
           <div class="text-xs font-semibold uppercase tracking-wide text-green-deep">
             Espace collaborateur
           </div>
           <h2 class="font-display text-2xl font-bold text-ink">
-            Bonjour {{ session.user?.firstName || 'Marc' }}
+            Bonjour {{ session.user?.firstName || 'Youssef' }}
           </h2>
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
         </div>

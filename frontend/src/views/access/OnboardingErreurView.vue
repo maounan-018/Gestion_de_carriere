@@ -31,7 +31,7 @@ const { toast } = useToast()
         class="flex items-center justify-between rounded-lg border border-border bg-panel px-3 py-2 text-sm"
       >
         <span class="flex items-center gap-2 text-ink-3"><Mail :size="14" /> E-mail</span>
-        <span class="font-medium text-ink">marc.bennani@bnpparibas.com</span>
+        <span class="font-medium text-ink">youssef.elamrani@bnpparibas.com</span>
       </div>
       <div
         class="flex items-center justify-between rounded-lg border border-border bg-panel px-3 py-2 text-sm"

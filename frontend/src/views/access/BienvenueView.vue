@@ -34,7 +34,7 @@ async function enter() {
         Bienvenue dans votre outil de carrière <span class="text-green">BMCI</span>.
       </h1>
       <p class="mt-2 text-ink-2">
-        Votre profil est prêt, Marc. Explorez la mobilité interne, suivez vos formations et préparez
+        Votre profil est prêt, Youssef. Explorez la mobilité interne, suivez vos formations et préparez
         vos entretiens avec le Coach Carrière.
       </p>
       <div

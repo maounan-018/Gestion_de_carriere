@@ -13,8 +13,8 @@ import { useSessionStore } from './session'
 const STORAGE_KEY = 'bmci.session'
 
 const marc: User = {
-  id: '3', role: 'collab', name: 'Marc Bennani', firstName: 'Marc', initials: 'MB',
-  email: 'marc.bennani@bnpparibas.com', title: 'Analyste Senior', entity: 'Risques',
+  id: '3', role: 'collab', name: 'Youssef El Amrani', firstName: 'Youssef', initials: 'YE',
+  email: 'youssef.elamrani@bnpparibas.com', title: 'Analyste Senior', entity: 'Risques',
   roleLabel: 'Collaborateur',
 }
 
@@ -47,7 +47,7 @@ describe('session store — état & getters', () => {
   it('hydrate le cache local au démarrage', () => {
     mem[STORAGE_KEY] = JSON.stringify(marc)
     const s = useSessionStore()
-    expect(s.user?.name).toBe('Marc Bennani')
+    expect(s.user?.name).toBe('Youssef El Amrani')
     expect(s.isAuthenticated).toBe(true)
     expect(s.role).toBe('collab')
   })
@@ -57,7 +57,7 @@ describe('session store — login / logout', () => {
   it('login pose l’utilisateur et le persiste', async () => {
     vi.mocked(authService.login).mockResolvedValue(marc)
     const s = useSessionStore()
-    await s.login('marc.bennani@bnpparibas.com', 'x')
+    await s.login('youssef.elamrani@bnpparibas.com', 'x')
     expect(s.user).toEqual(marc)
     expect(s.isAuthenticated).toBe(true)
     expect(JSON.parse(mem[STORAGE_KEY]).id).toBe('3')
@@ -107,7 +107,7 @@ describe('session store — durcissement #4', () => {
     vi.mocked(authService.me).mockRejectedValue(new ApiError(503, 'Service indisponible'))
     const s = useSessionStore()
     await s.hydrate()
-    expect(s.user?.name).toBe('Marc Bennani') // cache conservé le temps de la session
+    expect(s.user?.name).toBe('Youssef El Amrani') // cache conservé le temps de la session
     expect(mem[STORAGE_KEY]).toBeDefined()
     expect(s.hydrated).toBe(true)
   })

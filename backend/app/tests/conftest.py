@@ -37,8 +37,8 @@ DEMO_PASSWORD = os.environ["SEED_DEMO_PASSWORD"]
 ACCOUNTS = {
     "admin": "admin@bmci.local",
     "rh": "nadia.alami@bmci.local",
-    "manager": "jeanmarc.dupont@bmci.local",
-    "collab": "marc.bennani@bmci.local",
+    "manager": "karim.naji@bmci.local",
+    "collab": "youssef.elamrani@bmci.local",
 }
 
 

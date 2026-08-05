@@ -45,11 +45,11 @@ onMounted(load)
   <div class="space-y-5">
     <BaseCard>
       <div class="flex flex-wrap items-center gap-4">
-        <BaseAvatar :initials="session.user?.initials || 'JM'" size="xl" :photo="session.user?.photo" />
+        <BaseAvatar :initials="session.user?.initials || 'KN'" size="xl" :photo="session.user?.photo" />
         <div class="min-w-0 flex-1">
           <div class="text-xs font-semibold uppercase tracking-wide text-green-deep">Espace manager</div>
           <h2 class="font-display text-2xl font-bold text-ink">
-            Bonjour {{ session.user?.firstName || 'Jean-Marc' }}
+            Bonjour {{ session.user?.firstName || 'Karim' }}
           </h2>
           <p class="text-sm text-ink-3">{{ session.user?.title }} · {{ session.user?.entity }}</p>
         </div>

@@ -6,13 +6,13 @@ import type { RhPerson, CartoPole, RhKpi, RhAlert, HautPotentiel, VeilleType } f
  * Jeu de personnes partagé avec l'espace manager (manque G23) + élargi aux autres pôles.
  */
 export const RH_PEOPLE: RhPerson[] = [
-  { id: 'aya', initials: 'AB', name: 'Aya Bennani', role: "Chargée d'Affaires Senior", pole: 'Risques', seniority: '6 ans', ring: 88, evalScore: '4,8/5', lastRh: '14 mois', aspiration: "Manager d'équipe Risques", aspirationHorizon: '12 mois', skills: [{ label: 'Analyse crédit', pct: 90 }, { label: 'Négociation', pct: 88 }, { label: 'Réglementaire', pct: 78 }], strengths: ['Rigueur', 'Sens du client'], gaps: ['Diriger une équipe'], flag: 'top' },
+  { id: 'aya', initials: 'AB', name: 'Aya El Amrani', role: "Chargée d'Affaires Senior", pole: 'Risques', seniority: '6 ans', ring: 88, evalScore: '4,8/5', lastRh: '14 mois', aspiration: "Manager d'équipe Risques", aspirationHorizon: '12 mois', skills: [{ label: 'Analyse crédit', pct: 90 }, { label: 'Négociation', pct: 88 }, { label: 'Réglementaire', pct: 78 }], strengths: ['Rigueur', 'Sens du client'], gaps: ['Diriger une équipe'], flag: 'top' },
   { id: 'karim', initials: 'KI', name: 'Karim Idrissi', role: 'Analyste Risque', pole: 'Risques', seniority: '4 ans', ring: 82, evalScore: '4,3/5', lastRh: '8 mois', aspiration: 'Expert Modélisation', aspirationHorizon: '18 mois', skills: [{ label: 'IFRS 9', pct: 84 }, { label: 'Data / Python', pct: 80 }], strengths: ['Modélisation'], gaps: ['Communication'], flag: null },
   { id: 'sofia', initials: 'SH', name: 'Sofia Haddad', role: 'Analyste Middle Office', pole: 'Corporate', seniority: '5 ans', ring: 92, evalScore: '4,6/5', lastRh: '5 mois', aspiration: 'Management de transition', aspirationHorizon: '6·12 mois', skills: [{ label: 'Middle office', pct: 90 }, { label: 'Conformité', pct: 84 }], strengths: ['Excellence opérationnelle', 'Leadership'], gaps: ['Exposition stratégique'], flag: 'top' },
   { id: 'youssef', initials: 'YA', name: 'Youssef Amrani', role: 'Contrôleur de Gestion', pole: 'Finance', seniority: '3 ans', ring: 74, evalScore: '3,9/5', lastRh: '10 mois', aspiration: 'Contrôleur Senior', aspirationHorizon: '18 mois', skills: [{ label: 'Analyse financière', pct: 82 }, { label: 'Reporting', pct: 80 }], strengths: ['Reporting'], gaps: ['Business partnering'], flag: null },
   { id: 'leila', initials: 'LF', name: 'Leïla Fassi', role: 'Chargée de Conformité', pole: 'Conformité', seniority: '7 ans', ring: 86, evalScore: '4,5/5', lastRh: '6 mois', aspiration: 'Responsable Conformité', aspirationHorizon: '12 mois', skills: [{ label: 'Conformité', pct: 92 }, { label: 'KYC/LCB-FT', pct: 88 }], strengths: ['Expertise réglementaire'], gaps: ['Outils data'], flag: 'top' },
   { id: 'mehdi', initials: 'MC', name: 'Mehdi Chraibi', role: 'Trésorier Adjoint', pole: 'Finance', seniority: '2 ans', ring: 63, evalScore: '3,4/5', lastRh: '18 mois', aspiration: 'À clarifier', aspirationHorizon: '—', skills: [{ label: 'ALM', pct: 70 }, { label: 'Liquidité', pct: 68 }], strengths: ['Technique ALM'], gaps: ['Engagement'], riskDeparture: true, flag: 'watch' },
-  { id: 'marc', initials: 'MV', name: 'Marc Vasseur', role: 'Ingénieur DevOps', pole: 'IT & Digital', seniority: '4 ans', ring: 79, evalScore: '4,1/5', lastRh: '11 mois', aspiration: 'Mission transverse · transformation agences', aspirationHorizon: 'Dès septembre', skills: [{ label: 'DevOps', pct: 88 }, { label: 'Cloud', pct: 82 }, { label: 'Cybersécurité', pct: 60 }], strengths: ['Automatisation'], gaps: ['Cybersécurité (ISO 27001)'], riskDeparture: true, flag: null },
+  { id: 'marc', initials: 'MV', name: 'Youssef Vasseur', role: 'Ingénieur DevOps', pole: 'IT & Digital', seniority: '4 ans', ring: 79, evalScore: '4,1/5', lastRh: '11 mois', aspiration: 'Mission transverse · transformation agences', aspirationHorizon: 'Dès septembre', skills: [{ label: 'DevOps', pct: 88 }, { label: 'Cloud', pct: 82 }, { label: 'Cybersécurité', pct: 60 }], strengths: ['Automatisation'], gaps: ['Cybersécurité (ISO 27001)'], riskDeparture: true, flag: null },
   { id: 'omar', initials: 'OT', name: 'Omar Tazi', role: 'Analyste Crédit Junior', pole: 'Corporate', seniority: '1 an', ring: 68, evalScore: '3,8/5', lastRh: '4 mois', aspiration: 'Analyste confirmé', aspirationHorizon: '24 mois', skills: [{ label: 'Analyse crédit', pct: 66 }, { label: 'Excel', pct: 72 }], strengths: ['Motivation'], gaps: ['Autonomie'], flag: null },
 ]
 
@@ -25,7 +25,7 @@ export const CARTO_SKILLS = ['Comportementale', 'Data & Analyse', 'Leadership', 
  *  Représentatif (le live couvre les ~33 départements). `levels` suit l'ordre CARTO_SKILLS. */
 export const CARTO_POLES: CartoPole[] = [
   // Lignes métiers commerciales
-  { name: 'Retail Banking', pole: 'Lignes métiers commerciales', levels: [4, 3, 3, 4, 3, 3], people: ['Marc Bennani', 'Omar Tazi'] },
+  { name: 'Retail Banking', pole: 'Lignes métiers commerciales', levels: [4, 3, 3, 4, 3, 3], people: ['Youssef El Amrani', 'Omar Tazi'] },
   { name: 'Corporate Banking', pole: 'Lignes métiers commerciales', levels: [4, 4, 3, 4, 3, 3], people: ['Sofia Haddad'] },
   { name: 'Banque Privée', pole: 'Lignes métiers commerciales', levels: [4, 3, 3, 4, 2, 3], people: [] },
   // Marchés, international & filiales
@@ -33,14 +33,14 @@ export const CARTO_POLES: CartoPole[] = [
   { name: 'BMCI Bourse', pole: 'Marchés, international & filiales', levels: [3, 5, 3, 4, 3, 4], people: [] },
   { name: 'IMEX (Trade Finance)', pole: 'Marchés, international & filiales', levels: [3, 4, 2, 4, 3, 4], people: [] },
   // Risques, conformité & contrôle
-  { name: 'Risques', pole: 'Risques, conformité & contrôle', levels: [4, 4, 3, 5, 3, 4], people: ['Aya Bennani', 'Karim Idrissi'] },
+  { name: 'Risques', pole: 'Risques, conformité & contrôle', levels: [4, 4, 3, 5, 3, 4], people: ['Aya El Amrani', 'Karim Idrissi'] },
   { name: 'Conformité', pole: 'Risques, conformité & contrôle', levels: [4, 3, 3, 4, 3, 5], people: ['Leïla Fassi'] },
   { name: 'Inspection générale', pole: 'Risques, conformité & contrôle', levels: [4, 3, 3, 4, 3, 4], people: [] },
   // Finance, stratégie & pilotage
   { name: 'Finance', pole: 'Finance, stratégie & pilotage', levels: [3, 4, 3, 4, 3, 4], people: ['Youssef Amrani'] },
   { name: 'Stratégie & Gouvernance', pole: 'Finance, stratégie & pilotage', levels: [4, 4, 3, 3, 3, 4], people: [] },
   // Data, IT & digital
-  { name: "Système d'Information", pole: 'Data, IT & digital', levels: [3, 4, 3, 4, 5, 3], people: ['Marc Vasseur'] },
+  { name: "Système d'Information", pole: 'Data, IT & digital', levels: [3, 4, 3, 4, 5, 3], people: ['Youssef Vasseur'] },
   { name: 'Digital Factory', pole: 'Data, IT & digital', levels: [3, 4, 3, 4, 5, 4], people: [] },
   { name: 'Chief Data Office', pole: 'Data, IT & digital', levels: [3, 5, 3, 3, 5, 3], people: [] },
   // Fonctions support & corporate
@@ -56,7 +56,7 @@ export const RH_KPIS: RhKpi[] = [
 ]
 
 export const RH_ALERTS: RhAlert[] = [
-  { id: 'a1', kind: 'retention', icon: 'shield', severity: 'crit', title: 'Risque de départ · IT & Digital', text: '2 profils clés présentent des signaux de désengagement (dont Marc Vasseur).', cta: 'Analyser la rétention', to: 'rh.retention' },
+  { id: 'a1', kind: 'retention', icon: 'shield', severity: 'crit', title: 'Risque de départ · IT & Digital', text: '2 profils clés présentent des signaux de désengagement (dont Youssef Vasseur).', cta: 'Analyser la rétention', to: 'rh.retention' },
   { id: 'a2', kind: 'potential', icon: 'spark', severity: 'info', title: 'Hauts potentiels identifiés', text: 'Le moteur IA a identifié Sofia Haddad (92) apte au management de transition.', cta: 'Consulter', to: 'rh.hautsPotentiels' },
   { id: 'a3', kind: 'succession', icon: 'flag', severity: 'warn', title: 'Poste critique · succession', text: '« Directeur Asset Management » sans successeur désigné.', cta: 'Lancer une analyse', to: 'rh.hautsPotentiels' },
 ]
@@ -118,7 +118,7 @@ export const RH_OFFERS: RhOffer[] = [
     status: 'ouvert', candidates: 7, compatible: 3,
     candidateList: [
       { personId: 'karim', name: 'Karim Idrissi', initials: 'KI', role: 'Analyste Risque', pole: 'Risques', score: 87, matched: ['IFRS 9', 'Data / Python', 'Modélisation'], gaps: ['Communication'], status: 'entretien' },
-      { personId: 'aya', name: 'Aya Bennani', initials: 'AB', role: "Chargée d'Affaires Senior", pole: 'Risques', score: 79, matched: ['Analyse crédit', 'Réglementaire'], gaps: ['Modélisation avancée'], status: 'preselection' },
+      { personId: 'aya', name: 'Aya El Amrani', initials: 'AB', role: "Chargée d'Affaires Senior", pole: 'Risques', score: 79, matched: ['Analyse crédit', 'Réglementaire'], gaps: ['Modélisation avancée'], status: 'preselection' },
       { personId: 'omar', name: 'Omar Tazi', initials: 'OT', role: 'Analyste Crédit Junior', pole: 'Corporate', score: 61, matched: ['Analyse crédit'], gaps: ['Séniorité', 'IFRS 9'], status: 'nouveau' },
     ],
   },
@@ -127,8 +127,8 @@ export const RH_OFFERS: RhOffer[] = [
 ]
 
 export const RH_NOTIFICATIONS: NotificationItem[] = [
-  { id: 'rn1', icon: 'flag', title: 'Entretien RH en retard', text: "Aya Bennani n'a pas eu d'entretien RH depuis 14 mois.", time: 'Il y a 1 h', unread: true, to: 'rh.annuaire' },
-  { id: 'rn2', icon: 'route', title: "Nouveau souhait d'évolution", text: 'Marc Vasseur souhaite rejoindre une mission transverse.', time: 'Il y a 3 h', unread: true, to: 'rh.annuaire' },
+  { id: 'rn1', icon: 'flag', title: 'Entretien RH en retard', text: "Aya El Amrani n'a pas eu d'entretien RH depuis 14 mois.", time: 'Il y a 1 h', unread: true, to: 'rh.annuaire' },
+  { id: 'rn2', icon: 'route', title: "Nouveau souhait d'évolution", text: 'Youssef Vasseur souhaite rejoindre une mission transverse.', time: 'Il y a 3 h', unread: true, to: 'rh.annuaire' },
   { id: 'rn3', icon: 'spark', title: 'Haut potentiel détecté', text: 'Sofia Haddad (score 92) apte au management de transition.', time: 'Il y a 5 h', unread: true, to: 'rh.hautsPotentiels' },
   { id: 'rn4', icon: 'award', title: "Campagne d'évaluation", text: '62 % complétée · 3 pôles en retard.', time: 'Hier', unread: false, to: 'rh.entretiens' },
   { id: 'rn5', icon: 'check', title: 'Revue automatique terminée', text: 'La revue nocturne a corrigé 3 anomalies.', time: 'Hier', unread: false, to: 'rh.supervision' },

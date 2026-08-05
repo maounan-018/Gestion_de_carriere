@@ -12,7 +12,7 @@ const session = useSessionStore()
 const messages: ChatMessage[] = [
   {
     from: 'bot',
-    text: `Bonjour ${session.user?.firstName || 'Jean-Marc'} 👋 Je suis votre <b>Coach Carrière</b>. Je connais votre parcours, votre équipe et vos objectifs.`,
+    text: `Bonjour ${session.user?.firstName || 'Karim'} 👋 Je suis votre <b>Coach Carrière</b>. Je connais votre parcours, votre équipe et vos objectifs.`,
   },
   {
     from: 'bot',

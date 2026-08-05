@@ -43,7 +43,7 @@ def test_souhait_pousse_notifie_le_manager(client):
     auth(client, "manager")
     notifs = client.get("/api/notifications").json()
     assert any(n["titre"] == "Nouveau souhait d'évolution"
-               and "Bennani" in (n["texte"] or "") for n in notifs)
+               and "El Amrani" in (n["texte"] or "") for n in notifs)
 
 
 def test_souhait_decide_notifie_le_collaborateur(client):

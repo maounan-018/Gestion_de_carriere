@@ -35,7 +35,7 @@ def test_mobilite_manager_voit_son_equipe(client, monkeypatch):
                         lambda *a, **k: [{"occupation_id": 2, "metier": "Chef de projet",
                                           "source": "esco", "competences_partagees": 4}])
     auth(client, "rh")
-    bennani = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] == "Bennani")
+    bennani = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] == "El Amrani")
     auth(client, "manager")
     assert client.get(f"/api/profils/{bennani}/mobilite").status_code == 200
 
@@ -44,6 +44,6 @@ def test_mobilite_interdite_sur_profil_autrui(client, monkeypatch):
     from app.services import occupation_service
     monkeypatch.setattr(occupation_service, "suggest_occupations", lambda *a, **k: [])
     auth(client, "rh")
-    autre = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] != "Bennani")
+    autre = next(p["id"] for p in client.get("/api/profils").json() if p["nom"] != "El Amrani")
     auth(client, "collab")
     assert client.get(f"/api/profils/{autre}/mobilite").status_code == 403

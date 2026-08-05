@@ -70,13 +70,13 @@ def test_souhaits_recus_interdit_au_collab(client):
 
 
 def test_souhaits_recus_manager_voit_son_equipe(client):
-    # Marc pousse un souhait…
+    # Youssef pousse un souhait…
     csrf = auth(client, "collab")
     client.post("/api/souhaits", headers=hdr(csrf),
                 json={"titre": "[TEST] Poussé au manager", "pushed": True})
-    # …que son manager Jean-Marc doit voir, avec l'identité du membre.
+    # …que son manager Karim doit voir, avec l'identité du membre.
     auth(client, "manager")
     r = client.get("/api/souhaits/recus")
     assert r.status_code == 200
     recus = r.json()
-    assert recus and any(s.get("membre_nom") == "Bennani" for s in recus)
+    assert recus and any(s.get("membre_nom") == "El Amrani" for s in recus)

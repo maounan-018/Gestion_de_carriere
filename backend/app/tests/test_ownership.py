@@ -4,7 +4,7 @@ tests/test_ownership.py — Ownership ligne-à-ligne (B2), de bout en bout.
 
 Prouve le cloisonnement par PÉRIMÈTRE (au-delà du RBAC) sur profils & candidatures :
   - COLLAB  : SON profil / SES candidatures uniquement ;
-  - MANAGER : lui + SON ÉQUIPE (le collab Bennani est managé par le manager) ;
+  - MANAGER : lui + SON ÉQUIPE (le collab El Amrani est managé par le manager) ;
   - RH/ADMIN : global.
 Les ids « hors périmètre » sont des personas synthétiques (user_id NULL), invisibles
 aux managers. Découverte des ids faite en tant que RH (périmètre global).
@@ -18,7 +18,7 @@ from app.tests.conftest import auth, hdr
 def test_collab_lit_son_profil_pas_celui_dautrui(client):
     auth(client, "rh")
     profils = client.get("/api/profils").json()
-    autre = next(p["id"] for p in profils if p["nom"] != "Bennani")  # pas le profil du collab
+    autre = next(p["id"] for p in profils if p["nom"] != "El Amrani")  # pas le profil du collab
 
     auth(client, "collab")
     mon = client.get("/api/profils/me/carriere").json()["profil_id"]
@@ -29,7 +29,7 @@ def test_collab_lit_son_profil_pas_celui_dautrui(client):
 def test_manager_lit_equipe_pas_hors_equipe(client):
     csrf = auth(client, "rh")
     profils = client.get("/api/profils").json()
-    bennani = next(p["id"] for p in profils if p["nom"] == "Bennani")       # équipe du manager
+    bennani = next(p["id"] for p in profils if p["nom"] == "El Amrani")       # équipe du manager
     synth = client.post("/api/profils", json={"nom": "HorsEquipe", "synthetique": True},
                         headers=hdr(csrf)).json()["id"]                      # persona hors équipe
 
@@ -47,7 +47,7 @@ def test_liste_profils_manager_bornee_a_son_equipe(client):
     profils = client.get("/api/profils").json()   # sans manager_id : périmètre forcé à SON équipe
     ids = {p["id"] for p in profils}
     assert synth not in ids                        # persona hors équipe absent
-    assert any(p["nom"] == "Bennani" for p in profils)
+    assert any(p["nom"] == "El Amrani" for p in profils)
 
 
 # --------------------------------------------------------------- Candidatures
@@ -108,7 +108,7 @@ def test_collab_ne_retire_pas_candidature_dautrui(client):
 # --------------------------------------------------- Notification ciblée (RH → collab)
 
 def test_rh_notifie_un_collaborateur(client):
-    # RH envoie une notification ciblée au collab (Marc a un compte → délivrée).
+    # RH envoie une notification ciblée au collab (Youssef a un compte → délivrée).
     auth(client, "collab")
     mon = client.get("/api/profils/me/carriere").json()["profil_id"]
     csrf = auth(client, "rh")
