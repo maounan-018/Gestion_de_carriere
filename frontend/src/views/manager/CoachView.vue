@@ -40,7 +40,7 @@ const suggestions: ChatSuggestion[] = [
           <Sparkles :size="13" /> Confidentiel
         </div>
         <p class="text-sm text-ink-3">
-          Vos échanges avec le Coach restent strictement privés · ni votre hiérarchie ni la RH n'y
+          Vos échanges avec le Coach restent strictement privés · ni votre hiérarchie ni la HRBP n'y
           ont accès.
         </p>
       </BaseCard>

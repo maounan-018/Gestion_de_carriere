@@ -51,7 +51,7 @@ export interface Vacancy {
 
 /* ---------------------------------------------------- Souhaits reçus */
 export type SouhaitRecuKind = 'mission' | 'carriere'
-export type SouhaitRecuStatus = 'à traiter' | 'accordé' | 'transmis RH' | 'refusé'
+export type SouhaitRecuStatus = 'à traiter' | 'accordé' | 'transmis HRBP' | 'refusé'
 export interface SouhaitRecu {
   id: string
   memberId: string

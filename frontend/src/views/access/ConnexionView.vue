@@ -15,7 +15,7 @@ const session = useSessionStore()
 const roles: { value: Role; label: string }[] = [
   { value: 'collab', label: 'Collaborateur' },
   { value: 'manager', label: 'Manager' },
-  { value: 'rh', label: 'RH' },
+  { value: 'rh', label: 'HRBP' },
 ]
 const selectedRole = ref<Role>('collab')
 const email = ref(DEMO_CREDENTIALS.collab.email)

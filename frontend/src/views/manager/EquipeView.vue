@@ -48,7 +48,7 @@ async function toggleCarto() {
   }
 }
 
-// Communiquer aux RH : compose un message → crée une notification pour les RH.
+// Communiquer à la HRBP : compose un message → crée une notification pour les RH.
 const showRhMsg = ref(false)
 const rhSujet = ref('')
 const rhMessage = ref('')
@@ -58,7 +58,7 @@ async function sendRh() {
   rhSending.value = true
   try {
     const r = await apiService.communiquerRH(rhSujet.value, rhMessage.value)
-    toast(`Message envoyé aux RH (${r.destinataires} destinataire${r.destinataires > 1 ? 's' : ''}).`, 'ok')
+    toast(`Message envoyé à la HRBP (${r.destinataires} destinataire${r.destinataires > 1 ? 's' : ''}).`, 'ok')
     showRhMsg.value = false
     rhSujet.value = ''
     rhMessage.value = ''
@@ -82,7 +82,7 @@ async function sendRh() {
           <LayoutGrid :size="15" /> {{ showCarto ? 'Masquer la cartographie' : 'Cartographie de l’équipe' }}
         </BaseButton>
         <BaseButton variant="secondary" size="sm" @click="showRhMsg = true">
-          Communiquer aux RH
+          Communiquer à la HRBP
         </BaseButton>
       </div>
     </div>
@@ -131,9 +131,9 @@ async function sendRh() {
       </RouterLink>
     </div>
 
-    <BaseModal v-model="showRhMsg" title="Communiquer aux RH">
+    <BaseModal v-model="showRhMsg" title="Communiquer à la HRBP">
       <div class="space-y-3">
-        <p class="text-xs text-ink-3">Votre message crée une notification pour l'équipe RH.</p>
+        <p class="text-xs text-ink-3">Votre message crée une notification pour la HRBP.</p>
         <div>
           <label class="mb-1 block text-xs font-semibold text-ink-2">Sujet (optionnel)</label>
           <input
@@ -149,7 +149,7 @@ async function sendRh() {
             v-model="rhMessage"
             rows="4"
             maxlength="1000"
-            placeholder="Votre message aux RH…"
+            placeholder="Votre message à la HRBP…"
             class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm outline-none focus:border-green-line"
           />
         </div>

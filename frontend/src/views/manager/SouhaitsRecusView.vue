@@ -36,8 +36,8 @@ function act(s: SouhaitRecu, status: SouhaitRecuStatus, msg: string) {
   toast(msg)
 }
 
-// Transmettre un souhait « carrière » à la RH : une RECOMMANDATION justifiée est
-// exigée (pourquoi le manager appuie ce collaborateur) et réellement envoyée à la RH.
+// Transmettre un souhait « carrière » à la HRBP : une RECOMMANDATION justifiée est
+// exigée (pourquoi le manager appuie ce collaborateur) et réellement envoyée à la HRBP.
 const showTransmit = ref(false)
 const curSouhait = ref<SouhaitRecu | null>(null)
 const justification = ref('')
@@ -58,9 +58,9 @@ async function confirmTransmit() {
       `Souhait d'évolution « ${s.title} » (${s.horizon}). Pourquoi je recommande `
         + `${s.memberName} : ${justification.value.trim()}`,
     )
-    s.status = 'transmis RH'
+    s.status = 'transmis HRBP'
     showTransmit.value = false
-    toast('Souhait transmis à la RH avec votre recommandation', 'ok')
+    toast('Souhait transmis à la HRBP avec votre recommandation', 'ok')
   } catch (e) {
     toast(e instanceof Error ? e.message : 'Échec de la transmission', 'error')
   } finally {
@@ -69,7 +69,7 @@ async function confirmTransmit() {
 }
 
 const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
-  'à traiter': 'warn', accordé: 'new', 'transmis RH': 'ai', refusé: 'mut',
+  'à traiter': 'warn', accordé: 'new', 'transmis HRBP': 'ai', refusé: 'mut',
 }
 </script>
 
@@ -77,7 +77,7 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
   <div class="space-y-4">
     <p class="text-sm text-ink-3">
       Souhaits d'évolution poussés par votre équipe. <b class="text-ink-2">Mission</b> : vous
-      décidez · <b class="text-ink-2">Carrière</b> : vous transmettez à la RH.
+      décidez · <b class="text-ink-2">Carrière</b> : vous transmettez à la HRBP.
     </p>
 
     <LoadingState v-if="loading" label="Chargement des souhaits…" />
@@ -116,13 +116,13 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
             </BaseButton>
           </template>
           <BaseButton v-else size="sm" @click="openTransmit(s)">
-            <AppIcon name="send" :size="14" /> Transmettre à la RH
+            <AppIcon name="send" :size="14" /> Transmettre à la HRBP
           </BaseButton>
         </div>
       </BaseCard>
     </div>
 
-    <BaseModal v-model="showTransmit" title="Transmettre à la RH">
+    <BaseModal v-model="showTransmit" title="Transmettre à la HRBP">
       <div v-if="curSouhait" class="space-y-3">
         <div class="rounded-xl border border-green-line bg-green-ghost p-3">
           <h4 class="text-sm font-bold text-green-deep">{{ curSouhait.title }}</h4>
@@ -138,7 +138,7 @@ const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
             placeholder="Points forts, réalisations, potentiel observé, adéquation avec l'évolution visée…"
             class="w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-green-line"
           />
-          <p class="mt-1 text-[11px] text-ink-3">Votre recommandation est envoyée à la RH avec le souhait.</p>
+          <p class="mt-1 text-[11px] text-ink-3">Votre recommandation est envoyée à la HRBP avec le souhait.</p>
         </div>
       </div>
       <template #footer>

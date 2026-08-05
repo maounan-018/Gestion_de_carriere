@@ -17,7 +17,7 @@ const notifs = ref({ offres: true, souhaits: true, entretiens: true, evaluations
 
 // Journal des accès (démo synthétique · traçabilité G20).
 const accessLog = [
-  { who: 'Nadia Alami', role: 'RH', when: 'Il y a 2 jours', reason: "Préparation d'un entretien RH" },
+  { who: 'Nadia Alami', role: 'HRBP', when: 'Il y a 2 jours', reason: "Préparation d'un entretien RH" },
   { who: 'Jean-Marc Dupont', role: 'Manager', when: 'Il y a 5 jours', reason: "Revue d'équipe" },
 ]
 

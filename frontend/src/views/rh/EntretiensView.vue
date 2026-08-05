@@ -65,7 +65,7 @@ const totals = computed(() => {
         :class="filter === f ? 'bg-green text-white' : 'text-ink-2 hover:text-ink'"
         @click="filter = f"
       >
-        {{ f === 'both' ? 'Tous' : f === 'annuels' ? 'Annuels (managers)' : 'RH ↔ collab' }}
+        {{ f === 'both' ? 'Tous' : f === 'annuels' ? 'Annuels (managers)' : 'HRBP ↔ collab' }}
       </button>
     </div>
 
