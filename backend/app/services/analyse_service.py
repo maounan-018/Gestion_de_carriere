@@ -20,15 +20,18 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.analyse_rh import AnalyseRh
 from app.services import dashboard_service
 from app.services.ai_router import generate, fence
 
 logger = logging.getLogger(__name__)
 
 _TASK = "analyse_rh"
+_SCOPE = "global"
 
 _SYSTEM = (
     "Tu es un analyste RH stratégique d'une banque (BMCI, groupe BNP Paribas). On te "
@@ -77,9 +80,38 @@ def _contexte(db: Session) -> str:
     return "\n".join(lignes)
 
 
+def charger_derniere(db: Session, scope: str = _SCOPE) -> dict | None:
+    """Dernière analyse PERSISTÉE (ou None). Permet au tableau de bord HRBP de
+    présenter la synthèse COURANTE immédiatement, sans relancer le LLM."""
+    row = db.scalar(select(AnalyseRh).where(AnalyseRh.scope == scope))
+    if row is None:
+        return None
+    return {
+        "synthese": row.synthese,
+        "model": row.model or "?",
+        "genere_le": (row.updated_at or row.created_at).isoformat(),
+    }
+
+
+def _persister(db: Session, synthese: str, model: str, scope: str = _SCOPE) -> None:
+    """Upsert best-effort de la ligne courante (source durable, jamais de perte)."""
+    try:
+        row = db.scalar(select(AnalyseRh).where(AnalyseRh.scope == scope))
+        if row is None:
+            db.add(AnalyseRh(scope=scope, synthese=synthese, model=model))
+        else:
+            row.synthese = synthese
+            row.model = model
+        db.commit()
+    except Exception as e:  # noqa: BLE001 — persistance best-effort
+        logger.warning("Persistance analyse RH échouée (%s).", e)
+        db.rollback()
+
+
 def analyser(db: Session) -> dict:
     """Analyse stratégique RH : synthèse IA des indicateurs consolidés. Renvoie
-    {synthese, model, genere_le}. Résiste à l'indisponibilité du service IA."""
+    {synthese, model, genere_le} ET persiste la synthèse (source durable).
+    Résiste à l'indisponibilité du service IA (dans ce cas, aucune persistance)."""
     contexte = _contexte(db)
     model = settings.task_model(_TASK).get("model", "?")
     prompt = (
@@ -91,7 +123,10 @@ def analyser(db: Session) -> dict:
     except Exception as e:  # noqa: BLE001 — indisponibilité IA best-effort
         logger.warning("Analyse RH indisponible (%s).", e)
         synthese = ""
-    if not synthese:
+    genere = bool(synthese)  # vraie synthèse (avant repli) → persistable
+    if genere:
+        _persister(db, synthese, model)
+    else:
         synthese = "Analyse indisponible (service IA momentanément indisponible). Réessayez."
     return {
         "synthese": synthese,
