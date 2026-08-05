@@ -16,6 +16,7 @@ from app.models.souhait import Souhait, SouhaitKind, SouhaitStatut
 from app.models.formation import Formation
 from app.models.carriere import ProfilStation, PeerReview, StationEtat
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
+from app.models.recommandation import Recommandation
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -34,4 +35,5 @@ __all__ = [
     "Formation",
     "ProfilStation", "PeerReview", "StationEtat",
     "Entretien", "EntretienType", "EntretienStatut",
+    "Recommandation",
 ]
