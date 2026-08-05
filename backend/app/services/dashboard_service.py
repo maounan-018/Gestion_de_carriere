@@ -27,7 +27,6 @@ from app.models.offre import Offre, OffreStatut, OffreCompetence
 from app.models.candidature import Candidature
 from app.models.souhait import Souhait
 from app.models.user import User
-from app.models.formation import Formation
 from app.models.entretien import Entretien, EntretienType, EntretienStatut
 from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne, FamilleCompetence,
                                     HautPotentielItem, VeilleItem, AlerteItem, EntretienCasItem)
@@ -43,13 +42,11 @@ def kpis_rh(db: Session) -> list[KpiItem]:
     offres_ouvertes = _count(db, select(Offre.id).where(Offre.statut == OffreStatut.OUVERTE))
     candidatures = _count(db, select(Candidature.id))
     competences = _count(db, select(ProfilCompetence.libelle).distinct())
-    formations = _count(db, select(Formation.id))
     return [
         KpiItem(key="effectif", value=effectif, label="Profils cartographiés"),
         KpiItem(key="offres_ouvertes", value=offres_ouvertes, label="Offres ouvertes"),
         KpiItem(key="candidatures", value=candidatures, label="Candidatures"),
         KpiItem(key="competences", value=competences, label="Compétences distinctes"),
-        KpiItem(key="formations", value=formations, label="Formations au catalogue"),
     ]
 
 
@@ -69,7 +66,7 @@ def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
         KpiItem(key="equipe", value=equipe, label="Membres de l'équipe"),
         KpiItem(key="offres", value=offres, label="Offres publiées"),
         KpiItem(key="candidatures", value=candidatures, label="Candidatures reçues"),
-        KpiItem(key="souhaits", value=souhaits, label="Souhaits reçus"),
+        KpiItem(key="souhaits", value=souhaits, label="Demandes d'évolution"),
     ]
 
 

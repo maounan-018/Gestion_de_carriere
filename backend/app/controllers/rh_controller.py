@@ -53,6 +53,16 @@ def analyse(db: Session = Depends(get_db)) -> AnalyseRhOut:
     return AnalyseRhOut(**analyse_service.analyser(db))
 
 
+@router.get("/analyse/latest", response_model=AnalyseRhOut | None,
+            summary="Dernière analyse stratégique HRBP PERSISTÉE (sans relancer le LLM ; null si aucune)")
+def analyse_latest(db: Session = Depends(get_db)) -> AnalyseRhOut | None:
+    """Présentation immédiate du tableau de bord HRBP : renvoie la dernière
+    synthèse persistée (rapide), sans appel LLM. `null` si aucune analyse n'a
+    encore été produite — le front invitera alors à en générer une."""
+    data = analyse_service.charger_derniere(db)
+    return AnalyseRhOut(**data) if data else None
+
+
 @router.post("/succession", response_model=SuccessionResponse,
              dependencies=[Depends(ia_rate_limit)],
              summary="Plan de succession raisonné d'un pôle (IA de raisonnement lourde)")

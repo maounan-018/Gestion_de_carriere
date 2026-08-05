@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { LayoutGrid } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
 import type { TeamMember } from '@/types/manager'
-import type { CartoMatrix } from '@/types/rh'
+import { scoreText, scoreBar } from '@/utils/score'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
-import Heatmap from '@/components/shared/Heatmap.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -17,11 +15,6 @@ const team = ref<TeamMember[]>([])
 const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
-
-// Cartographie de l'équipe (même nomenclature que la carto RH), chargée à la demande.
-const carto = ref<CartoMatrix | null>(null)
-const showCarto = ref(false)
-const cartoLoading = ref(false)
 
 async function load() {
   loading.value = true
@@ -36,19 +29,7 @@ async function load() {
 }
 onMounted(load)
 
-async function toggleCarto() {
-  showCarto.value = !showCarto.value
-  if (showCarto.value && !carto.value) {
-    cartoLoading.value = true
-    try {
-      carto.value = await apiService.getTeamCarto()
-    } finally {
-      cartoLoading.value = false
-    }
-  }
-}
-
-// Communiquer à la HRBP : compose un message → crée une notification pour les RH.
+// Communiquer à la HRBP : compose un message → crée une notification pour la HRBP.
 const showRhMsg = ref(false)
 const rhSujet = ref('')
 const rhMessage = ref('')
@@ -77,25 +58,9 @@ async function sendRh() {
         <b class="text-ink-2">{{ team.length }} collaborateurs</b> · cliquez un membre pour ouvrir
         sa base de connaissance.
       </p>
-      <div class="flex gap-2">
-        <BaseButton variant="secondary" size="sm" @click="toggleCarto">
-          <LayoutGrid :size="15" /> {{ showCarto ? 'Masquer la cartographie' : 'Cartographie de l’équipe' }}
-        </BaseButton>
-        <BaseButton variant="secondary" size="sm" @click="showRhMsg = true">
-          Communiquer à la HRBP
-        </BaseButton>
-      </div>
-    </div>
-
-    <!-- Cartographie de l'équipe : mêmes familles que la carto RH, lignes = membres. -->
-    <div v-if="showCarto" class="rounded-2xl border border-border bg-paper p-4 shadow-card">
-      <div class="mb-2 flex items-center justify-between">
-        <h3 class="font-display text-base font-bold text-ink">Cartographie des compétences de l'équipe</h3>
-        <span class="text-[11px] text-ink-3">niveau moyen par famille (1→5)</span>
-      </div>
-      <LoadingState v-if="cartoLoading" label="Chargement de la cartographie…" />
-      <Heatmap v-else-if="carto && carto.lignes.length" :familles="carto.familles" :lignes="carto.lignes" />
-      <p v-else class="text-sm text-ink-3">Aucune compétence évaluée pour cette équipe pour le moment.</p>
+      <BaseButton variant="secondary" size="sm" @click="showRhMsg = true">
+        Communiquer à la HRBP
+      </BaseButton>
     </div>
 
     <LoadingState v-if="loading" label="Chargement de l'équipe…" />
@@ -123,10 +88,10 @@ async function sendRh() {
         </div>
         <div class="mt-3 flex items-center justify-between text-xs">
           <span class="text-ink-3">Éval : <b class="text-ink-2">{{ m.evalScore }}</b></span>
-          <span class="font-display text-sm font-bold text-green-deep">{{ m.ring }}%</span>
+          <span class="font-display text-sm font-bold" :class="scoreText(m.ring)">{{ m.ring }}%</span>
         </div>
         <div class="mt-1 h-1.5 overflow-hidden rounded-full bg-panel-2">
-          <div class="h-full rounded-full bg-green" :style="{ width: m.ring + '%' }" />
+          <div class="h-full rounded-full" :class="scoreBar(m.ring)" :style="{ width: m.ring + '%' }" />
         </div>
       </RouterLink>
     </div>

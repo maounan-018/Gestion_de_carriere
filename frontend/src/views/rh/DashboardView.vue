@@ -35,8 +35,10 @@ async function load() {
     kpis.value = k
     alerts.value = a
     carto.value = c
-    // Synthèse consolidée : best-effort (n'empêche pas le reste du dashboard).
+    // Synthèse consolidée + dernière analyse persistée : best-effort (n'empêchent
+    // pas le reste du dashboard, et évitent tout appel LLM au chargement).
     apiService.getSyntheseRh().then((s) => { synthese.value = s }).catch(() => { synthese.value = null })
+    chargerDerniereAnalyse()
   } catch {
     error.value = 'Impossible de charger le tableau de bord.'
   } finally {
@@ -59,21 +61,51 @@ function goPole(name: string) {
   router.push({ name: 'rh.cartoDetail', params: { pole: name } })
 }
 
-// Analyse stratégique IA (G) · à la demande : l'IA lit les indicateurs consolidés.
+// Analyse stratégique HRBP · PERSISTÉE : le tableau de bord présente la dernière
+// synthèse enregistrée (sans relancer le LLM). Un rappel hebdomadaire invite à
+// l'actualiser quand la donnée a pu évoluer — la HRBP ne « lance » plus d'analyse
+// à chaque visite.
 const analyse = ref('')
 const analyseModel = ref('')
-const analyseDate = ref('')
+const analyseGenereLe = ref('') // ISO brut (calcul de fraîcheur)
 const analysing = ref(false)
-async function lancerAnalyse() {
+const STALE_MS = 7 * 24 * 3600 * 1000 // fenêtre hebdomadaire
+
+const analyseDate = computed(() =>
+  analyseGenereLe.value
+    ? new Date(analyseGenereLe.value).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+    : '',
+)
+const analyseStale = computed(
+  () =>
+    !analyse.value ||
+    !analyseGenereLe.value ||
+    Date.now() - new Date(analyseGenereLe.value).getTime() > STALE_MS,
+)
+
+async function chargerDerniereAnalyse() {
+  try {
+    const r = await apiService.getDerniereAnalyseRh()
+    if (r) {
+      analyse.value = r.synthese
+      analyseModel.value = r.model
+      analyseGenereLe.value = r.genere_le
+    }
+  } catch {
+    /* best-effort : le bandeau de rappel invitera à générer une synthèse */
+  }
+}
+
+async function actualiserAnalyse() {
   if (analysing.value) return
   analysing.value = true
   try {
-    const r = await apiService.lancerAnalyseRh()
+    const r = await apiService.lancerAnalyseRh() // recalcule ET persiste
     analyse.value = r.synthese
     analyseModel.value = r.model
-    analyseDate.value = new Date(r.genere_le).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+    analyseGenereLe.value = r.genere_le
   } catch {
-    analyse.value = "L'analyse n'a pas pu être générée. Réessayez dans un moment."
+    analyse.value = analyse.value || "L'analyse n'a pas pu être générée. Réessayez dans un moment."
   } finally {
     analysing.value = false
   }
@@ -114,24 +146,36 @@ async function lancerAnalyse() {
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><Sparkles :size="16" /></div>
             <div class="min-w-0 flex-1">
               <h3 class="font-display text-base font-bold text-ink">Analyse stratégique · IA</h3>
-              <p class="text-xs text-ink-3">L'IA locale lit les indicateurs consolidés de la plateforme et en tire une synthèse actionnable.</p>
+              <p class="text-xs text-ink-3">Synthèse des indicateurs consolidés · tenue à jour, présentée sans attente.</p>
             </div>
-            <BaseButton :disabled="analysing" @click="lancerAnalyse">
-              <Sparkles :size="15" /> {{ analysing ? 'Analyse en cours…' : (analyse ? "Relancer l'analyse" : "Lancer l'analyse") }}
+            <BaseButton v-if="analyse && !analyseStale" variant="secondary" size="sm" :disabled="analysing" @click="actualiserAnalyse">
+              <Sparkles :size="15" /> {{ analysing ? 'Actualisation…' : 'Actualiser' }}
             </BaseButton>
           </div>
         </template>
+
         <div v-if="analysing" class="flex items-center gap-2 py-3 text-sm text-ink-3">
-          <Sparkles :size="16" class="animate-pulse text-green-deep" /> L'IA analyse la donnée consolidée · cela peut prendre jusqu'à une minute…
+          <Sparkles :size="16" class="animate-pulse text-green-deep" /> L'IA actualise la synthèse · cela peut prendre jusqu'à une minute…
         </div>
-        <div v-else-if="analyse">
-          <p class="whitespace-pre-line text-sm leading-relaxed text-ink-2">{{ analyse }}</p>
-          <p class="mt-3 text-[11px] text-ink-3">Généré le {{ analyseDate }} · modèle {{ analyseModel }} · fondé sur les données réelles de la plateforme.</p>
-        </div>
-        <p v-else class="py-2 text-sm text-ink-3">
-          Cliquez « Lancer l'analyse » pour une synthèse stratégique : tensions de compétences, hauts
-          potentiels, signaux de rétention et qualité des données.
-        </p>
+        <template v-else>
+          <!-- Rappel hebdomadaire : synthèse à générer, ou à rafraîchir (donnée qui a évolué). -->
+          <div v-if="analyseStale" class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-gold-soft bg-gold-soft/40 p-3">
+            <AppIcon name="bell" :size="16" class="shrink-0 text-gold" />
+            <p class="min-w-0 flex-1 text-xs text-ink-2">
+              {{ analyse
+                ? 'Vos indicateurs ont pu évoluer depuis la dernière synthèse. Pensez à l’actualiser (rappel hebdomadaire).'
+                : 'Aucune synthèse encore générée. Lancez une première analyse stratégique de vos indicateurs.' }}
+            </p>
+            <BaseButton size="sm" :disabled="analysing" @click="actualiserAnalyse">
+              <Sparkles :size="15" /> {{ analyse ? 'Actualiser la synthèse' : 'Générer la synthèse' }}
+            </BaseButton>
+          </div>
+
+          <div v-if="analyse">
+            <p class="whitespace-pre-line text-sm leading-relaxed text-ink-2">{{ analyse }}</p>
+            <p class="mt-3 text-[11px] text-ink-3">Généré le {{ analyseDate }} · modèle {{ analyseModel }} · fondé sur les données réelles de la plateforme.</p>
+          </div>
+        </template>
       </BaseCard>
 
       <BaseCard v-if="synthese" title="Synthèse HRBP">

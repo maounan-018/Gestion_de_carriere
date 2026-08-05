@@ -571,6 +571,12 @@ export const apiService = {
     }
     return apiFetch('/rh/analyse', { method: 'POST' })
   },
+  /** Dernière analyse HRBP PERSISTÉE (sans relancer le LLM) — présentation
+   *  immédiate du tableau de bord ; `null` si aucune n'a encore été produite. */
+  async getDerniereAnalyseRh(): Promise<{ synthese: string; model: string; genere_le: string } | null> {
+    if (MODE === 'mock') return null
+    return apiFetch('/rh/analyse/latest')
+  },
   /** Synthèse RH consolidée (effectifs par pôle, pipeline candidatures, tensions). */
   async getSyntheseRh(): Promise<SyntheseRh> {
     if (MODE === 'mock') {

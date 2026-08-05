@@ -14,7 +14,7 @@ def test_kpis_rh(client):
     body = r.json()
     assert body["scope"] == "rh"
     keys = {k["key"] for k in body["kpis"]}
-    assert {"effectif", "offres_ouvertes", "candidatures", "formations"} <= keys
+    assert {"effectif", "offres_ouvertes", "candidatures", "competences"} <= keys
 
 
 def test_kpis_manager(client):
