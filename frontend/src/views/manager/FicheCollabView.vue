@@ -16,6 +16,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import ScoringInfo from '@/components/shared/ScoringInfo.vue'
 
 const route = useRoute()
 const { toast } = useToast()
@@ -116,6 +117,7 @@ async function submitEval() {
               </div>
             </div>
           </div>
+          <div class="mt-4"><ScoringInfo /></div>
         </BaseCard>
 
         <div class="grid gap-5 sm:grid-cols-2">

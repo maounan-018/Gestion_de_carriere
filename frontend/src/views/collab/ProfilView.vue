@@ -14,6 +14,7 @@ import BaseModal from '@/components/ui/BaseModal.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import ProgressionCurve from '@/components/shared/ProgressionCurve.vue'
+import ScoringInfo from '@/components/shared/ScoringInfo.vue'
 import { Sparkles } from '@lucide/vue'
 
 const session = useSessionStore()
@@ -98,6 +99,7 @@ function goOffres(metier: string) {
               </div>
             </div>
           </div>
+          <div class="mt-4"><ScoringInfo /></div>
         </BaseCard>
 
         <BaseCard title="Avis des pairs">
