@@ -34,11 +34,11 @@ from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
                                  EvaluationExtractionRequest, MobiliteItem, AncrageResult,
-                                 ImportResult, CompetenceEvaluationIn)
+                                 ImportResult, CompetenceEvaluationIn, FaisabiliteAspirationOut)
 from app.schemas.carriere import ProfilCarriereOut
 from app.models.profil import ProfilCompetence
 from app.services import (profil_service, cv_extraction_service, profil_import_service,
-                          evaluation_service)
+                          evaluation_service, trajectory_service)
 
 router = APIRouter(prefix="/api/profils", tags=["Profils"])
 
@@ -150,6 +150,21 @@ def ma_carriere(user: User = Depends(get_current_user),
     return out
 
 
+@router.get("/me/faisabilite-aspiration", response_model=FaisabiliteAspirationOut | None,
+            dependencies=[Depends(get_current_user)],
+            summary="Faisabilité de MON aspiration (inférence de trajectoire)")
+def ma_faisabilite_aspiration(user: User = Depends(get_current_user),
+                              db: Session = Depends(get_db)) -> FaisabiliteAspirationOut | None:
+    """Estime, pour le compte connecté, si son poste visé est atteignable et si la
+    trajectoire serait linéaire ou NON LINÉAIRE (d'après les parcours de la
+    population). `null` si aucun profil ou aucun poste visé."""
+    profil_id = profil_service.profil_id_de_user(db, user.id)
+    if profil_id is None:
+        return None
+    data = trajectory_service.analyser_aspiration(db, profil_id)
+    return FaisabiliteAspirationOut(**data) if data else None
+
+
 @router.patch("/me", response_model=ProfilOut,
               summary="Éditer MON profil (auto-service : poste visé / aspirations / poste actuel)")
 def modifier_mon_profil(data: ProfilSelfUpdate,
@@ -214,6 +229,19 @@ def mobilite_profil(profil_id: int, k: int = Query(5, ge=1, le=15),
     ancrées du profil (graphe, sans LLM). Ownership : propriétaire / manager / RH-ADMIN."""
     ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
     return profil_service.passerelles_mobilite(db, profil_id, k=k)
+
+
+@router.get("/{profil_id}/faisabilite-aspiration", response_model=FaisabiliteAspirationOut | None,
+            summary="Faisabilité de l'aspiration (inférence de trajectoire sur la population)")
+def faisabilite_aspiration(profil_id: int, user: User = Depends(get_current_user),
+                           db: Session = Depends(get_db)) -> FaisabiliteAspirationOut | None:
+    """Estime si le poste visé du profil est atteignable et si la trajectoire serait
+    linéaire ou NON LINÉAIRE, d'après les parcours de collègues ayant atteint un poste
+    comparable (sans LLM). `null` si aucun poste visé n'est renseigné. Ownership :
+    propriétaire / manager / RH-ADMIN."""
+    ownership.require_profil_view(db, user, profil_id)   # 404 si absent, 403 hors périmètre
+    data = trajectory_service.analyser_aspiration(db, profil_id)
+    return FaisabiliteAspirationOut(**data) if data else None
 
 
 @router.patch("/{profil_id}", response_model=ProfilOut,

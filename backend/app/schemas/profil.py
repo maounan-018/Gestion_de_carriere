@@ -170,3 +170,21 @@ class AncrageResult(BaseModel):
     examinees: int        # compétences non ancrées examinées
     ancrees: int          # nouvellement reliées à une compétence canonique
     categorisees: int     # dont la famille (categorie) a aussi été déduite
+
+
+# --- Faisabilité d'aspiration (inférence de trajectoire, Workstream D) ---------
+class TrajectoireExemple(BaseModel):
+    parcours: list[str]  # anonyme : suite de postes (passés → actuel)
+
+
+class FaisabiliteAspirationOut(BaseModel):
+    aspiration: str
+    poste_actuel: str
+    reachable: bool
+    lineaire: bool
+    ecart_niveau: int
+    verdict: str                       # accessible | ambitieuse | a_defricher
+    nb_modeles: int
+    intermediaires: list[str]
+    exemples: list[TrajectoireExemple]
+    explication: str
