@@ -1077,6 +1077,10 @@ def main() -> None:
             synthetic_offers=settings.SEED_SYNTHETIC_OFFERS, password=password,
             population=population,
         )
+        # CV PDF de chaque profil (Workstream D) — hors seed_all pour ne pas
+        # ralentir les tests ; fait partie du bootstrap de démo. Idempotent.
+        from app.services import cv_generation_service
+        summary["cv_generes"] = cv_generation_service.generer_tous_les_cv(db)["generes"]
     finally:
         db.close()
 
@@ -1097,6 +1101,7 @@ def main() -> None:
     print("Cartographie    :", summary["carto_created"], "profils (pôles × familles)")
     print("Population       :", summary["population_created"], "comptes synthétiques (collab/manager/N+2)")
     print("Entretiens      :", summary["entretiens_created"], "créés")
+    print("CV PDF          :", summary.get("cv_generes", 0), "générés (data/cv_profil/)")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
         print("  ADMIN   : admin@bmci.local")

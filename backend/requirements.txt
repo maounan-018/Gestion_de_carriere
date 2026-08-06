@@ -11,6 +11,7 @@ sqlite-vec>=0.1.6          # recherche vectorielle DANS SQLite (aucune base exte
 python-multipart>=0.0.9    # uploads (imports référentiels / RH)
 openpyxl>=3.1             # lecture SFIA / O*NET (Excel)
 pandas>=2.2               # parsing des tables O*NET / ESCO (CSV/TSV)
+fpdf2>=2.8               # génération des CV PDF (pur Python, polices core, sans binaire natif)
 alembic>=1.13            # migrations (prod)
 
 # IA — reranking local (cross-encoder). torch CPU requis (installé séparément).
