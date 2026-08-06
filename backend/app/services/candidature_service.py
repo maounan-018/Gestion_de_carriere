@@ -69,6 +69,53 @@ def _index_detenues(detenues: list[ProfilCompetence]) -> tuple[dict, dict]:
     return by_skill, by_label
 
 
+# --- Matching SÉMANTIQUE (Bloc B) : repli sur similarité d'embeddings quand
+# l'appariement exact (skill_id / libellé) échoue. Ainsi « gestion de la relation
+# client » (profil) couvre « relation client » (offre) sans libellé identique.
+# Dégradation silencieuse : si le service d'embeddings est indisponible (ex. tests
+# hors Ollama), on retombe sur l'appariement exact — le contrat de score est stable.
+_SEUIL_SEM = 0.62          # seuil de similarité cosinus pour une couverture
+_emb_cache: dict[str, list[float]] = {}
+
+
+def _cos(a: list[float], b: list[float]) -> float:
+    import math
+    s = sum(x * y for x, y in zip(a, b))
+    na = math.sqrt(sum(x * x for x in a))
+    nb = math.sqrt(sum(y * y for y in b))
+    return s / (na * nb) if na and nb else 0.0
+
+
+def _emb_map(labels: list[str]) -> dict[str, list[float]]:
+    """Embeddings (cachés) des libellés normalisés. {} si le service est
+    indisponible → repli silencieux sur l'appariement exact."""
+    labs = {lab for lab in (_norm(x) for x in labels) if lab}
+    missing = [lab for lab in labs if lab not in _emb_cache]
+    if missing:
+        try:
+            from app.services import embedding_service
+            for lab, vec in zip(missing, embedding_service.embed_batch(missing)):
+                if vec:
+                    _emb_cache[lab] = vec
+        except Exception:
+            pass
+    return {lab: _emb_cache[lab] for lab in labs if lab in _emb_cache}
+
+
+def _couverture_semantique(att: OffreCompetence, emb_map: dict, det_emb: list[tuple]) -> dict | None:
+    """Meilleure compétence détenue sémantiquement proche de l'attendu (cosinus ≥
+    seuil), ou None. `det_emb` = [(vecteur, {libelle, niveau})]."""
+    a = emb_map.get(_norm(att.libelle)) or emb_map.get(_norm(att.skill_label_fr))
+    if a is None or not det_emb:
+        return None
+    best_s, best_d = 0.0, None
+    for vec, d in det_emb:
+        s = _cos(a, vec)
+        if s > best_s:
+            best_s, best_d = s, d
+    return best_d if best_s >= _SEUIL_SEM else None
+
+
 def _trouver_couverture(att: OffreCompetence, by_skill: dict, by_label: dict) -> dict | None:
     """Cherche une compétence détenue couvrant l'attendu (skill_id prioritaire,
     puis libellé normalisé). Renvoie {libelle, niveau} ou None."""
@@ -92,6 +139,12 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
     ).all()
     by_skill, by_label = _index_detenues(detenues)
 
+    # Bloc B — prépare le repli sémantique (embeddings des deux côtés, cachés).
+    # Dégradation silencieuse : emb_map/det_emb vides si le service est indisponible.
+    off_labels = [x for att in attendus for x in (att.libelle, att.skill_label_fr)]
+    emb_map = _emb_map(list(by_label.keys()) + off_labels)
+    det_emb = [(emb_map[lab], data) for lab, data in by_label.items() if lab in emb_map]
+
     couvertes, ecarts = [], []
     total = 0.0
     acquis = 0.0
@@ -101,6 +154,10 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
         base = {"competence": att.libelle, "importance": att.importance,
                 "niveau_requis": att.niveau_requis, "skill_id": att.skill_id}
         cov = _trouver_couverture(att, by_skill, by_label)
+        semantique = False
+        if cov is None:
+            cov = _couverture_semantique(att, emb_map, det_emb)
+            semantique = cov is not None
         if cov is None:
             ecarts.append({**base, "statut": "manquante"})
         elif (att.niveau_requis is not None and cov["niveau"] is not None
@@ -111,7 +168,8 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
         else:
             acquis += poids
             couvertes.append({**base, "statut": "couverte",
-                              "couverte_par": cov["libelle"], "niveau_detenu": cov["niveau"]})
+                              "couverte_par": cov["libelle"], "niveau_detenu": cov["niveau"],
+                              **({"match": "semantique"} if semantique else {})})
 
     score = round(100 * acquis / total) if total else 100
     return EvaluationOut(score=score, methode=_METHODE, attendus_total=len(attendus),
