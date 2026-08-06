@@ -991,6 +991,21 @@ def _seed_comptes_orphelins(db: Session, password_hash: str) -> dict:
     return {"comptes_crees": crees, "liens_alignes": alignes}
 
 
+def _naturaliser_competences(db: Session) -> int:
+    """Reformule les libellés de compétences ESCO verbaux (« Analyser des prêts »,
+    « Effectuer une analyse de risque »…) en intitulés naturels pour le CV, SANS
+    toucher au skill_id (l'ancrage/matching ESCO reste identique). Idempotent."""
+    from app.services.competence_labels import naturaliser
+    n = 0
+    for c in db.scalars(select(ProfilCompetence)).all():
+        nat = naturaliser(c.libelle)
+        if nat != c.libelle:
+            c.libelle = nat
+            n += 1
+    db.commit()
+    return n
+
+
 _ANNEE_REF = 2026  # « aujourd'hui » de la démo
 
 
@@ -1267,6 +1282,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         # Parcours de carrière (« CV » structuré) — APRÈS tous les profils (carto inclus).
         summary["trajectoires_creees"] = _seed_trajectoires(db)["stations_creees"]
         summary["entretiens_created"] = _seed_entretiens(db)
+        # Libellés de compétences ESCO verbaux → naturels (CV lisible, matching inchangé).
+        summary["comps_naturalisees"] = _naturaliser_competences(db)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
 
