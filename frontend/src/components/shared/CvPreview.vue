@@ -4,7 +4,7 @@
  * iframe (le backend le sert en `inline`), sans obliger au téléchargement.
  * Un bouton « Télécharger » reste disponible (attribut download → sauvegarde).
  */
-import { computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { X, Download } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 
@@ -12,6 +12,10 @@ const props = defineProps<{ modelValue: boolean; profilId: number | null; nom?: 
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 
 const url = computed(() => (props.profilId != null ? apiService.cvUrl(props.profilId) : ''))
+// L'iframe est anti-cache : le cache HTTP peut resservir une ancienne réponse
+// (ex. en-têtes de framing obsolètes) et bloquer l'aperçu. Régénéré à l'ouverture.
+const bust = ref(Date.now())
+const iframeUrl = computed(() => (url.value ? `${url.value}?t=${bust.value}` : ''))
 
 function close() {
   emit('update:modelValue', false)
@@ -22,8 +26,12 @@ function onKey(e: KeyboardEvent) {
 watch(
   () => props.modelValue,
   (open) => {
-    if (open) document.addEventListener('keydown', onKey)
-    else document.removeEventListener('keydown', onKey)
+    if (open) {
+      bust.value = Date.now()
+      document.addEventListener('keydown', onKey)
+    } else {
+      document.removeEventListener('keydown', onKey)
+    }
   },
 )
 onUnmounted(() => document.removeEventListener('keydown', onKey))
@@ -63,7 +71,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
           </div>
         </div>
         <iframe
-          :src="url"
+          :src="iframeUrl"
           title="Aperçu du CV"
           class="min-h-0 flex-1 w-full bg-panel-2"
         />
