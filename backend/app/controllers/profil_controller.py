@@ -96,9 +96,18 @@ def telecharger_cv(profil_id: int, user: User = Depends(get_current_user),
         raise HTTPException(status_code=404, detail="Aucun CV pour ce profil.")
     # `inline` → aperçu direct dans une iframe côté plateforme (le bouton de
     # téléchargement force la sauvegarde via l'attribut download côté front).
+    # On autorise l'encadrement MÊME ORIGINE uniquement pour CE fichier (le
+    # durcissement global pose X-Frame-Options: DENY / frame-ancestors 'none',
+    # qui bloquerait l'aperçu iframe) — les en-têtes déjà présents ne sont pas
+    # écrasés par le SecurityHeadersMiddleware.
     return FileResponse(path, media_type="application/pdf",
                         filename=f"cv-profil-{profil_id}.pdf",
-                        content_disposition_type="inline")
+                        content_disposition_type="inline",
+                        headers={
+                            "x-frame-options": "SAMEORIGIN",
+                            "content-security-policy": "frame-ancestors 'self'",
+                            "cache-control": "no-store",
+                        })
 
 
 @router.post("/import-excel", response_model=ImportResult,
