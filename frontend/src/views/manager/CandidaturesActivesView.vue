@@ -6,6 +6,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
+import { useSessionStore } from '@/stores/session'
 import type { CandidatureActive } from '@/services/mappers'
 import { scoreText } from '@/utils/score'
 import BaseCard from '@/components/ui/BaseCard.vue'
@@ -19,6 +20,10 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 const rows = ref<CandidatureActive[]>([])
 const loading = ref(true)
 const error = ref('')
+// Vue partagée manager / HRBP : le détail d'offre et la fiche candidat dépendent du rôle.
+const isRh = computed(() => useSessionStore().role === 'rh')
+const offreDetailRoute = computed(() => (isRh.value ? 'rh.revueCandidats' : 'manager.offreDetail'))
+const ficheRoute = computed(() => (isRh.value ? 'rh.ficheCollabRh' : 'manager.ficheCollab'))
 
 async function load() {
   loading.value = true
@@ -77,7 +82,7 @@ const statutTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
               <p class="text-xs text-ink-3">{{ g.type }} · {{ g.candidats.length }} candidat{{ g.candidats.length > 1 ? 's' : '' }}</p>
             </div>
             <RouterLink
-              :to="{ name: 'manager.offreDetail', params: { key: g.offreId } }"
+              :to="{ name: offreDetailRoute, params: { key: g.offreId } }"
               class="text-xs font-semibold text-green-deep hover:underline"
             >
               Voir l'offre
@@ -88,7 +93,7 @@ const statutTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
           <RouterLink
             v-for="c in g.candidats"
             :key="c.candidatureId"
-            :to="{ name: 'manager.ficheCollab', params: { id: c.profilId } }"
+            :to="{ name: ficheRoute, params: { id: c.profilId } }"
             class="flex items-center gap-3 py-2.5 transition hover:bg-panel"
           >
             <BaseAvatar :initials="c.initials" size="md" :seed="c.profilId" />

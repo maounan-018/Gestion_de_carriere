@@ -5,9 +5,10 @@
  * l'écran des offres internes). Chaque offre montre son statut et ses
  * statistiques de candidatures, et mène à son détail.
  */
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
+import { useSessionStore } from '@/stores/session'
 import type { RhOffer } from '@/data/rh'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -20,6 +21,9 @@ const offers = ref<RhOffer[]>([])
 const loading = ref(true)
 const error = ref('')
 const showPublish = ref(false)
+// Vue partagée manager / HRBP : le détail d'offre et le type publiable dépendent du rôle.
+const isRh = computed(() => useSessionStore().role === 'rh')
+const offreDetailRoute = computed(() => (isRh.value ? 'rh.revueCandidats' : 'manager.offreDetail'))
 
 async function load() {
   loading.value = true
@@ -66,7 +70,7 @@ const statusLabel: Record<RhOffer['status'], string> = {
       <RouterLink
         v-for="o in offers"
         :key="o.key"
-        :to="{ name: 'manager.offreDetail', params: { key: o.key } }"
+        :to="{ name: offreDetailRoute, params: { key: o.key } }"
         class="flex flex-col rounded-2xl border border-border bg-paper p-4 shadow-card transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float"
       >
         <div class="flex items-start justify-between gap-2">
@@ -84,6 +88,6 @@ const statusLabel: Record<RhOffer['status'], string> = {
       </RouterLink>
     </div>
 
-    <PublishOffreModal v-model="showPublish" :allow-poste="false" @published="load" />
+    <PublishOffreModal v-model="showPublish" :allow-poste="isRh" @published="load" />
   </div>
 </template>

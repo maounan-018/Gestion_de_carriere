@@ -131,13 +131,20 @@ async function actualiserAnalyse() {
 
     <template v-else>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div v-for="(k, i) in kpis" :key="k.label" class="rounded-2xl border border-border bg-paper p-4 shadow-card">
+        <component
+          :is="k.to ? 'RouterLink' : 'div'"
+          v-for="(k, i) in kpis"
+          :key="k.label"
+          :to="k.to ? { name: k.to } : undefined"
+          class="block rounded-2xl border border-border bg-paper p-4 shadow-card"
+          :class="k.to ? 'transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float' : ''"
+        >
           <div class="grid h-9 w-9 place-items-center rounded-lg" :class="kpiAccent(i)">
             <AppIcon :name="k.icon" :size="16" />
           </div>
           <div class="mt-2 font-display text-2xl font-extrabold text-ink">{{ k.value }}</div>
           <div class="text-xs text-ink-3">{{ k.label }}<span v-if="k.hint"> · {{ k.hint }}</span></div>
-        </div>
+        </component>
       </div>
 
       <BaseCard>

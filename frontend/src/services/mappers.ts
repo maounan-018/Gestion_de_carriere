@@ -205,7 +205,8 @@ const KPI_ICON: Record<string, IconKey> = {
   competences: 'grid', formations: 'book', equipe: 'team', souhaits: 'route',
 }
 const KPI_ROUTE: Record<string, string | undefined> = {
-  effectif: 'rh.annuaire', offres_ouvertes: 'rh.offres', competences: 'rh.cartographie',
+  effectif: 'rh.annuaire', competences: 'rh.cartographie',
+  rh_offres: 'rh.mesOffres', rh_candidatures: 'rh.candidaturesActives',
   equipe: 'manager.equipe', offres: 'manager.mesOffres', souhaits: 'manager.souhaitsRecus',
   candidatures: 'manager.candidaturesActives',
 }

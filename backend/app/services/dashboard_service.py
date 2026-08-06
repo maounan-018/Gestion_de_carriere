@@ -37,15 +37,23 @@ def _count(db: Session, stmt) -> int:
 
 
 # --------------------------------------------------------------------- KPIs
-def kpis_rh(db: Session) -> list[KpiItem]:
+def kpis_rh(db: Session, rh_user_id: int) -> list[KpiItem]:
     effectif = _count(db, select(Profil.id))
-    offres_ouvertes = _count(db, select(Offre.id).where(Offre.statut == OffreStatut.OUVERTE))
-    candidatures = _count(db, select(Candidature.id))
+    # Offres PUBLIÉES par CE compte (comme le manager) → au clic, la liste de ses
+    # offres, et non l'écran de gestion « Offres internes ».
+    offres = _count(db, select(Offre.id).where(Offre.created_by == rh_user_id))
+    # Candidatures des offres de ce compte ENCORE EN COURS uniquement (non
+    # clôturées / non retirées), cohérent avec l'écran ouvert au clic.
+    _fermes = (OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE)
+    mes_offres_actives_ids = select(Offre.id).where(
+        Offre.created_by == rh_user_id, Offre.statut.not_in(_fermes))
+    candidatures = _count(
+        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids)))
     competences = _count(db, select(ProfilCompetence.libelle).distinct())
     return [
         KpiItem(key="effectif", value=effectif, label="Profils cartographiés"),
-        KpiItem(key="offres_ouvertes", value=offres_ouvertes, label="Offres ouvertes"),
-        KpiItem(key="candidatures", value=candidatures, label="Candidatures"),
+        KpiItem(key="rh_offres", value=offres, label="Offres publiées"),
+        KpiItem(key="rh_candidatures", value=candidatures, label="Candidatures"),
         KpiItem(key="competences", value=competences, label="Compétences distinctes"),
     ]
 

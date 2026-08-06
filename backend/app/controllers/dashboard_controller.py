@@ -40,7 +40,7 @@ def kpis(scope: str = Query("rh", pattern="^(rh|manager)$"),
     # scope rh : réservé RH/ADMIN
     if user.role not in (Role.RH, Role.ADMIN):
         raise HTTPException(status_code=403, detail="Vue RH réservée.")
-    return DashboardKpis(scope="rh", kpis=dashboard_service.kpis_rh(db))
+    return DashboardKpis(scope="rh", kpis=dashboard_service.kpis_rh(db, user.id))
 
 
 @router.get("/cartographie", response_model=CartoMatrix,
