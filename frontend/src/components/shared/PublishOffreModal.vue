@@ -45,6 +45,47 @@ const ficheId = ref<number | null>(null)
 const fiche = ref<FicheDetail | null>(null)
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
+// Compétences canoniques ATTENDUES, déclarées par le manager (retour tuteur : une
+// mission/un projet doit déclarer les compétences exigées des candidats). Ancrées
+// au référentiel via l'autocomplétion (skill_id) ; saisie libre possible en repli.
+type ExpectedComp = { libelle: string; skill_id: number | null; importance: 'essentielle' | 'souhaitee' }
+const competences = ref<ExpectedComp[]>([])
+const compSearch = ref('')
+const compResults = ref<{ skill_id: number; label: string }[]>([])
+let compTimer: ReturnType<typeof setTimeout> | null = null
+
+function onCompSearch() {
+  if (compTimer) clearTimeout(compTimer)
+  const q = compSearch.value.trim()
+  if (q.length < 2) {
+    compResults.value = []
+    return
+  }
+  compTimer = setTimeout(async () => {
+    try {
+      compResults.value = await apiService.rechercherCompetences(q)
+    } catch {
+      compResults.value = []
+    }
+  }, 250)
+}
+function addComp(c: { skill_id: number | null; label: string }) {
+  const label = c.label.trim()
+  if (!label || competences.value.some((x) => x.libelle.toLowerCase() === label.toLowerCase())) return
+  competences.value.push({ libelle: label, skill_id: c.skill_id, importance: 'essentielle' })
+  compSearch.value = ''
+  compResults.value = []
+}
+function addFreeComp() {
+  if (compSearch.value.trim().length >= 2) addComp({ skill_id: null, label: compSearch.value.trim() })
+}
+function removeComp(i: number) {
+  competences.value.splice(i, 1)
+}
+function toggleImportance(c: ExpectedComp) {
+  c.importance = c.importance === 'essentielle' ? 'souhaitee' : 'essentielle'
+}
+
 function reset() {
   type.value = props.allowPoste ? 'Poste' : 'Mission transverse'
   titre.value = ''
@@ -55,6 +96,9 @@ function reset() {
   results.value = []
   ficheId.value = null
   fiche.value = null
+  competences.value = []
+  compSearch.value = ''
+  compResults.value = []
 }
 watch(
   () => props.modelValue,
@@ -100,6 +144,12 @@ function clearFiche() {
 
 async function publish() {
   if (publishing.value || !titre.value.trim()) return
+  // Compétences attendues obligatoires : héritées d'une fiche OU déclarées ici.
+  const heritees = fiche.value?.competences.length ?? 0
+  if (competences.value.length === 0 && heritees === 0) {
+    toast('Déclarez au moins une compétence attendue pour les candidats.', 'error')
+    return
+  }
   publishing.value = true
   try {
     await apiService.publishOffer({
@@ -109,6 +159,7 @@ async function publish() {
       description: description.value.trim(),
       localisation: localisation.value.trim(),
       duree: duree.value.trim(),
+      competences: competences.value,
     })
     toast('Offre créée en brouillon', 'ok')
     emit('published')
@@ -191,6 +242,59 @@ async function publish() {
         <p class="mt-2 text-[11px] text-green-deep">
           Les compétences attendues seront héritées comme critères de matching.
         </p>
+      </div>
+
+      <!-- Compétences canoniques ATTENDUES (déclarées par le manager) -->
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold text-ink-2">
+          Compétences attendues <span class="text-danger">*</span>
+        </label>
+        <p class="mb-1.5 text-[11px] text-ink-3">
+          Déclarez les compétences canoniques exigées des candidats (référentiel ESCO · O*NET · SFIA) —
+          elles servent au matching. <span v-if="fiche">Celles de la fiche sont déjà héritées ; ajoutez-en si besoin.</span>
+        </p>
+        <div class="relative">
+          <input
+            v-model="compSearch"
+            :class="inputCls"
+            placeholder="Rechercher une compétence… (ex : gestion des risques)"
+            @input="onCompSearch"
+            @keydown.enter.prevent="addFreeComp"
+          />
+          <div
+            v-if="compResults.length"
+            class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border bg-paper shadow-float"
+          >
+            <button
+              v-for="r in compResults"
+              :key="r.skill_id"
+              type="button"
+              class="block w-full px-3 py-2 text-left text-sm hover:bg-green-ghost"
+              @click="addComp(r)"
+            >
+              <span class="font-semibold text-ink">{{ r.label }}</span>
+              <span class="ml-1 text-[11px] text-green-deep">· canonique</span>
+            </button>
+          </div>
+        </div>
+        <div v-if="competences.length" class="mt-2 flex flex-wrap gap-1.5">
+          <span
+            v-for="(c, i) in competences"
+            :key="i"
+            class="inline-flex items-center gap-1.5 rounded-full border border-green-line bg-green-ghost py-1 pl-2.5 pr-1.5 text-xs"
+          >
+            <button
+              type="button"
+              class="font-semibold"
+              :class="c.importance === 'essentielle' ? 'text-green-deep' : 'text-ink-2'"
+              :title="c.skill_id ? 'Compétence canonique (référentiel) · cliquez pour l’importance' : 'Compétence libre · cliquez pour l’importance'"
+              @click="toggleImportance(c)"
+            >
+              {{ c.libelle }} · {{ c.importance === 'essentielle' ? 'essentielle' : 'souhaitée' }}
+            </button>
+            <button type="button" class="text-ink-3 hover:text-danger" aria-label="Retirer" @click="removeComp(i)">×</button>
+          </span>
+        </div>
       </div>
 
       <!-- Intitulé -->

@@ -916,6 +916,8 @@ export const apiService = {
     description?: string
     localisation?: string
     duree?: string
+    /** Compétences canoniques attendues déclarées par le manager (ancrées si skill_id). */
+    competences?: { libelle: string; skill_id?: number | null; importance?: 'essentielle' | 'souhaitee' }[]
   }): Promise<void> {
     if (MODE === 'mock') {
       await delay(220)
@@ -935,9 +937,19 @@ export const apiService = {
         description: input.description || null,
         localisation: input.localisation || null,
         duree: input.duree || null,
+        competences: (input.competences ?? []).map((c) => ({
+          libelle: c.libelle,
+          skill_id: c.skill_id ?? null,
+          importance: c.importance ?? 'essentielle',
+        })),
         synthetique: false,
       },
     })
+  },
+  /** Autocomplétion du référentiel de compétences CANONIQUES (déclaration d'attendus). */
+  async rechercherCompetences(q: string): Promise<{ skill_id: number; label: string }[]> {
+    if (MODE === 'mock') return []
+    return apiFetch(`/competences/rechercher?q=${encodeURIComponent(q)}`)
   },
   /** Fiches de poste (sélecteur « Publier une offre »). Filtre optionnel sur l'intitulé. */
   async getFiches(q?: string): Promise<FicheListItem[]> {
