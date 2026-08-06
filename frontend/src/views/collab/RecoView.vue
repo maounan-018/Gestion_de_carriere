@@ -16,6 +16,15 @@ const reco = ref<RecoData | null>(null)
 const loading = ref(true)
 const error = ref('')
 
+// Faisabilité de l'aspiration (inférence de trajectoire) — best-effort, n'empêche
+// pas l'affichage des recommandations.
+const faisa = ref<Awaited<ReturnType<typeof apiService.getMaFaisabiliteAspiration>>>(null)
+const VERDICT: Record<string, { tone: 'new' | 'warn' | 'ai'; label: string }> = {
+  accessible: { tone: 'new', label: 'Accessible' },
+  ambitieuse: { tone: 'warn', label: 'Ambitieuse' },
+  a_defricher: { tone: 'ai', label: 'À défricher' },
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -26,6 +35,7 @@ async function load() {
   } finally {
     loading.value = false
   }
+  apiService.getMaFaisabiliteAspiration().then((f) => { faisa.value = f }).catch(() => { faisa.value = null })
 }
 onMounted(load)
 </script>
@@ -66,6 +76,30 @@ onMounted(load)
         <RouterLink :to="{ name: 'collab.coach' }">
           <BaseButton variant="ai"><Sparkles :size="15" /> Discuter avec le Coach</BaseButton>
         </RouterLink>
+      </div>
+    </BaseCard>
+
+    <!-- Faisabilité de l'aspiration : inférence de trajectoire sur les parcours réels -->
+    <BaseCard v-if="faisa">
+      <template #header>
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green-soft text-green-deep">
+            <AppIcon name="route" :size="16" />
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 class="font-display text-base font-bold text-ink">Faisabilité de votre aspiration</h3>
+            <p class="truncate text-xs text-ink-3">D'après les parcours réels de collègues · {{ faisa.aspiration }}</p>
+          </div>
+          <BasePill :tone="VERDICT[faisa.verdict]?.tone || 'ai'">{{ VERDICT[faisa.verdict]?.label || faisa.verdict }}</BasePill>
+          <BasePill :tone="faisa.lineaire ? 'new' : 'ai'">{{ faisa.lineaire ? 'Linéaire' : 'Non linéaire' }}</BasePill>
+        </div>
+      </template>
+      <p class="text-sm leading-relaxed text-ink-2">{{ faisa.explication }}</p>
+      <div v-if="faisa.intermediaires.length" class="mt-3">
+        <p class="mb-1 text-xs font-semibold text-ink-2">Étapes typiques observées</p>
+        <div class="flex flex-wrap gap-1.5">
+          <BaseChip v-for="(s, i) in faisa.intermediaires" :key="i">{{ s }}</BaseChip>
+        </div>
       </div>
     </BaseCard>
 

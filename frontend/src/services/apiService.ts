@@ -272,6 +272,17 @@ export const apiService = {
     }
     return apiFetch(`/auth/annuaire-preload?email=${encodeURIComponent(email)}`)
   },
+  /** Faisabilité de MON aspiration : inférence de trajectoire (linéaire / non
+   *  linéaire, étapes typiques) d'après les parcours de la population. */
+  async getMaFaisabiliteAspiration(): Promise<{
+    aspiration: string; poste_actuel: string; reachable: boolean; lineaire: boolean
+    ecart_niveau: number; verdict: 'accessible' | 'ambitieuse' | 'a_defricher'
+    nb_modeles: number; intermediaires: string[]
+    exemples: { parcours: string[] }[]; explication: string
+  } | null> {
+    if (MODE === 'mock') return null
+    return apiFetch('/profils/me/faisabilite-aspiration')
+  },
   async getReco(): Promise<RecoData> {
     if (MODE === 'mock') {
       await delay()
