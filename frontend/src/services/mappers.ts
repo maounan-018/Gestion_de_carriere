@@ -415,7 +415,7 @@ export interface OffreCompatOut {
 
 const OFFRE_TYPE_LABEL: Record<string, OfferType> = {
   offre_poste: 'Poste', mission: 'Mission transverse',
-  projet: 'Projet innovation', gig: 'Mission transverse',
+  projet: 'Projet', gig: 'Mission transverse',
 }
 const OFFRE_STATUT_LABEL: Record<string, string> = {
   brouillon: 'Brouillon', ouverte: 'Ouverte', pourvue: 'Pourvue',

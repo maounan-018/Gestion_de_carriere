@@ -29,7 +29,7 @@ export interface MetaItem {
 }
 
 /* ------------------------------------------------------------------ Offres */
-export type OfferType = 'Poste' | 'Mission transverse' | 'Mentorat' | 'Projet innovation'
+export type OfferType = 'Poste' | 'Mission transverse' | 'Mentorat' | 'Projet'
 
 export interface Offer {
   key: string

@@ -23,10 +23,10 @@ const props = withDefaults(defineProps<{ modelValue: boolean; allowPoste?: boole
 const emit = defineEmits<{ 'update:modelValue': [boolean]; published: [] }>()
 const { toast } = useToast()
 
-const ALL_TYPES = ['Poste', 'Mission transverse', 'Projet innovation'] as const
+const ALL_TYPES = ['Poste', 'Mission transverse', 'Projet'] as const
 type OffreType = (typeof ALL_TYPES)[number]
 const types = computed<readonly OffreType[]>(() =>
-  props.allowPoste ? ALL_TYPES : ['Mission transverse', 'Projet innovation'],
+  props.allowPoste ? ALL_TYPES : ['Mission transverse', 'Projet'],
 )
 const inputCls =
   'w-full rounded-xl border border-border bg-panel px-3 py-2 text-sm text-ink outline-none focus:border-green-line'

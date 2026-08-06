@@ -74,7 +74,7 @@ onMounted(load)
     </ErrorState>
 
     <template v-else-if="profile">
-      <BaseCard title="Mon parcours">
+      <BaseCard>
         <ProgressionCurve :stations="profile.stations" :pct="profile.progressionPct" />
       </BaseCard>
       <div class="grid gap-5 lg:grid-cols-2">

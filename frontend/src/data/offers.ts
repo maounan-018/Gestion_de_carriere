@@ -83,7 +83,7 @@ export const OFFERS: Offer[] = [
   },
   {
     key: 'taskforce-ia',
-    type: 'Projet innovation', tone: 'new', pct: 79, adq: 'Adapté', ligne: 'Digital & IT',
+    type: 'Projet', tone: 'new', pct: 79, adq: 'Adapté', ligne: 'Digital & IT',
     title: 'Task Force · IA Générative & Compliance',
     sub: "Cas d'usage IA pour la conformité bancaire.",
     meta: [{ icon: 'team', label: 'Cross-métiers' }, { icon: 'clock', label: '6 mois' }],
