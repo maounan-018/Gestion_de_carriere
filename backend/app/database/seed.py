@@ -903,12 +903,69 @@ def _niveau_poste(titre: str) -> int:
     return 0
 
 
+# Expériences PRÉ-BANQUE (avant l'intégration à la BMCI) — (rôle, secteur/employeur-type).
+# Alimentent des trajectoires réalistes (dont des reconversions) et l'inférence de
+# trajectoires non linéaires : « des gens venus d'ailleurs qui ont réussi ce virage ».
+_PRE_BANQUE = [
+    ("Chargé de clientèle", "banque concurrente"),
+    ("Analyste financier", "cabinet d'audit"),
+    ("Consultant junior", "cabinet de conseil"),
+    ("Auditeur financier", "cabinet Big Four"),
+    ("Contrôleur de gestion", "groupe industriel"),
+    ("Chargé d'études économiques", "société de conseil"),
+    ("Business analyst", "éditeur de logiciels"),
+    ("Gestionnaire back-office", "société de gestion d'actifs"),
+    ("Chargé de recouvrement", "société de financement"),
+    ("Ingénieur d'affaires", "secteur télécoms"),
+    ("Data analyst", "start-up fintech"),
+    ("Juriste d'affaires", "cabinet d'avocats"),
+]
+
+# Diplômes (pour quelques jeunes diplômés : 1re station = formation initiale).
+_DIPLOMES = [
+    "Master Finance de marché — obtention du diplôme",
+    "Master Banque & Assurance — obtention du diplôme",
+    "École de commerce (grande école) — diplômé·e",
+    "Master Contrôle de gestion & audit — obtention du diplôme",
+    "Master Data & IA appliquées à la finance — diplômé·e",
+    "Ingénieur généraliste + Mastère spécialisé Finance",
+]
+
+# Descriptions d'un poste interne passé, selon le niveau (rotation déterministe).
+_DESC_IC = [
+    "Gestion d'un portefeuille et développement commercial.",
+    "Montée en compétence sur les produits et process de l'entité.",
+    "Prise en charge de dossiers en autonomie croissante.",
+    "Contribution aux projets et à l'activité de l'équipe.",
+]
+_DESC_RESP = [
+    "Encadrement d'une équipe et pilotage de l'activité.",
+    "Coordination opérationnelle et suivi des objectifs.",
+    "Animation d'équipe et amélioration continue des process.",
+]
+
+
+def _annee_entree(p) -> int:
+    """Année d'entrée BMCI : date_entree si connue, sinon dérivée de l'id (déterministe)."""
+    if p.date_entree:
+        return p.date_entree.year
+    return _ANNEE_REF - (4 + (p.id % 14))   # ancienneté 4..17 ans
+
+
+def _desc_interne(titre: str, k: int) -> str:
+    pool = _DESC_RESP if _niveau_poste(titre) >= 2 else _DESC_IC
+    return pool[k % len(pool)]
+
+
 def _seed_trajectoires(db: Session) -> dict:
-    """Génère un PARCOURS de carrière (ProfilStation) — le « CV » structuré — pour
-    chaque profil sans historique : postes passés (rungs inférieurs du même
-    département), poste actuel, objectif. ~1 profil sur 7 a une trajectoire NON
-    LINÉAIRE (poste passé dans un AUTRE département) pour nourrir l'inférence de
-    trajectoires atypiques. Déterministe et idempotent (skip si stations existantes)."""
+    """Génère un PARCOURS de carrière (ProfilStation) — le « CV » structuré — VARIÉ
+    pour chaque profil sans historique. Archétypes déterministes (par id) :
+      - montées internes (postes latéraux/inférieurs du même département),
+      - ~1/6 trajectoire NON LINÉAIRE (poste passé dans un autre département),
+      - ~1/3 avec une EXPÉRIENCE PRÉ-BANQUE (rôle hors Groupe avant l'entrée),
+      - quelques jeunes diplômés (1re station = formation).
+    Longueur du parcours indexée sur l'ancienneté ; périodes ancrées sur la date
+    d'entrée ; descriptions sur chaque station. Idempotent (skip si stations existantes)."""
     profils = list(db.scalars(select(Profil).order_by(Profil.id)).all())
     par_dept: dict[str, list[str]] = {}
     for p in profils:
@@ -926,24 +983,67 @@ def _seed_trajectoires(db: Session) -> dict:
             continue
         if db.scalar(select(ProfilStation.id).where(ProfilStation.profil_id == p.id)):
             continue  # personas / profils déjà historisés : on ne touche pas
+        rid = p.id
         pool = par_dept.get(p.departement_key, [])
         cur_lvl = _niveau_poste(p.poste_actuel)
-        lower = [q for q in pool if _niveau_poste(q) < cur_lvl and q != p.poste_actuel]
         higher = [q for q in pool if _niveau_poste(q) > cur_lvl and q != p.poste_actuel]
+        internes = sorted(  # postes internes possibles AVANT le poste actuel (latéraux/inférieurs)
+            [q for q in pool if q != p.poste_actuel and _niveau_poste(q) <= cur_lvl],
+            key=_niveau_poste)
 
-        seq: list[tuple[str, str]] = []  # (titre, description)
-        if p.id % 7 == 0 and len(depts) > 1:  # trajectoire non linéaire
-            other = depts[(p.id // 7) % len(depts)]
+        entry = _annee_entree(p)
+        tenure = max(1, _ANNEE_REF - entry)
+
+        jeune_diplome = (rid % 5 == 0) and tenure <= 9
+        pre_bank = (rid % 3 == 0) and not jeune_diplome   # archétypes exclusifs (cohérence chrono)
+        non_lineaire = (rid % 6 == 0) and len(depts) > 1
+
+        # Budget de postes passés (pour garder un CV ~1 page).
+        budget = 4 - (1 if jeune_diplome else 0) - (1 if pre_bank else 0) - (1 if non_lineaire else 0)
+        if tenure >= 12:
+            n_int = 3
+        elif tenure >= 7:
+            n_int = 2
+        elif tenure >= 3:
+            n_int = 1
+        else:
+            n_int = 0
+        n_int = max(0, min(n_int, budget))
+
+        # seq d'événements passés : (periode|"__I__", titre, description, externe)
+        seq: list[list] = []
+        if jeune_diplome:
+            seq.append([str(entry - 1), _DIPLOMES[rid % len(_DIPLOMES)],
+                        "Formation initiale.", False])
+        if pre_bank:
+            role, secteur = _PRE_BANQUE[rid % len(_PRE_BANQUE)]
+            k = 2 + (rid % 4)  # 2..5 ans d'expérience externe
+            seq.append([f"{entry - k}–{entry}", role,
+                        f"{secteur.capitalize()} — expérience hors Groupe, avant l'intégration à la BMCI.",
+                        True])
+        if non_lineaire:
+            other = depts[(rid // 6) % len(depts)]
             if other != p.departement_key and par_dept.get(other):
-                seq.append((par_dept[other][0], "Mobilité inter-métier (trajectoire non linéaire)."))
-        for q in lower[-2:]:
-            seq.append((q, ""))
+                seq.append(["__I__", par_dept[other][0],
+                            "Mobilité inter-métier (trajectoire non linéaire).", False])
+        for j, q in enumerate(internes[:n_int]):
+            seq.append(["__I__", q, _desc_interne(q, rid + j), False])
 
-        stations, ordre, n = [], 0, len(seq)
-        for i, (titre, desc) in enumerate(seq):
+        # Datation des étapes INTERNES (répartir sur l'ancienneté, la 1re ≈ à l'entrée).
+        idx_int = [i for i, ev in enumerate(seq) if ev[0] == "__I__"]
+        m = len(idx_int)
+        prev = entry - 1
+        for j, i in enumerate(idx_int):
+            yr = entry + round(j * (tenure - 1) / max(1, m))
+            yr = min(_ANNEE_REF - 1, max(entry, yr, prev + 1))
+            prev = yr
+            seq[i][0] = str(yr)
+
+        stations, ordre = [], 0
+        for periode, titre, desc, _ext in seq:
             stations.append(ProfilStation(
-                profil_id=p.id, periode=str(_ANNEE_REF - 3 * (n - i)),
-                titre=titre, description=desc or None, etat=StationEtat.PASSE, ordre=ordre))
+                profil_id=p.id, periode=periode, titre=titre,
+                description=desc or None, etat=StationEtat.PASSE, ordre=ordre))
             ordre += 1
         stations.append(ProfilStation(
             profil_id=p.id, periode="Aujourd'hui", titre=p.poste_actuel,
