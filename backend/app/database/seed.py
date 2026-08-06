@@ -674,18 +674,56 @@ _POLE_PROFILE: dict[str, dict[str, int]] = {
 }
 _POLE_DEFAUT = {f: 3 for f in _CARTO_FAMILLES}
 
-# Libellés représentatifs par famille (la famille "metier" reprend le métier réel du poste).
+# Compétences MÉTIER naturelles par pôle macro (remplace l'ancien « métier = intitulé
+# de poste »). Chaque profil en tire 1-2, cohérentes avec son pôle et son référentiel.
+_METIER_LIBELLES: dict[str, list[str]] = {
+    "Lignes métiers commerciales": [
+        "Gestion de la relation client", "Développement commercial", "Conseil patrimonial",
+        "Analyse des besoins clients", "Négociation commerciale", "Gestion de portefeuille clients",
+        "Connaissance des produits bancaires", "Financement des entreprises"],
+    "Marchés, international & filiales": [
+        "Opérations de marché", "Trade finance", "Gestion actif-passif (ALM)",
+        "Financement structuré", "Change et trésorerie", "Analyse macroéconomique",
+        "Financement international"],
+    "Risques, conformité & contrôle": [
+        "Analyse du risque de crédit", "Contrôle interne", "Conformité réglementaire (LCB-FT)",
+        "Évaluation et cotation des risques", "Audit interne", "KYC et due diligence",
+        "Gestion du risque opérationnel", "Prévention de la fraude"],
+    "Finance, stratégie & pilotage": [
+        "Analyse financière", "Contrôle de gestion", "Reporting financier (IFRS)",
+        "Élaboration budgétaire", "Pilotage de la performance", "Comptabilité bancaire",
+        "Planification stratégique"],
+    "Data, IT & digital": [
+        "Analyse de données", "Modélisation prédictive", "Développement logiciel",
+        "Architecture des systèmes d'information", "Cybersécurité", "Gestion de projet SI",
+        "Data engineering", "Automatisation et RPA"],
+    "Fonctions support & corporate": [
+        "Gestion des ressources humaines", "Communication institutionnelle",
+        "Droit bancaire et financier", "Gestion administrative", "Achats et moyens généraux",
+        "Gestion de projet transverse", "Relations sociales"],
+}
+_METIER_DEFAUT = ["Expertise métier bancaire", "Gestion de la relation client",
+                  "Analyse et reporting", "Gestion de projet"]
+
+# Libellés (naturels) par famille — pools élargis pour de la VARIÉTÉ entre profils.
 _FAM_LIBELLES: dict[str, list[str]] = {
-    "comportementale": ["Rigueur", "Esprit d'analyse", "Sens du client",
-                        "Adaptabilité", "Communication", "Esprit d'équipe"],
+    "comportementale": ["Rigueur", "Esprit d'analyse", "Sens du client", "Adaptabilité",
+                        "Communication", "Esprit d'équipe", "Autonomie", "Sens de l'organisation",
+                        "Gestion du stress", "Force de proposition", "Orientation résultats",
+                        "Écoute active"],
     "transversale": ["Gestion de projet", "Reporting réglementaire", "Veille réglementaire",
-                     "Anglais professionnel", "Optimisation des process", "Conduite du changement"],
-    "outil_technologie": ["Excel avancé", "SQL", "Python", "Outils SI métiers",
-                          "Power BI", "Automatisation"],
+                     "Anglais professionnel", "Optimisation des process", "Conduite du changement",
+                     "Gestion des risques", "Relation partenaires", "Amélioration continue",
+                     "Coordination transverse"],
+    "outil_technologie": ["Excel avancé", "SQL", "Python", "Outils SI métiers", "Power BI",
+                          "Automatisation", "SAP", "Tableau", "Salesforce", "VBA",
+                          "Suite Office", "Jira / Confluence"],
     "leadership": ["Management d'équipe", "Pilotage d'activité", "Leadership collaboratif",
-                   "Animation transverse"],
-    "data": ["Analyse de données", "Business intelligence", "Modélisation",
-             "Data quality", "Datavisualisation"],
+                   "Animation transverse", "Gestion de la performance", "Développement des talents",
+                   "Prise de décision", "Vision stratégique"],
+    "data": ["Analyse de données", "Business intelligence", "Modélisation", "Data quality",
+             "Datavisualisation", "Statistiques appliquées", "Data storytelling",
+             "Tableaux de bord décisionnels"],
 }
 
 _CARTO_PRENOMS = ["Youssef", "Fatima", "Rachid", "Sophia", "Omar", "Leïla", "Yassine",
@@ -699,6 +737,30 @@ _CARTO_NOMS = ["Alaoui", "El Amrani", "Chraibi", "Idrissi", "Fassi", "Sekkat", "
 def _carto_hash(s: str) -> int:
     """Hash déterministe (indépendant du PYTHONHASHSEED) pour varier profils/niveaux."""
     return sum((i + 1) * ord(c) for i, c in enumerate(s))
+
+
+def _competences_pour(pole: str, seed_key: str) -> list[tuple[str, str]]:
+    """Jeu de compétences NATURELLES et VARIÉES pour un profil : 2 métier (pool du
+    pôle) + comportementales / transverses / outils / leadership / data. Déterministe
+    par `seed_key`. Remplace l'ancien « métier = intitulé de poste »."""
+    h = _carto_hash(seed_key)
+    out: list[tuple[str, str]] = []
+    mp = _METIER_LIBELLES.get(pole, _METIER_DEFAUT)
+    for lib in dict.fromkeys([mp[h % len(mp)], mp[(h // 5 + 1) % len(mp)]]):
+        out.append((lib, "metier"))
+    for fam, n in (("comportementale", 2), ("transversale", 1),
+                   ("outil_technologie", 1), ("leadership", 1), ("data", 1)):
+        pool = _FAM_LIBELLES[fam]
+        for k in range(n):
+            out.append((pool[(h // (k + 2)) % len(pool)], fam))
+    seen: set[str] = set()
+    dedup: list[tuple[str, str]] = []
+    for lib, fam in out:
+        if lib.lower() in seen:
+            continue
+        seen.add(lib.lower())
+        dedup.append((lib, fam))
+    return dedup
 
 
 def _seed_carto(db: Session) -> int:
@@ -733,11 +795,9 @@ def _seed_carto(db: Session) -> int:
                        poste_actuel=poste, departement_key=key, synthetique=True)
             db.add(p)
             db.flush()
-            for fam in _CARTO_FAMILLES:
-                jitter = (_carto_hash(f"{key}-{fam}-{n}") % 3) - 1  # -1, 0 ou +1
+            for libelle, fam in _competences_pour(pole, f"{key}-{n}"):
+                jitter = (_carto_hash(f"{key}-{fam}-{libelle}-{n}") % 3) - 1  # -1, 0 ou +1
                 niveau = max(1, min(5, base.get(fam, 3) + jitter))
-                libelle = poste if fam == "metier" else \
-                    _FAM_LIBELLES[fam][_carto_hash(f"{key}-{fam}") % len(_FAM_LIBELLES[fam])]
                 db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=fam,
                                         niveau=niveau, source=CompetenceSource.DECLARATIF))
             created += 1
@@ -771,7 +831,7 @@ _POP_ASPIRATIONS = [
 ]
 
 
-def _pop_person(db: Session, *, seq: int, key: str, poste: str, role: str, base: dict,
+def _pop_person(db: Session, *, seq: int, key: str, pole: str, poste: str, role: str, base: dict,
                 boost: int, now, password_hash: str, manager_uid: int | None,
                 with_aspiration: bool) -> int:
     """Crée UN compte synthétique complet (user + profil + compétences + entretiens +
@@ -801,12 +861,10 @@ def _pop_person(db: Session, *, seq: int, key: str, poste: str, role: str, base:
     db.add(p)
     db.flush()
 
-    for fam in _CARTO_FAMILLES:
-        jitter = (_carto_hash(f"{key}-{fam}-{seq}") % 3) - 1
-        top = 1 if h % 9 == 0 else 0                       # ~11 % de profils « haut niveau » (HP)
+    top = 1 if h % 9 == 0 else 0                           # ~11 % de profils « haut niveau » (HP)
+    for libelle, fam in _competences_pour(pole, f"{key}-{seq}"):
+        jitter = (_carto_hash(f"{key}-{fam}-{libelle}-{seq}") % 3) - 1
         niveau = max(1, min(5, base.get(fam, 3) + jitter + boost + top))
-        libelle = poste if fam == "metier" else \
-            _FAM_LIBELLES[fam][_carto_hash(f"{key}-{fam}-{seq}") % len(_FAM_LIBELLES[fam])]
         db.add(ProfilCompetence(profil_id=p.id, libelle=libelle, categorie=fam,
                                 niveau=niveau, source=CompetenceSource.DECLARATIF))
 
@@ -862,14 +920,14 @@ def _seed_population(db: Session, password_hash: str) -> int:
         n_mgr = 1 + h0 % 2
         n_collab = 4 + h0 % 5
         # N+2 : chef de département.
-        head = _pop_person(db, seq=seq, key=key, poste=f"Directeur·rice {nom_dept}"[:200],
+        head = _pop_person(db, seq=seq, key=key, pole=pole, poste=f"Directeur·rice {nom_dept}"[:200],
                            role=Role.MANAGER, base=base, boost=1, now=now,
                            password_hash=password_hash, manager_uid=None, with_aspiration=False)
         seq += 1
         # N+1 : managers rattachés au chef de département.
         mgr_uids: list[int] = []
         for _ in range(n_mgr):
-            mgr = _pop_person(db, seq=seq, key=key,
+            mgr = _pop_person(db, seq=seq, key=key, pole=pole,
                               poste=f"Responsable {metiers[seq % len(metiers)]}"[:200],
                               role=Role.MANAGER, base=base, boost=1, now=now,
                               password_hash=password_hash, manager_uid=head, with_aspiration=False)
@@ -877,7 +935,7 @@ def _seed_population(db: Session, password_hash: str) -> int:
             seq += 1
         # Collaborateurs rattachés à un manager.
         for c in range(n_collab):
-            _pop_person(db, seq=seq, key=key, poste=metiers[seq % len(metiers)],
+            _pop_person(db, seq=seq, key=key, pole=pole, poste=metiers[seq % len(metiers)],
                         role=Role.COLLAB, base=base, boost=0, now=now,
                         password_hash=password_hash,
                         manager_uid=mgr_uids[c % len(mgr_uids)] if mgr_uids else head,
@@ -979,7 +1037,7 @@ _DIPLOMES = [
 
 # Descriptions d'un poste interne passé, selon le niveau (rotation déterministe).
 _DESC_IC = [
-    "Gestion d'un portefeuille et développement commercial.",
+    "Prise de responsabilités progressive sur le périmètre.",
     "Montée en compétence sur les produits et process de l'entité.",
     "Prise en charge de dossiers en autonomie croissante.",
     "Contribution aux projets et à l'activité de l'équipe.",

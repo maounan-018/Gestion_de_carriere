@@ -295,21 +295,26 @@ def _formation(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation], rng: 
 
 _CAT_LABEL = {
     "metier": "Métier", "métier": "Métier", "business": "Métier",
+    "outil_technologie": "Outils & technologies", "outils": "Outils & technologies",
+    "outil": "Outils & technologies", "technique": "Outils & technologies",
+    "tech": "Outils & technologies", "technologie": "Outils & technologies", "digital": "Outils & technologies",
+    "data": "Data & analyse",
+    "transversale": "Compétences transverses", "transversal": "Compétences transverses",
+    "leadership": "Leadership & management", "management": "Leadership & management",
     "comportementale": "Comportementales", "comportemental": "Comportementales",
-    "comportement": "Comportementales", "soft": "Comportementales", "transversale": "Comportementales",
-    "outils": "Outils & technologies", "outil": "Outils & technologies",
-    "technique": "Outils & technologies", "tech": "Outils & technologies",
-    "technologie": "Outils & technologies", "digital": "Outils & technologies",
+    "comportement": "Comportementales", "soft": "Comportementales",
     "langue": "Langues", "langues": "Langues",
 }
-_CAT_ORDER = ["Métier", "Outils & technologies", "Comportementales", "Autres compétences"]
+_CAT_ORDER = ["Métier", "Outils & technologies", "Data & analyse",
+              "Compétences transverses", "Leadership & management",
+              "Comportementales", "Autres compétences"]
 
 
 def _competences(pdf: _CvPdf, comps: list[ProfilCompetence], rng: random.Random):
     _section(pdf, "Compétences")
     groupes: dict[str, list[str]] = {}
     for c in comps[:26]:
-        label = _cap((c.skill_label_fr or c.libelle or "").strip())
+        label = _cap(_comp_label(c))
         if not label:
             continue
         cat = _CAT_LABEL.get((getattr(c, "categorie", None) or "").strip().lower(), "Autres compétences")
@@ -360,6 +365,13 @@ def _projet(pdf: _CvPdf, profil: Profil):
 
 # ---------------------------------------------------------------- Collecte & API
 
+def _comp_label(c: ProfilCompetence) -> str:
+    """Libellé d'affichage : le libellé DÉCLARÉ (naturel, ex. « Veille réglementaire »)
+    est préféré au libellé canonique ESCO (verbeux, ex. « suivre l'évolution de la
+    législation »)."""
+    return (c.libelle or c.skill_label_fr or "").strip()
+
+
 def _collecter(db: Session, profil: Profil):
     stations = list(db.scalars(
         select(ProfilStation)
@@ -369,19 +381,18 @@ def _collecter(db: Session, profil: Profil):
     comps = list(db.scalars(
         select(ProfilCompetence).where(ProfilCompetence.profil_id == profil.id)
     ).all())
-    # Dédoublonnage par libellé en conservant le meilleur niveau connu.
+    poste_l = (profil.poste_actuel or "").strip().lower()
+    # Dédoublonnage par libellé (naturel) en conservant le meilleur niveau connu ;
+    # on écarte toute « compétence » égale à l'intitulé de poste (pseudo-compétence).
     best: dict[str, ProfilCompetence] = {}
     for c in comps:
-        lib = (c.skill_label_fr or c.libelle or "").strip()
-        if not lib:
+        lib = _comp_label(c)
+        if not lib or lib.lower() == poste_l:
             continue
         cur = best.get(lib.lower())
         if cur is None or (c.niveau or 0) > (cur.niveau or 0):
             best[lib.lower()] = c
-    ordered = sorted(
-        best.values(),
-        key=lambda c: (-(c.niveau or 0), (c.skill_label_fr or c.libelle or "").lower()),
-    )
+    ordered = sorted(best.values(), key=lambda c: (-(c.niveau or 0), _comp_label(c).lower()))
     return stations, ordered
 
 
