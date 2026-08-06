@@ -44,9 +44,13 @@ class CoachRequest(BaseModel):
         "carriere", description="carriere = coach agentique ; entretien_* = préparation d'entretien annuel "
         "(copilote = l'utilisateur prépare le sien ; copilote_equipe = le manager prépare celui d'un collaborateur).")
     # Entretien co-pilote (l'utilisateur prépare SON entretien ; l'IA le coache, ancrée sur son profil) :
-    section: str | None = Field(None, max_length=120, description="Libellé de la section en cours.")
-    focus: str | None = Field(None, max_length=800, description="Consigne de la section pour un tour d'ouverture.")
-    ouverture: bool = Field(False, description="True : l'IA ouvre la section ; False : elle réagit à `message`.")
+    section: str | None = Field(None, max_length=120, description="Libellé de la section en cours (indicatif).")
+    section_index: int | None = Field(None, ge=0, le=20,
+        description="Index (0-based) de la section en cours dans le plan d'entretien (piloté backend).")
+    section_turns: int = Field(0, ge=0, le=50,
+        description="Nombre de réponses déjà données dans la section en cours (plancher anti-avance éclair).")
+    focus: str | None = Field(None, max_length=800, description="Consigne de la section pour un tour d'ouverture (legacy).")
+    ouverture: bool = Field(False, description="True : tout premier tour (l'IA ouvre l'entretien) ; False : elle réagit à `message`.")
     # Entretien role-play (l'IA incarne un collaborateur) :
     sujet: EntretienSujet | None = Field(None, description="Personne incarnée par l'IA (role-play).")
 

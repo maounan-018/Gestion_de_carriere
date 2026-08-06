@@ -13,11 +13,11 @@ const { toast } = useToast()
 /**
  * Préparation GUIDÉE de l'entretien d'un COLLABORATEUR par son MANAGER.
  *
- * L'IA n'incarne PLUS le collaborateur : elle est le COPILOTE du manager. Elle
- * l'interroge section par section SUR son collaborateur (objectifs, réussites,
- * difficultés, compétences, souhaits) ; le manager répond à son propos ; l'IA lui
- * donne un retour puis des conseils pour conduire l'entretien. Mode backend natif
- * `entretien_copilote_equipe`, ancré sur le profil du collaborateur (sujet).
+ * L'IA est le COPILOTE du manager : elle l'interroge section par section SUR son
+ * collaborateur ; le manager répond ; elle lui donne un retour puis des conseils.
+ * Le passage d'une section à l'autre est PILOTÉ PAR L'IA (backend
+ * `entretien_copilote_equipe`, balise [[SUIVANT]]) — aucun bouton, aucune annonce
+ * répétée : la progression n'apparaît que dans le déroulé + la barre. Synthèse → PDF.
  */
 
 export interface InterviewSubject {
@@ -30,32 +30,31 @@ export interface InterviewSubject {
 
 const props = defineProps<{ subject: InterviewSubject }>()
 
-const STEPS = computed<{ label: string; focus: string }[]>(() => {
-  const n = props.subject.name
-  return [
-    { label: 'Introduction', focus: '' },
-    { label: 'Objectifs & missions', focus: `le bilan des objectifs et missions de ${n} sur l'année écoulée` },
-    { label: 'Réussites', focus: `les principales réussites de ${n} (faits concrets, résultats observés)` },
-    { label: 'Difficultés', focus: `les difficultés rencontrées par ${n} et la façon de l'accompagner` },
-    { label: 'Compétences', focus: `l'évaluation des compétences de ${n} et ses axes de progression` },
-    { label: 'Aspirations & perspectives', focus: `les aspirations d'évolution, de mobilité ou de formation de ${n}` },
-    { label: "Conseils de l'agent", focus: '' },
-    { label: 'Synthèse finale', focus: '' },
-  ]
-})
+// Aligné (ordre + index) sur `_ENTRETIEN_PLAN` du backend ; libellés orientés manager.
+const STEPS: { label: string }[] = [
+  { label: 'Introduction' },
+  { label: 'Objectifs & missions' },
+  { label: 'Réussites' },
+  { label: 'Difficultés' },
+  { label: 'Compétences' },
+  { label: 'Aspirations & perspectives' },
+  { label: "Conseils de l'agent" },
+  { label: 'Synthèse finale' },
+]
 
 const currentStep = ref(0)
+const stepAnswers = ref(0) // réponses données dans la section courante (plancher anti-avance éclair)
 const chat = ref<ChatMessage[]>([])
 const input = ref('')
 const busy = ref(false)
 const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
-const synthesePlain = ref('')       // synthèse finale en texte brut (pour l'export PDF)
+const synthesePlain = ref('') // synthèse finale en texte brut (export PDF)
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 
-const atLastStep = computed(() => currentStep.value >= STEPS.value.length - 1)
-const progressPct = computed(() => Math.round((currentStep.value / (STEPS.value.length - 1)) * 100))
+const atLastStep = computed(() => currentStep.value >= STEPS.length - 1)
+const progressPct = computed(() => Math.round((currentStep.value / (STEPS.length - 1)) * 100))
 function stepState(i: number): 'done' | 'current' | 'todo' {
   return i < currentStep.value ? 'done' : i === currentStep.value ? 'current' : 'todo'
 }
@@ -71,62 +70,49 @@ function sujet() {
   return { nom: s.name, poste: s.role, aspiration: s.aspiration, ecarts: s.gaps ?? [], pole: s.pole }
 }
 
-function isConseils(i: number): boolean {
-  return i === STEPS.value.length - 2
-}
-function isLast(i: number): boolean {
-  return i >= STEPS.value.length - 1
-}
-function openFocus(i: number): string {
-  const s = STEPS.value[i]
-  const n = props.subject.name
-  if (i === 0) {
-    return (
-      `INTRODUCTION UNIQUEMENT. Présente-toi en une phrase comme le copilote du manager pour préparer `
-      + `l'entretien annuel de ${n}. Explique en une phrase que vous allez parcourir ensemble, section par `
-      + `section (objectifs, réussites, difficultés, compétences, souhaits), pour préparer cet entretien. `
-      + `NE traite PAS encore le contenu. Termine en demandant au manager s'il est prêt à commencer.`
-    )
-  }
-  if (isConseils(i)) {
-    return (
-      `En te fondant PRÉCISÉMENT sur ce que le manager a partagé, donne-lui 2 ou 3 conseils concrets pour `
-      + `conduire l'entretien de ${n} (posture, points à valoriser, sujets à aborder avec tact). Termine en `
-      + `lui demandant s'il souhaite ajuster un point.`
-    )
-  }
-  if (isLast(i)) {
-    return (
-      `Fais une synthèse structurée de la préparation (bilan des objectifs, réussites, difficultés, axes de `
-      + `progrès, souhaits) pour l'entretien de ${n}, en te fondant sur les réponses du manager. Termine en `
-      + `l'encourageant pour l'entretien.`
-    )
-  }
-  return `Ouvre la section « ${s.label} » : invite le manager à faire le point sur ${s.focus}. Termine par UNE seule question ouverte.`
+/* ---- Balise technique de progression émise par l'IA ---- */
+const MARKER = '[[SUIVANT]]'
+function splitMarker(raw: string): { text: string; advance: boolean } {
+  const advance = raw.includes(MARKER)
+  let text = raw.split(MARKER).join('')
+  text = text.replace(/\[\[?S?U?I?V?A?N?T?\]?\]?$/, (m) => (m && MARKER.startsWith(m) ? '' : m))
+  return { text, advance }
 }
 
-async function runTurn(section: string, focus: string | undefined, ouverture: boolean, message: string) {
+async function runTurn(ouverture: boolean, message: string) {
   if (busy.value) return
   busy.value = true
   streamStatus.value = ''
   streamingHtml.value = ''
   let raw = ''
-  const history = [...chat.value]
+  const fromStep = currentStep.value
   try {
     await apiService.streamCoachMessage(
       message,
-      history,
+      [...chat.value],
       {
         onTool: () => { streamStatus.value = 'Le coach consulte le profil…' },
-        onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
+        onToken: (tk) => {
+          streamStatus.value = ''
+          raw += tk
+          streamingHtml.value = formatCoachReply(splitMarker(raw).text)
+        },
         onReset: () => { raw = ''; streamingHtml.value = '' },
       },
-      { mode: 'entretien_copilote_equipe', section, focus, ouverture, sujet: sujet() },
+      {
+        mode: 'entretien_copilote_equipe', section_index: fromStep,
+        section_turns: stepAnswers.value, ouverture, sujet: sujet(),
+      },
     )
-    chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
-    // Étape finale : la synthèse est produite → on la capture pour l'export PDF.
-    if (isLast(currentStep.value) && ouverture && raw.trim()) {
-      synthesePlain.value = htmlToText(formatCoachReply(raw))
+    const { text, advance } = splitMarker(raw)
+    const clean = text.trim()
+    chat.value.push({ from: 'bot', text: clean ? formatCoachReply(clean) : ERR })
+    if (advance && currentStep.value < STEPS.length - 1) {
+      currentStep.value++
+      stepAnswers.value = 0
+    }
+    if (currentStep.value === STEPS.length - 1 && currentStep.value > fromStep && clean) {
+      synthesePlain.value = htmlToText(formatCoachReply(clean))
     }
   } catch {
     chat.value.push({ from: 'bot', text: ERR })
@@ -136,6 +122,17 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
     streamingHtml.value = ''
   }
 }
+
+async function answer(text?: string) {
+  const t = (text ?? input.value).trim()
+  if (!t || busy.value) return
+  chat.value.push({ from: 'me', text: t })
+  input.value = ''
+  stepAnswers.value += 1
+  await runTurn(false, t)
+}
+
+onMounted(() => runTurn(true, ''))
 
 /* ---- Synthèse finale : export PDF (livrable pour conduire l'entretien) ---- */
 function htmlToText(html: string): string {
@@ -165,24 +162,6 @@ function exportPdf() {
   downloadPdf(`synthese-entretien-${who.replace(/\s+/g, '-')}-${when.replace(/\s+/g, '-')}`, blocks)
   toast('Synthèse exportée en PDF', 'ok')
 }
-
-function openSection(i: number) {
-  return runTurn(STEPS.value[i].label, openFocus(i), true, '')
-}
-async function answer(text?: string) {
-  const t = (text ?? input.value).trim()
-  if (!t || busy.value) return
-  chat.value.push({ from: 'me', text: t })
-  input.value = ''
-  await runTurn(STEPS.value[currentStep.value].label, undefined, false, t)
-}
-async function nextStep() {
-  if (busy.value || atLastStep.value) return
-  currentStep.value++
-  await openSection(currentStep.value)
-}
-
-onMounted(() => openSection(0))
 </script>
 
 <template>
@@ -194,7 +173,7 @@ onMounted(() => openSection(0))
           <div
             v-for="(s, i) in STEPS"
             :key="s.label"
-            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
             :class="stepState(i) === 'current' ? 'bg-green-soft font-semibold text-green-deep' : 'text-ink-2'"
           >
             <Check v-if="stepState(i) === 'done'" :size="15" class="text-green" />
@@ -217,8 +196,9 @@ onMounted(() => openSection(0))
           <Sparkles :size="13" /> Préparation guidée · IA
         </div>
         <p class="text-xs text-ink-2">
-          L'IA vous <b>interroge sur {{ subject.name }}</b>, section par section. Vous répondez ;
-          elle vous donne un retour et des conseils pour <b>conduire l'entretien</b>.
+          L'IA vous <b>interroge sur {{ subject.name }}</b>, section par section, et avance d'elle-même
+          quand vous avez fait le tour. Elle vous donne un retour et des conseils pour
+          <b>conduire l'entretien</b>.
         </p>
       </div>
     </div>
@@ -263,28 +243,17 @@ onMounted(() => openSection(0))
         </BaseButton>
       </div>
 
-      <div class="mt-3 flex items-center gap-2">
-        <div class="flex flex-1 items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2">
-          <MessageSquare :size="16" class="shrink-0 text-green-deep" />
-          <input
-            v-model="input"
-            :placeholder="`Votre réponse au sujet de ${subject.name}…`"
-            :disabled="busy"
-            class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
-            @keydown.enter="answer()"
-          />
-          <BaseButton size="sm" :disabled="busy || !input.trim()" @click="answer()">
-            <Send :size="14" /> Répondre
-          </BaseButton>
-        </div>
-        <BaseButton
-          v-if="!atLastStep"
-          variant="secondary"
-          size="sm"
+      <div class="mt-3 flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2">
+        <MessageSquare :size="16" class="shrink-0 text-green-deep" />
+        <input
+          v-model="input"
+          :placeholder="`Votre réponse au sujet de ${subject.name}…`"
           :disabled="busy"
-          @click="nextStep"
-        >
-          Section suivante →
+          class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
+          @keydown.enter="answer()"
+        />
+        <BaseButton size="sm" :disabled="busy || !input.trim()" @click="answer()">
+          <Send :size="14" /> Répondre
         </BaseButton>
       </div>
     </div>

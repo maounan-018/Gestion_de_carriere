@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import { Check, MessageSquare, Sparkles, Send, ArrowRight, Play, Download, FileText } from '@lucide/vue'
+import { Check, MessageSquare, Sparkles, Send, Play, Download, FileText } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
 import { useSessionStore } from '@/stores/session'
@@ -12,48 +12,44 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 /**
  * Préparation guidée de l'entretien annuel · l'IA en CO-PILOTE, section par section.
  *
- * Parcours : un écran d'INTRODUCTION explique qu'il s'agit d'une SIMULATION pour
- * préparer le vrai entretien annuel (et l'évaluation de l'année), puis un échange
- * guidé en étapes NUMÉROTÉES. On avance dans le FIL de la conversation (pas de bouton
- * détaché). À la fin, la synthèse est CONSERVÉE (persistée) et exportable en PDF.
- *
- * Le RÔLE est natif côté backend (mode `entretien_copilote`) : le coach se
- * contextualise seul sur le profil du compte connecté. Réutilisé par les
- * auto-entretiens (collab, manager « moi », RH « moi »).
+ * Parcours : un écran d'INTRODUCTION cadre la SIMULATION, puis un échange guidé. Le
+ * passage d'une section à la suivante est PILOTÉ PAR L'IA (backend `entretien_copilote`) :
+ * elle fait le tour des points d'une section, PUIS enchaîne naturellement — aucun bouton
+ * « Poursuivre », aucune annonce répétée. L'IA émet une balise technique [[SUIVANT]] en tête
+ * de réponse au moment de la transition ; le front la détecte pour avancer l'étape (déroulé
+ * + barre de progression) et la retire du texte. À la fin, la synthèse est persistée + PDF.
  */
 
 const session = useSessionStore()
 const { toast } = useToast()
 
-const STEPS: { label: string; focus: string }[] = [
-  { label: 'Introduction', focus: '' },
-  { label: 'Objectifs & missions', focus: "ses objectifs et missions de l'année écoulée" },
-  { label: 'Réussites', focus: 'ses principales réussites (méthode STAR, résultats chiffrés)' },
-  { label: 'Échecs & difficultés', focus: "ses difficultés ou échecs de l'année et ce qu'il en a appris" },
-  { label: 'Compétences', focus: 'les compétences développées et ses axes de progression (savoir-être inclus)' },
-  { label: 'Aspirations & perspectives', focus: "ses aspirations d'évolution, de mobilité et de formation" },
-  { label: "Conseils de l'agent", focus: '' },
-  { label: 'Synthèse finale', focus: 'objectifs, réussites, axes de progrès et formations souhaitées' },
+// Doit rester ALIGNÉ (ordre + libellés) sur `_ENTRETIEN_PLAN` du backend (coach_service).
+const STEPS: { label: string }[] = [
+  { label: 'Introduction' },
+  { label: 'Objectifs & missions' },
+  { label: 'Réussites' },
+  { label: 'Échecs & difficultés' },
+  { label: 'Compétences' },
+  { label: 'Aspirations & perspectives' },
+  { label: "Conseils de l'agent" },
+  { label: 'Synthèse finale' },
 ]
 
 const phase = ref<'intro' | 'chat'>('intro')
 const currentStep = ref(0)
+const stepAnswers = ref(0) // réponses données dans la section courante (plancher anti-avance éclair)
 const chat = ref<ChatMessage[]>([])
 const input = ref('')
 const busy = ref(false)
 const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
-const answeredInStep = ref(false)   // l'utilisateur a répondu dans l'étape courante → propose d'avancer
-const synthesePlain = ref('')       // synthèse finale en texte brut (persistée + PDF)
+const synthesePlain = ref('') // synthèse finale en texte brut (persistée + PDF)
 const savedAt = ref('')
 
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 const atLastStep = computed(() => currentStep.value >= STEPS.length - 1)
 const progressPct = computed(() => Math.round((currentStep.value / (STEPS.length - 1)) * 100))
-const nextLabel = computed(() => (atLastStep.value ? '' : STEPS[currentStep.value + 1].label))
-// Affordance d'avancement DANS LE FIL : visible dès que l'utilisateur a échangé sur l'étape.
-const canAdvance = computed(() => !busy.value && !atLastStep.value && answeredInStep.value)
 function stepState(i: number): 'done' | 'current' | 'todo' {
   return i < currentStep.value ? 'done' : i === currentStep.value ? 'current' : 'todo'
 }
@@ -63,60 +59,50 @@ watch([() => chat.value.length, streamingHtml, streamStatus, busy], async () => 
   if (scroller.value) scroller.value.scrollTop = scroller.value.scrollHeight
 })
 
-/* ---- Contenu de section (STRUCTURE côté front ; RÔLE côté backend) ---- */
-const isConseils = (i: number) => i === STEPS.length - 2
-const isLast = (i: number) => i >= STEPS.length - 1
-function openFocus(i: number): string {
-  const s = STEPS[i]
-  if (i === 0) {
-    return (
-      "INTRODUCTION UNIQUEMENT. Souhaite la bienvenue au collaborateur et présente-toi en une phrase " +
-      "comme son copilote de préparation de l'entretien annuel. Explique en 1-2 phrases que vous allez " +
-      'parcourir ensemble, section par section (objectifs, réussites, difficultés, compétences, souhaits), ' +
-      "pour préparer son entretien. NE traite PAS encore le contenu des objectifs ni aucune autre section. " +
-      "Termine simplement en lui demandant s'il est prêt à commencer."
-    )
-  }
-  if (isConseils(i)) {
-    return (
-      "En te fondant PRÉCISÉMENT sur ce que le collaborateur a partagé dans cet échange, donne-lui 2 ou 3 " +
-      'conseils personnalisés et concrets pour réussir son entretien (posture, points à valoriser, façon ' +
-      "de formuler). Termine en lui demandant s'il souhaite ajuster un point."
-    )
-  }
-  if (isLast(i)) {
-    return (
-      "Fais une synthèse structurée de ce que le collaborateur a préparé au fil de cet échange (objectifs, " +
-      'réussites, difficultés surmontées, axes de progrès et formations souhaitées), en te fondant sur SES ' +
-      "réponses réelles. Termine en l'encourageant pour son entretien."
-    )
-  }
-  return `Ouvre la section « ${s.label} » : invite le collaborateur à préparer ${s.focus}. Termine par UNE seule question ouverte.`
+/* ---- Balise technique de progression émise par l'IA ---- */
+const MARKER = '[[SUIVANT]]'
+function splitMarker(raw: string): { text: string; advance: boolean } {
+  const advance = raw.includes(MARKER)
+  let text = raw.split(MARKER).join('')
+  // Masque un marqueur PARTIEL encore en cours de streaming (préfixe de la balise, en fin de flux).
+  text = text.replace(/\[\[?S?U?I?V?A?N?T?\]?\]?$/, (m) => (m && MARKER.startsWith(m) ? '' : m))
+  return { text, advance }
 }
 
 /* ---- Cœur : un tour streamé (mode natif backend `entretien_copilote`) ---- */
-async function runTurn(section: string, focus: string | undefined, ouverture: boolean, message: string) {
+async function runTurn(ouverture: boolean, message: string) {
   if (busy.value) return
   busy.value = true
   streamStatus.value = ''
   streamingHtml.value = ''
   let raw = ''
-  const history = [...chat.value]
+  const fromStep = currentStep.value
   try {
     await apiService.streamCoachMessage(
       message,
-      history,
+      [...chat.value],
       {
         onTool: () => { streamStatus.value = 'Le coach consulte votre dossier…' },
-        onToken: (tk) => { streamStatus.value = ''; raw += tk; streamingHtml.value = formatCoachReply(raw) },
+        onToken: (tk) => {
+          streamStatus.value = ''
+          raw += tk
+          streamingHtml.value = formatCoachReply(splitMarker(raw).text)
+        },
         onReset: () => { raw = ''; streamingHtml.value = '' },
       },
-      { mode: 'entretien_copilote', section, focus, ouverture },
+      { mode: 'entretien_copilote', section_index: fromStep, section_turns: stepAnswers.value, ouverture },
     )
-    chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
-    // Étape finale : la synthèse est produite → on la CONSERVE (persistée) pour l'export.
-    if (isLast(currentStep.value) && ouverture && raw.trim()) {
-      synthesePlain.value = htmlToText(formatCoachReply(raw))
+    const { text, advance } = splitMarker(raw)
+    const clean = text.trim()
+    chat.value.push({ from: 'bot', text: clean ? formatCoachReply(clean) : ERR })
+    // L'IA signale la transition → on avance l'étape (visuel : déroulé + barre).
+    if (advance && currentStep.value < STEPS.length - 1) {
+      currentStep.value++
+      stepAnswers.value = 0
+    }
+    // Arrivé à la synthèse finale : on la CONSERVE (persistée) pour l'export PDF.
+    if (currentStep.value === STEPS.length - 1 && currentStep.value > fromStep && clean) {
+      synthesePlain.value = htmlToText(formatCoachReply(clean))
       await persistSynthese()
     }
   } catch {
@@ -128,27 +114,20 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
   }
 }
 
-const openSection = (i: number) => runTurn(STEPS[i].label, openFocus(i), true, '')
+function start() {
+  phase.value = 'chat'
+  currentStep.value = 0
+  stepAnswers.value = 0
+  runTurn(true, '')
+}
 
 async function answer(text?: string) {
   const t = (text ?? input.value).trim()
   if (!t || busy.value) return
   chat.value.push({ from: 'me', text: t })
   input.value = ''
-  answeredInStep.value = true
-  await runTurn(STEPS[currentStep.value].label, undefined, false, t)
-}
-
-async function nextStep() {
-  if (busy.value || atLastStep.value) return
-  currentStep.value++
-  answeredInStep.value = false
-  await openSection(currentStep.value)
-}
-
-function start() {
-  phase.value = 'chat'
-  openSection(0)
+  stepAnswers.value += 1
+  await runTurn(false, t)
 }
 
 /* ---- Synthèse : persistance + export PDF ---- */
@@ -167,7 +146,7 @@ function exportPdf() {
   const who = session.user?.name || 'Collaborateur'
   const when = new Date().toLocaleDateString('fr-FR', { dateStyle: 'long' })
   const blocks: PdfBlock[] = [
-    { type: 'h1', text: "Synthèse de préparation · entretien annuel" },
+    { type: 'h1', text: 'Synthèse de préparation · entretien annuel' },
     { type: 'p', text: `${who} · ${when} · Simulation BMCI (préparation, non contractuelle)` },
     { type: 'spacer' },
     { type: 'h2', text: 'Synthèse' },
@@ -225,7 +204,7 @@ function exportPdf() {
           <div
             v-for="(s, i) in STEPS"
             :key="s.label"
-            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm"
+            class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors"
             :class="stepState(i) === 'current' ? 'bg-green-soft font-semibold text-green-deep' : 'text-ink-2'"
           >
             <Check v-if="stepState(i) === 'done'" :size="15" class="text-green" />
@@ -252,8 +231,9 @@ function exportPdf() {
           <Sparkles :size="13" /> Préparation guidée · IA
         </div>
         <p class="text-xs text-ink-2">
-          Répondez au fil de l'échange. Quand une section est prête, poursuivez directement vers la
-          suivante depuis la conversation. À la fin, votre synthèse est enregistrée et exportable en PDF.
+          Répondez au fil de l'échange. Le coach avance de lui-même d'une section à l'autre quand vous
+          en avez fait le tour — suivez votre progression ci-dessus. À la fin, votre synthèse est
+          enregistrée et exportable en PDF.
         </p>
       </div>
     </div>
@@ -283,17 +263,6 @@ function exportPdf() {
               {{ streamStatus || 'Le coach prépare la section…' }}
             </span>
           </div>
-        </div>
-
-        <!-- Avancement DANS LE FIL : poursuivre vers la section suivante. -->
-        <div v-if="canAdvance" class="flex">
-          <button
-            type="button"
-            class="inline-flex items-center gap-1.5 rounded-full border border-green-line bg-paper px-3.5 py-2 text-sm font-semibold text-green-deep shadow-card transition hover:bg-green-soft"
-            @click="nextStep"
-          >
-            Poursuivre vers « {{ nextLabel }} » <ArrowRight :size="15" />
-          </button>
         </div>
 
         <!-- Étape finale : synthèse conservée + export PDF. -->
