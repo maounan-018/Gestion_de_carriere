@@ -35,7 +35,8 @@ from sqlalchemy.orm import Session
 from app.models.profil import Profil, ProfilCompetence
 from app.models.carriere import ProfilStation, StationEtat
 
-_CV_DIR = os.path.join("data", "cv_profil")
+# Même répertoire que le contrôleur (surchargeable par env CV_PROFIL_DIR → isole les tests).
+_CV_DIR = os.environ.get("CV_PROFIL_DIR", os.path.join("data", "cv_profil"))
 
 # Palette BMCI (miroir de frontend/src/styles/tokens.css) — hex → (r, g, b).
 GREEN = (0x00, 0x91, 0x5A)
