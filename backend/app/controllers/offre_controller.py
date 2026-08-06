@@ -29,7 +29,7 @@ from app.models.offre import Offre
 from app.models.candidature import Candidature, CandidatureStatut
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut, VacancyOut,
+                               OffreCandidatOut, RhOffreOut, CandidatOffreActiveOut, VacancyOut,
                                MissionEvalContextOut, MissionExpectedComp,
                                MissionParticipantOut, MissionEvaluationIn, MissionEvaluationOut)
 from app.services import offre_service, evaluation_service
@@ -151,6 +151,20 @@ def offres_rh(db: Session = Depends(get_db)) -> list[RhOffreOut]:
 def offres_vacances(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN)),
                     db: Session = Depends(get_db)) -> list[VacancyOut]:
     return offre_service.vacancies_for_manager(db, user.id)
+
+
+@router.get("/mes-offres", response_model=list[RhOffreOut],
+            summary="Mes offres PUBLIÉES (créées par le compte courant) + statistiques de candidatures")
+def mes_offres(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN)),
+               db: Session = Depends(get_db)) -> list[RhOffreOut]:
+    return offre_service.rh_offres(db, created_by=user.id)
+
+
+@router.get("/mes-candidatures-actives", response_model=list[CandidatOffreActiveOut],
+            summary="Candidats des offres du compte courant ENCORE EN COURS (non clôturées / non retirées)")
+def mes_candidatures_actives(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN)),
+                             db: Session = Depends(get_db)) -> list[CandidatOffreActiveOut]:
+    return offre_service.candidats_offres_actives(db, user.id)
 
 
 @router.get("/{offre_id}/candidats", response_model=list[OffreCandidatOut],

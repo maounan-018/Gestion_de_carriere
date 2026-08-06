@@ -56,8 +56,13 @@ def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
     equipe = _count(db, select(Profil.id).where(Profil.manager_id == manager_user_id))
     mes_offres_ids = select(Offre.id).where(Offre.created_by == manager_user_id)
     offres = _count(db, mes_offres_ids)
+    # Candidatures des offres ENCORE EN COURS uniquement (non clôturées / non
+    # retirées), cohérent avec l'écran ouvert au clic sur le KPI « Candidatures ».
+    _fermes = (OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE)
+    mes_offres_actives_ids = select(Offre.id).where(
+        Offre.created_by == manager_user_id, Offre.statut.not_in(_fermes))
     candidatures = _count(
-        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_ids)))
+        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids)))
     souhaits = _count(
         db, select(Souhait.id).join(Profil, Profil.id == Souhait.profil_id)
         .join(User, User.id == Profil.user_id)

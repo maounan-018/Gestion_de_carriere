@@ -140,6 +140,18 @@ const managerDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['manager'], title: "Demandes d'évolution reçues" },
   },
   {
+    path: 'manager/mes-offres',
+    name: 'manager.mesOffres',
+    component: () => import('@/views/manager/MesOffresView.vue'),
+    meta: { roles: ['manager'], title: 'Mes offres publiées' },
+  },
+  {
+    path: 'manager/candidatures-actives',
+    name: 'manager.candidaturesActives',
+    component: () => import('@/views/manager/CandidaturesActivesView.vue'),
+    meta: { roles: ['manager'], title: 'Candidatures · offres en cours' },
+  },
+  {
     path: 'manager/poste/:key/profils',
     name: 'manager.profilsCompatibles',
     component: () => import('@/views/manager/ProfilsCompatiblesView.vue'),
