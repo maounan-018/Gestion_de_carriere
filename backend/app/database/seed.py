@@ -885,6 +885,79 @@ def _seed_population(db: Session, password_hash: str) -> int:
     return seq
 
 
+_ANNEE_REF = 2026  # « aujourd'hui » de la démo
+
+
+def _niveau_poste(titre: str) -> int:
+    """Niveau hiérarchique heuristique d'un intitulé (0 IC junior → 3 direction)."""
+    t = (titre or "").lower()
+    if "directeur" in t or "directrice" in t:
+        return 3
+    if t.startswith("responsable") or "responsable " in t:
+        return 2
+    if any(k in t for k in ("senior", "expert", "spécialiste", "architecte",
+                            "lead", "chef de mission", "principal")):
+        return 1
+    return 0
+
+
+def _seed_trajectoires(db: Session) -> dict:
+    """Génère un PARCOURS de carrière (ProfilStation) — le « CV » structuré — pour
+    chaque profil sans historique : postes passés (rungs inférieurs du même
+    département), poste actuel, objectif. ~1 profil sur 7 a une trajectoire NON
+    LINÉAIRE (poste passé dans un AUTRE département) pour nourrir l'inférence de
+    trajectoires atypiques. Déterministe et idempotent (skip si stations existantes)."""
+    profils = list(db.scalars(select(Profil).order_by(Profil.id)).all())
+    par_dept: dict[str, list[str]] = {}
+    for p in profils:
+        if p.poste_actuel and p.departement_key:
+            lst = par_dept.setdefault(p.departement_key, [])
+            if p.poste_actuel not in lst:
+                lst.append(p.poste_actuel)
+    for d in par_dept:
+        par_dept[d] = sorted(set(par_dept[d]), key=_niveau_poste)
+    depts = list(par_dept.keys())
+
+    crees = 0
+    for p in profils:
+        if p.poste_actuel is None:
+            continue
+        if db.scalar(select(ProfilStation.id).where(ProfilStation.profil_id == p.id)):
+            continue  # personas / profils déjà historisés : on ne touche pas
+        pool = par_dept.get(p.departement_key, [])
+        cur_lvl = _niveau_poste(p.poste_actuel)
+        lower = [q for q in pool if _niveau_poste(q) < cur_lvl and q != p.poste_actuel]
+        higher = [q for q in pool if _niveau_poste(q) > cur_lvl and q != p.poste_actuel]
+
+        seq: list[tuple[str, str]] = []  # (titre, description)
+        if p.id % 7 == 0 and len(depts) > 1:  # trajectoire non linéaire
+            other = depts[(p.id // 7) % len(depts)]
+            if other != p.departement_key and par_dept.get(other):
+                seq.append((par_dept[other][0], "Mobilité inter-métier (trajectoire non linéaire)."))
+        for q in lower[-2:]:
+            seq.append((q, ""))
+
+        stations, ordre, n = [], 0, len(seq)
+        for i, (titre, desc) in enumerate(seq):
+            stations.append(ProfilStation(
+                profil_id=p.id, periode=str(_ANNEE_REF - 3 * (n - i)),
+                titre=titre, description=desc or None, etat=StationEtat.PASSE, ordre=ordre))
+            ordre += 1
+        stations.append(ProfilStation(
+            profil_id=p.id, periode="Aujourd'hui", titre=p.poste_actuel,
+            etat=StationEtat.ACTUEL, ordre=ordre))
+        ordre += 1
+        obj = p.poste_vise or (higher[0] if higher else None)
+        if obj and obj != p.poste_actuel:
+            stations.append(ProfilStation(
+                profil_id=p.id, periode="Objectif", titre=obj,
+                etat=StationEtat.OBJECTIF, ordre=ordre))
+        db.add_all(stations)
+        crees += len(stations)
+    db.commit()
+    return {"stations_creees": crees}
+
+
 def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
              password: str, synthetic_offers: bool = True, population: bool = False) -> dict:
     """Amorce comptes + profils + offres/candidatures selon les leviers.
@@ -978,6 +1051,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["notifications_created"] = _seed_notifications(db, users_by_email)
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
         summary["carriere_created"] = _seed_carriere(db, users_by_email)
+        # Parcours de carrière (« CV » structuré) pour toute la population (Workstream D).
+        summary["trajectoires_creees"] = _seed_trajectoires(db)["stations_creees"]
         summary["carto_created"] = _seed_carto(db)
         if population:
             summary["population_created"] = _seed_population(db, hash_password(password))
