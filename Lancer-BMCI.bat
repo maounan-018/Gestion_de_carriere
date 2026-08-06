@@ -44,12 +44,15 @@ if errorlevel 1 (
 )
 
 REM --- 2) Backend FastAPI (:5001) ------------------------------------------
+REM  NB : on passe le dossier de travail via `start /D "..."` (et non `cd /d "..."`
+REM  imbriqué dans le "..." de `cmd /k`) pour eviter les guillemets imbriques qui
+REM  empechaient certaines fenetres de s'ouvrir.
 echo [2/3] Backend FastAPI (:5001)  [conda env bmci-carrieres]...
-start "BMCI Backend :5001" cmd /k "cd /d "%ROOT%backend" && conda run -n bmci-carrieres --no-capture-output python -m uvicorn app.main:app --host 127.0.0.1 --port 5001"
+start "BMCI Backend :5001" /D "%ROOT%backend" cmd /k "conda run -n bmci-carrieres --no-capture-output python -m uvicorn app.main:app --host 127.0.0.1 --port 5001"
 
 REM --- 3) Frontend Vite (:3001), force en LIVE (surcharge .env.local) ------
 echo [3/3] Frontend Vite (:3001)  [mode LIVE -^> backend :5001]...
-start "BMCI Frontend :3001" cmd /k "cd /d "%ROOT%frontend" && set "VITE_API_MODE=live" && npm run dev"
+start "BMCI Frontend :3001" /D "%ROOT%frontend" cmd /k "set VITE_API_MODE=live&& npm run dev"
 
 REM --- Ouverture du navigateur (laisse le temps a Vite de compiler) --------
 echo.
