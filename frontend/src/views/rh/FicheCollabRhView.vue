@@ -16,12 +16,14 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import CvPreview from '@/components/shared/CvPreview.vue'
 
 const route = useRoute()
 const { toast } = useToast()
 const p = ref<RhPerson | null>(null)
 const loading = ref(true)
 const error = ref('')
+const showCv = ref(false)
 
 async function load() {
   loading.value = true
@@ -139,19 +141,18 @@ async function save() {
           </div>
         </BaseCard>
         <BaseCard title="CV du collaborateur">
-          <a
+          <button
             v-if="p.cvFilename"
-            :href="apiService.cvUrl(Number(p.id))"
-            target="_blank"
-            rel="noopener"
-            class="flex items-center gap-3 rounded-xl border border-green-line bg-green-ghost p-3 transition hover:bg-green-soft"
+            type="button"
+            class="flex w-full items-center gap-3 rounded-xl border border-green-line bg-green-ghost p-3 text-left transition hover:bg-green-soft"
+            @click="showCv = true"
           >
             <div class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-green text-white"><AppIcon name="brief" :size="16" /></div>
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-bold text-green-deep">{{ p.cvFilename }}</p>
-              <p class="text-xs text-ink-3">Ouvrir le CV (PDF)</p>
+              <p class="text-xs text-ink-3">Aperçu du CV (PDF)</p>
             </div>
-          </a>
+          </button>
           <p v-else class="text-sm text-ink-3">Aucun CV déposé par ce collaborateur.</p>
         </BaseCard>
         <BaseCard title="Suivi HRBP">
@@ -196,5 +197,7 @@ async function save() {
         </BaseButton>
       </template>
     </BaseModal>
+
+    <CvPreview v-if="p" v-model="showCv" :profil-id="Number(p.id)" :nom="p.name" />
   </div>
 </template>

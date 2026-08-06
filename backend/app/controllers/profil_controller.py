@@ -94,7 +94,11 @@ def telecharger_cv(profil_id: int, user: User = Depends(get_current_user),
     path = _cv_profil_path(profil_id)
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Aucun CV pour ce profil.")
-    return FileResponse(path, media_type="application/pdf", filename=f"cv-profil-{profil_id}.pdf")
+    # `inline` → aperçu direct dans une iframe côté plateforme (le bouton de
+    # téléchargement force la sauvegarde via l'attribut download côté front).
+    return FileResponse(path, media_type="application/pdf",
+                        filename=f"cv-profil-{profil_id}.pdf",
+                        content_disposition_type="inline")
 
 
 @router.post("/import-excel", response_model=ImportResult,

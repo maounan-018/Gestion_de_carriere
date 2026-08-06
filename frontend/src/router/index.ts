@@ -106,6 +106,19 @@ const collabDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['collab'], title: 'Éditer mon profil' },
   },
   {
+    // Écran dédié « Éditer mon profil » partagé (même vue) pour le manager et la HRBP.
+    path: 'manager/mon-profil/editer',
+    name: 'manager.editProfil',
+    component: () => import('@/views/collab/EditProfilView.vue'),
+    meta: { roles: ['manager'], title: 'Éditer mon profil' },
+  },
+  {
+    path: 'rh/mon-profil/editer',
+    name: 'rh.editProfil',
+    component: () => import('@/views/collab/EditProfilView.vue'),
+    meta: { roles: ['rh'], title: 'Éditer mon profil' },
+  },
+  {
     path: 'collab/passerelles',
     name: 'collab.passerelles',
     component: () => import('@/views/collab/PasserellesView.vue'),
