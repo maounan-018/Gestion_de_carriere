@@ -1087,6 +1087,15 @@ export const apiService = {
     const src = type === 'mission' ? 'evaluation_mission' : 'evaluation_performance'
     return (p.competences ?? []).filter((c) => c.source === src).length
   },
+  /** Journalise un bilan d'évaluation (note globale + appréciation) → alimente
+   *  l'« Historique des évaluations » de la fiche. */
+  async creerBilanEvaluation(
+    profilId: string,
+    data: { type?: 'mission' | 'performance'; note?: number | null; commentaire?: string; competences_detectees?: number },
+  ): Promise<void> {
+    if (MODE === 'mock') { await delay(150); return }
+    await apiFetch(`/profils/${profilId}/evaluations`, { method: 'POST', body: data })
+  },
   /** Évaluer une compétence détenue (manager/RH) sur une échelle 1-10. Score
    *  PERSISTÉ (source manager, poids prépondérant) → alimente le % d'acquisition. */
   async evaluerCompetence(profilId: string, competenceId: number, score: number,

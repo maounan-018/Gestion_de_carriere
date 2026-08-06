@@ -12,7 +12,7 @@ import type {
   Offer, OfferType, MetaItem, Candidature, CandidatureStatus,
   RecoData, RecoSkill, Passerelle, MobiliteItem,
 } from '@/types/domain'
-import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, Vacancy, VacancyReco } from '@/types/manager'
+import type { SouhaitRecu, KpiCard, TeamSkill, TeamMember, TeamEval, Vacancy, VacancyReco } from '@/types/manager'
 import type { RhKpi, RhAlert, HautPotentiel, VeilleType, RhPerson, CartoMatrix, FamilleTension, TensionLevel, SyntheseRh } from '@/types/rh'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 
@@ -331,10 +331,15 @@ export interface ProfilCompetenceOut {
   source: string; skill_id: number | null; skill_label_fr: string | null
   acquisition_pct?: number | null; evaluee?: boolean
 }
+export interface EvaluationBilanOut {
+  id: number; type: string; note: number | null; commentaire: string | null
+  competences_detectees: number; evaluateur_nom: string | null; created_at: string
+}
 export interface ProfilOut {
   id: number; user_id: number | null; nom: string; prenom: string | null; matricule: string | null
   poste_actuel: string | null; departement_key: string | null; manager_id: number | null
   aspirations: string | null; synthetique: boolean; created_at: string; competences: ProfilCompetenceOut[]
+  evaluations?: EvaluationBilanOut[]
   cv_filename?: string | null; cv_uploaded_at?: string | null
   // Insights dérivés côté backend (scan de la donnée).
   score_eval?: number | null; anciennete_annees?: number | null
@@ -580,12 +585,46 @@ export function mapTeamMember(p: ProfilOut): TeamMember {
       pct: Math.min(100, c.acquisition_pct ?? (c.niveau != null ? c.niveau * 20 : 0)),
     })),
     strengths: comps.filter((c) => (c.niveau ?? 0) >= 4).slice(0, 3).map((c) => c.skill_label_fr || c.libelle),
-    gaps: [],
+    // « À développer » : compétences ÉVALUÉES à une note préoccupante (acquisition
+    // < 50 %), formulées en courtes phrases d'axe de progrès.
+    gaps: comps
+      .filter((c) => (c.evaluee ?? (c.acquisition_pct != null)) && (c.acquisition_pct ?? 100) < 50)
+      .sort((a, b) => (a.acquisition_pct ?? 0) - (b.acquisition_pct ?? 0))
+      .slice(0, 4)
+      .map((c) => gapPhrase(c.skill_label_fr || c.libelle, c.acquisition_pct ?? 0)),
     aspiration: p.aspirations ?? '',
     aspirationHorizon: '',
-    evals: [],
+    evals: (p.evaluations ?? []).map(mapEvalBilan),
     flag: null,
     cvFilename: p.cv_filename ?? null,
+  }
+}
+
+/* « À développer » : transforme une compétence à note basse en courte phrase
+ * d'axe de progrès (plus la note est basse, plus l'urgence est marquée). */
+function gapPhrase(label: string, pct: number): string {
+  const l = label.charAt(0).toLowerCase() + label.slice(1)
+  if (pct < 25) return `Monter en compétence sur « ${l} » (priorité)`
+  if (pct < 40) return `Renforcer « ${l} »`
+  return `Consolider « ${l} »`
+}
+
+/* Bilan d'évaluation persisté → ligne d'historique (période, note, appréciation). */
+function mapEvalBilan(b: EvaluationBilanOut): TeamEval {
+  const d = new Date(b.created_at)
+  const periode = Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  const typeLabel = b.type === 'performance' ? 'Performance' : 'Mission'
+  const score = b.note ? '★'.repeat(b.note) + '☆'.repeat(Math.max(0, 5 - b.note)) : '—'
+  const detail = b.competences_detectees > 0
+    ? ` · ${b.competences_detectees} compétence(s) détectée(s)`
+    : ''
+  return {
+    period: `${periode} · ${typeLabel}`,
+    score,
+    comment: (b.commentaire ?? '').trim() + detail,
+    by: b.evaluateur_nom ?? 'Manager',
   }
 }
 

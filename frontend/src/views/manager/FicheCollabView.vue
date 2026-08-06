@@ -64,26 +64,30 @@ async function rate(skill: TeamSkill, value: string) {
 
 async function submitEval() {
   const texte = evalComment.value.trim()
+  const note = Number(evalScore.value) || null
+  const id = route.params.id as string
   evalBusy.value = true
   try {
     // L'appréciation nourrit l'extraction des compétences DÉMONTRÉES (source=éval).
+    let n = 0
     if (texte.length >= 10) {
-      const n = await apiService.extraireEvaluation(route.params.id as string, texte, 'mission')
-      toast(
-        n > 0
-          ? `Évaluation transmise · ${n} compétence(s) détectée(s) et ajoutée(s) au profil`
-          : 'Évaluation transmise',
-        'ok',
-      )
-      await load() // rafraîchit la fiche (compétences mises à jour)
-    } else {
-      toast('Évaluation transmise')
+      n = await apiService.extraireEvaluation(id, texte, 'mission')
     }
+    // Journalise le bilan → apparaît dans l'« Historique des évaluations ».
+    await apiService.creerBilanEvaluation(id, {
+      type: 'mission', note, commentaire: texte, competences_detectees: n,
+    })
+    toast(
+      n > 0
+        ? `Évaluation enregistrée · ${n} compétence(s) détectée(s) et ajoutée(s) au profil`
+        : 'Évaluation enregistrée',
+      'ok',
+    )
+    await load() // rafraîchit la fiche (historique + compétences mis à jour)
     showEval.value = false
     evalComment.value = ''
   } catch {
-    toast("Évaluation transmise (extraction des compétences indisponible)", 'info')
-    showEval.value = false
+    toast("L'évaluation n'a pas pu être enregistrée.", 'error')
   } finally {
     evalBusy.value = false
   }
@@ -155,23 +159,30 @@ async function submitEval() {
 
         <div class="grid gap-5 sm:grid-cols-2">
           <BaseCard title="Points forts">
-            <div class="flex flex-wrap gap-2"><BaseChip v-for="s in m.strengths" :key="s" tone="green">{{ s }}</BaseChip></div>
+            <div v-if="m.strengths.length" class="flex flex-wrap gap-2"><BaseChip v-for="s in m.strengths" :key="s" tone="green">{{ s }}</BaseChip></div>
+            <p v-else class="text-sm text-ink-3">Compétences bien maîtrisées à mettre en avant après évaluation.</p>
           </BaseCard>
           <BaseCard title="À développer">
-            <div class="flex flex-wrap gap-2"><BaseChip v-for="g in m.gaps" :key="g" tone="gap">{{ g }}</BaseChip></div>
+            <ul v-if="m.gaps.length" class="space-y-1.5">
+              <li v-for="g in m.gaps" :key="g" class="flex items-start gap-2 text-sm text-ink-2">
+                <AppIcon name="route" :size="14" class="mt-0.5 shrink-0 text-gold" /><span>{{ g }}</span>
+              </li>
+            </ul>
+            <p v-else class="text-sm text-ink-3">Aucun axe de progrès préoccupant — les compétences évaluées sont au niveau attendu.</p>
           </BaseCard>
         </div>
 
         <BaseCard title="Historique des évaluations">
-          <div class="space-y-2">
+          <div v-if="m.evals.length" class="space-y-2">
             <div v-for="(e, i) in m.evals" :key="i" class="rounded-xl border border-border bg-panel p-3">
-              <div class="flex items-center justify-between">
-                <b class="text-sm text-ink">{{ e.period }} · {{ e.score }}</b>
+              <div class="flex items-center justify-between gap-2">
+                <b class="text-sm text-ink">{{ e.period }} · <span class="text-gold">{{ e.score }}</span></b>
                 <span class="text-[11px] text-ink-3">{{ e.by }}</span>
               </div>
-              <p class="mt-1 text-xs text-ink-2">{{ e.comment }}</p>
+              <p v-if="e.comment" class="mt-1 text-xs text-ink-2">{{ e.comment }}</p>
             </div>
           </div>
+          <EmptyState v-else title="Aucune évaluation" text="Les évaluations soumises apparaîtront ici." />
         </BaseCard>
       </div>
 

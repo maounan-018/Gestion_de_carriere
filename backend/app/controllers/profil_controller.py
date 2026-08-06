@@ -34,7 +34,8 @@ from app.models.profil import CompetenceSource
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
                                  ProfilCompetenceIn, AnnuaireEntry, CvExtractionRequest,
                                  EvaluationExtractionRequest, MobiliteItem, AncrageResult,
-                                 ImportResult, CompetenceEvaluationIn, FaisabiliteAspirationOut)
+                                 ImportResult, CompetenceEvaluationIn, FaisabiliteAspirationOut,
+                                 EvaluationBilanCreate, EvaluationBilanOut)
 from app.schemas.carriere import ProfilCarriereOut
 from app.models.profil import ProfilCompetence
 from app.services import (profil_service, cv_extraction_service, profil_import_service,
@@ -341,3 +342,21 @@ def extraire_evaluation_vers_profil(profil_id: int, data: EvaluationExtractionRe
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
+
+
+@router.post("/{profil_id}/evaluations", response_model=EvaluationBilanOut, status_code=201,
+             summary="Enregistrer un bilan d'évaluation (historique)")
+def creer_bilan_evaluation(profil_id: int, data: EvaluationBilanCreate,
+                           user: User = Depends(get_current_user),
+                           db: Session = Depends(get_db)) -> EvaluationBilanOut:
+    """Journalise une appréciation datée (note globale + commentaire) qui alimente
+    l'« Historique des évaluations » de la fiche. Ownership : RH/ADMIN ou le MANAGER
+    du profil (l'évaluation vient de la hiérarchie)."""
+    ownership.require_profil_evaluation(db, user, profil_id)     # 404/403 (RH-ADMIN ou manager)
+    bilan = evaluation_service.creer_bilan(
+        db, profil_id, type=data.type, note=data.note, commentaire=data.commentaire,
+        competences_detectees=data.competences_detectees, evaluateur_id=user.id)
+    return EvaluationBilanOut.model_validate(
+        {**{k: getattr(bilan, k) for k in
+            ("id", "type", "note", "commentaire", "competences_detectees", "created_at")},
+         "evaluateur_nom": user.name})
