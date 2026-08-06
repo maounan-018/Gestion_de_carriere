@@ -1,0 +1,7 @@
+# Scripts Windows : DOIVENT rester en CRLF, sinon cmd.exe mange le 1er caractère
+# de chaque ligne (avec chcp 65001) et le lanceur échoue au double-clic.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Scripts shell : LF obligatoire.
+*.sh text eol=lf
