@@ -50,3 +50,13 @@ Thumbs.db
 # CV téléversés (candidatures + profils) — non versionnés
 backend/data/cv/
 backend/data/cv_profil/
+
+# Documents de référence, audits & tutoriels (non versionnés)
+/BMCI-Audit-*.txt
+/BMCI-Audit-*.md
+/BMCI-Bonnes-Pratiques-*.txt
+/RETOUR DE MR MHEDI.txt
+/TUTORIEL*.txt
+/references officielles FAST API.txt
+/referentiels-ui-ux.docx
+design/assets/Gemini_Generated_Image_*.png
