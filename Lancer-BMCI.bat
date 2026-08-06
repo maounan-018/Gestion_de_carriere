@@ -45,7 +45,7 @@ if errorlevel 1 (
 
 REM --- 2) Backend FastAPI (:5001) ------------------------------------------
 REM  NB : on passe le dossier de travail via `start /D "..."` (et non `cd /d "..."`
-REM  imbriqué dans le "..." de `cmd /k`) pour eviter les guillemets imbriques qui
+REM  imbrique dans le "..." de `cmd /k`) pour eviter les guillemets imbriques qui
 REM  empechaient certaines fenetres de s'ouvrir.
 echo [2/3] Backend FastAPI (:5001)  [conda env bmci-carrieres]...
 start "BMCI Backend :5001" /D "%ROOT%backend" cmd /k "conda run -n bmci-carrieres --no-capture-output python -m uvicorn app.main:app --host 127.0.0.1 --port 5001"
