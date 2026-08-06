@@ -45,3 +45,24 @@ def test_logout_revoque_la_session(client):
     assert client.post("/api/auth/logout", headers=hdr(csrf)).status_code == 200
     # session révoquée + cookies supprimés -> /me non authentifié
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_annuaire_preload_compte_existant(client):
+    """Enrôlement : l'e-mail (partie locale) d'un compte pré-existant renvoie ses
+    infos RH déjà en base (poste, département, manager) — pré-remplissage, pré-auth."""
+    anon(client)
+    r = client.get("/api/auth/annuaire-preload",
+                   params={"email": "youssef.elamrani@bnpparibas.com"})
+    assert r.status_code == 200
+    data = r.json()
+    assert data["found"] is True
+    assert data["poste_actuel"]                 # poste pré-rempli
+    assert data["manager_nom"] == "Karim Naji"  # manager résolu depuis la base
+
+
+def test_annuaire_preload_inconnu_found_false(client):
+    anon(client)
+    r = client.get("/api/auth/annuaire-preload",
+                   params={"email": "personne.inexistante@bnpparibas.com"})
+    assert r.status_code == 200
+    assert r.json()["found"] is False

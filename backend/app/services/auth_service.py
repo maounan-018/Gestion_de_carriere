@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import verify_password, generate_token, hash_token
 from app.models.user import User, UserSession, UserType
+from app.models.profil import Profil
 from app.models.audit_log import AuditLog, AuditEventType
 from app.services import audit_service
 
@@ -130,3 +131,37 @@ def revoke_token(db: Session, token: str | None) -> None:
     if session:
         db.delete(session)
         db.commit()
+
+
+def _humaniser_dept(key: str | None) -> str | None:
+    """Clé de département → libellé lisible ('retail_banking' → 'Retail Banking')."""
+    return key.replace("_", " ").title() if key else None
+
+
+def annuaire_preload(db: Session, email: str) -> dict:
+    """Enrôlement : à partir de l'e-mail, retrouve le compte PRÉ-EXISTANT (annuaire
+    BMCI) et renvoie ses infos RH DÉJÀ EN BASE (poste, département, manager). Démo :
+    les collaborateurs existent déjà — l'inscription ACTIVE le compte, elle ne
+    ressaisit pas ces données. Recherche par partie locale de l'e-mail (le domaine
+    d'affichage peut différer du domaine de connexion)."""
+    local = (email or "").split("@")[0].strip().lower()
+    if not local:
+        return {"found": False}
+    user = db.scalar(select(User).where(func.lower(User.email).like(f"{local}@%")))
+    if user is None:
+        return {"found": False}
+    profil = db.scalar(select(Profil).where(Profil.user_id == user.id))
+    mgr_id = (profil.manager_id if profil else None) or user.manager_id
+    manager_nom = None
+    if mgr_id:
+        mgr = db.get(User, mgr_id)
+        manager_nom = mgr.name if mgr else None
+    return {
+        "found": True,
+        "nom": profil.nom if profil else user.name,
+        "prenom": profil.prenom if profil else None,
+        "poste_actuel": profil.poste_actuel if profil else None,
+        "departement": _humaniser_dept(
+            (profil.departement_key if profil else None) or user.departement_key),
+        "manager_nom": manager_nom,
+    }

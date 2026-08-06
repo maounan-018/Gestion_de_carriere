@@ -11,13 +11,13 @@ EMPLACEMENT MVC
     Couche "controllers" : routage HTTP.
 """
 
-from fastapi import APIRouter, Request, Response, Depends, HTTPException
+from fastapi import APIRouter, Request, Response, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import generate_token
 from app.database.session import get_db
-from app.schemas.auth import LoginRequest, LoginResponse, UserPublic
+from app.schemas.auth import LoginRequest, LoginResponse, UserPublic, AnnuairePreloadOut
 from app.models.user import User
 from app.models.audit_log import AuditEventType
 from app.services import auth_service, audit_service
@@ -65,3 +65,14 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db),
 @router.get("/me", response_model=UserPublic, summary="Utilisateur courant")
 def me(user: User = Depends(get_current_user)) -> UserPublic:
     return user.to_public()
+
+
+@router.get("/annuaire-preload", response_model=AnnuairePreloadOut,
+            summary="Enrôlement : infos RH pré-existantes par e-mail (démo, pré-auth)")
+def annuaire_preload(email: str = Query(..., min_length=3, max_length=255),
+                     db: Session = Depends(get_db)) -> AnnuairePreloadOut:
+    """Les collaborateurs BMCI existent DÉJÀ en base. À partir de l'e-mail, renvoie
+    les infos d'annuaire déjà connues (poste, département, manager) : l'inscription
+    ACTIVE le compte et pré-remplit ces champs plutôt que de les ressaisir. Données
+    synthétiques de démo (annuaire interne)."""
+    return AnnuairePreloadOut(**auth_service.annuaire_preload(db, email))
