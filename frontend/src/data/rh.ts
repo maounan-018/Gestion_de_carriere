@@ -87,6 +87,8 @@ export interface RhCandidate {
   gaps: string[]
   status: 'retenu' | 'entretien' | 'preselection' | 'nouveau' | 'ecarte'
   note?: string
+  /** Nom du CV déposé par le candidat (null = pas de CV → pas d'aperçu). */
+  cvFilename?: string | null
 }
 
 export interface RhOffer {

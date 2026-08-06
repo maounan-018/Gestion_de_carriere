@@ -177,6 +177,13 @@ const managerDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['manager'], title: "Détail de l'offre" },
   },
   {
+    // Revue des candidats d'une offre PUBLIÉE par le manager (au lieu de « postuler »).
+    path: 'manager/mes-offres/:key/candidats',
+    name: 'manager.revueCandidats',
+    component: () => import('@/views/rh/RevueCandidatsView.vue'),
+    meta: { roles: ['manager'], title: 'Candidats de mon offre' },
+  },
+  {
     path: 'manager/offre/:key/evaluation',
     name: 'manager.evaluationMission',
     component: () => import('@/views/manager/EvaluationMissionView.vue'),

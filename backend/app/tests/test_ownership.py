@@ -50,6 +50,29 @@ def test_liste_profils_manager_bornee_a_son_equipe(client):
     assert any(p["nom"] == "El Amrani" for p in profils)
 
 
+def test_manager_voit_candidat_de_son_offre_hors_equipe(client):
+    """Périmètre par OFFRE : le manager consulte la fiche/CV d'un candidat à une
+    offre QU'IL A PUBLIÉE, même si ce candidat n'est pas dans son équipe."""
+    # Le manager publie une offre (created_by = lui, côté serveur).
+    csrf_mgr = auth(client, "manager")
+    off = client.post("/api/offres", json={"titre": "Mission Revue", "type": "mission"},
+                      headers=hdr(csrf_mgr)).json()["id"]
+    # RH (global) crée un candidat synthétique hors équipe + sa candidature à l'offre.
+    csrf_rh = auth(client, "rh")
+    synth = client.post("/api/profils", json={"nom": "CandidatRevue", "synthetique": True},
+                        headers=hdr(csrf_rh)).json()["id"]
+    client.post("/api/candidatures", json={"offre_id": off, "profil_id": synth},
+                headers=hdr(csrf_rh))
+
+    # Le manager : hors offre le profil reste invisible, mais candidat à SON offre → 200.
+    auth(client, "manager")
+    assert client.get(f"/api/profils/{synth}/carriere").status_code == 200
+    # La liste des candidats de l'offre expose le champ cv_filename (aperçu CV).
+    cands = client.get(f"/api/offres/{off}/candidats")
+    assert cands.status_code == 200, cands.text
+    assert any(c["profil_id"] == synth and "cv_filename" in c for c in cands.json())
+
+
 # --------------------------------------------------------------- Candidatures
 
 def test_collab_liste_candidatures_bornee(client):

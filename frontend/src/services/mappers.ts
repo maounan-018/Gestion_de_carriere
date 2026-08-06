@@ -639,7 +639,8 @@ export interface RhOffreOut {
 export interface OffreCandidatOut {
   profil_id: number; candidature_id: number; nom: string; prenom: string | null
   poste_actuel: string | null; departement_key: string | null
-  score: number | null; statut: string; couvertes: string[]; ecarts: string[]
+  score: number | null; statut: string; cv_filename?: string | null
+  couvertes: string[]; ecarts: string[]
 }
 
 const RH_OFFRE_STATUT: Record<string, RhOffer['status']> = {
@@ -706,6 +707,7 @@ export function mapRhCandidate(c: OffreCandidatOut): RhCandidate {
     matched: c.couvertes ?? [],
     gaps: c.ecarts ?? [],
     status: REVUE_STATUT[c.statut] ?? 'nouveau',
+    cvFilename: c.cv_filename ?? null,
   }
 }
 

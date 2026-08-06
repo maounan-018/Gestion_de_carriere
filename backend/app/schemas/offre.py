@@ -138,6 +138,7 @@ class OffreCandidatOut(BaseModel):
     departement_key: str | None
     score: float | None
     statut: str                              # statut de la candidature (deposee/retenue/…)
+    cv_filename: str | None = None           # nom du CV déposé (None = pas de CV → pas d'aperçu)
     couvertes: list[str] = Field(default_factory=list)  # libellés des compétences couvertes
     ecarts: list[str] = Field(default_factory=list)     # libellés des écarts
 
