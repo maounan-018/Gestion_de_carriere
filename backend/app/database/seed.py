@@ -98,6 +98,7 @@ PERSONAS = [
         "departement_key": "retail_banking", "matricule": "CB-3390",
         "poste_actuel": "Conseiller clientèle particuliers", "manager_email": "karim.naji@bmci.local",
         "aspirations": "Devenir Chargé d'affaires professionnels.",
+        "poste_vise": "Chargé d'affaires professionnels",
         # Compétences dérivées de la vraie fiche #1 (matching réaliste, partiel).
         "competences": [],
         "competences_from_fiche": 1,
@@ -139,6 +140,7 @@ def _get_or_create_profil(db: Session, user: User, spec: dict) -> tuple[Profil |
         user_id=user.id, nom=nom_val or spec["name"], prenom=prenom_val,
         matricule=spec.get("matricule"), poste_actuel=spec.get("poste_actuel"),
         departement_key=spec.get("departement_key"), aspirations=spec.get("aspirations"),
+        poste_vise=spec.get("poste_vise"),
         synthetique=True,
     )
     db.add(p)
