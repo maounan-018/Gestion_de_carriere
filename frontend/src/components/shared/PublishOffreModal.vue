@@ -38,12 +38,10 @@ const localisation = ref('')
 const duree = ref('')
 const publishing = ref(false)
 
-// Sélecteur de fiche de poste (recherche → aperçu).
-const search = ref('')
-const results = ref<FicheListItem[]>([])
+// Sélecteur de fiche de poste : menu déroulant des intitulés → chargement de la fiche.
+const fichesList = ref<FicheListItem[]>([])
 const ficheId = ref<number | null>(null)
 const fiche = ref<FicheDetail | null>(null)
-let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 // Compétences canoniques ATTENDUES, déclarées par le manager (retour tuteur : une
 // mission/un projet doit déclarer les compétences exigées des candidats). Ancrées
@@ -92,8 +90,6 @@ function reset() {
   description.value = ''
   localisation.value = ''
   duree.value = ''
-  search.value = ''
-  results.value = []
   ficheId.value = null
   fiche.value = null
   competences.value = []
@@ -102,34 +98,25 @@ function reset() {
 }
 watch(
   () => props.modelValue,
-  (open) => { if (open) reset() },
+  async (open) => {
+    if (!open) return
+    reset()
+    try {
+      fichesList.value = await apiService.getFiches()   // toutes les fiches → menu déroulant
+    } catch {
+      fichesList.value = []
+    }
+  },
 )
 
-function onSearch() {
-  if (searchTimer) clearTimeout(searchTimer)
-  ficheId.value = null
+// Sélection d'un poste dans le menu déroulant → charge sa fiche (mission, compétences…).
+async function onFicheChange() {
   fiche.value = null
-  const q = search.value.trim()
-  if (q.length < 2) {
-    results.value = []
-    return
-  }
-  searchTimer = setTimeout(async () => {
-    try {
-      results.value = (await apiService.getFiches(q)).slice(0, 8)
-    } catch {
-      results.value = []
-    }
-  }, 250)
-}
-
-async function selectFiche(f: FicheListItem) {
-  ficheId.value = f.id
-  titre.value = f.intitule_poste
-  search.value = f.intitule_poste
-  results.value = []
+  if (ficheId.value == null) return
+  const f = fichesList.value.find((x) => x.id === ficheId.value)
+  if (f) titre.value = f.intitule_poste
   try {
-    fiche.value = await apiService.getFiche(f.id)
+    fiche.value = await apiService.getFiche(ficheId.value)
   } catch {
     fiche.value = null
   }
@@ -138,8 +125,6 @@ async function selectFiche(f: FicheListItem) {
 function clearFiche() {
   ficheId.value = null
   fiche.value = null
-  search.value = ''
-  results.value = []
 }
 
 async function publish() {
@@ -199,29 +184,10 @@ async function publish() {
       <!-- Sélecteur de fiche de poste -->
       <div>
         <label class="mb-1.5 block text-xs font-semibold text-ink-2">Fiche de poste (référence)</label>
-        <div class="relative">
-          <input
-            v-model="search"
-            :class="inputCls"
-            placeholder="Rechercher un poste… (ex : Conseiller, Analyste)"
-            @input="onSearch"
-          />
-          <div
-            v-if="results.length"
-            class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-border bg-paper shadow-float"
-          >
-            <button
-              v-for="f in results"
-              :key="f.id"
-              type="button"
-              class="block w-full px-3 py-2 text-left text-sm hover:bg-green-ghost"
-              @click="selectFiche(f)"
-            >
-              <span class="font-semibold text-ink">{{ f.intitule_poste }}</span>
-              <span class="ml-1 text-xs text-ink-3">· {{ f.perimetre_bmci }}</span>
-            </button>
-          </div>
-        </div>
+        <select v-model="ficheId" :class="inputCls" @change="onFicheChange">
+          <option :value="null">Choisir un poste…</option>
+          <option v-for="f in fichesList" :key="f.id" :value="f.id">{{ f.intitule_poste }}</option>
+        </select>
         <p v-if="!ficheId" class="mt-1 text-[11px] text-ink-3">
           Sélectionnez un poste pour charger sa fiche, ou saisissez un intitulé libre ci-dessous.
         </p>
