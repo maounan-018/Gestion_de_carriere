@@ -33,7 +33,7 @@ from app.models.candidature import Candidature, CandidatureStatut
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceOut,
                                OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut,
+                               OffreCandidatOut, RhOffreOut, CandidatOffreActiveOut,
                                VacancyOut, VacancyRecoOut)
 from app.services import candidature_service
 
@@ -90,10 +90,14 @@ def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
     ]
 
 
-def rh_offres(db: Session) -> list[RhOffreOut]:
-    """Liste des offres côté RH avec statistiques de candidatures (total,
-    compatibles au-dessus du seuil, candidat retenu)."""
-    offres = db.scalars(select(Offre).order_by(Offre.id.desc())).all()
+def rh_offres(db: Session, *, created_by: int | None = None) -> list[RhOffreOut]:
+    """Liste des offres avec statistiques de candidatures (total, compatibles
+    au-dessus du seuil, candidat retenu). Si `created_by` est fourni, ne renvoie
+    que les offres PUBLIÉES PAR cet utilisateur (écran « Mes offres publiées »)."""
+    stmt = select(Offre).order_by(Offre.id.desc())
+    if created_by is not None:
+        stmt = stmt.where(Offre.created_by == created_by)
+    offres = db.scalars(stmt).all()
     if not offres:
         return []
 
@@ -124,6 +128,27 @@ def rh_offres(db: Session) -> list[RhOffreOut]:
             retenu_nom=retenus.get(o.id),
         ))
     return out
+
+
+def candidats_offres_actives(db: Session, user_id: int) -> list[CandidatOffreActiveOut]:
+    """Candidats des offres ENCORE EN COURS (non clôturées / non retirées) publiées
+    par `user_id`. Liste aplatie (une ligne par candidature), triée par offre puis
+    par score décroissant. Alimente le KPI « Candidatures » du tableau de bord."""
+    rows = db.execute(
+        select(Candidature, Profil, Offre)
+        .join(Profil, Profil.id == Candidature.profil_id)
+        .join(Offre, Offre.id == Candidature.offre_id)
+        .where(Offre.created_by == user_id, Offre.statut.not_in(_STATUTS_CLOTURE))
+        .order_by(Offre.id.desc(), Candidature.score.desc().nulls_last(), Candidature.id)
+    ).all()
+    return [
+        CandidatOffreActiveOut(
+            offre_id=o.id, offre_titre=o.titre, offre_type=o.type, offre_statut=o.statut,
+            profil_id=p.id, candidature_id=c.id, nom=p.nom, prenom=p.prenom,
+            poste_actuel=p.poste_actuel, score=c.score, statut=c.statut,
+        )
+        for c, p, o in rows
+    ]
 
 
 def vacancies_for_manager(db: Session, manager_user_id: int, *, top: int = 6) -> list[VacancyOut]:

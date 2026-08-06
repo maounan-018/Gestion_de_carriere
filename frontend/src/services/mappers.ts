@@ -206,7 +206,8 @@ const KPI_ICON: Record<string, IconKey> = {
 }
 const KPI_ROUTE: Record<string, string | undefined> = {
   effectif: 'rh.annuaire', offres_ouvertes: 'rh.offres', competences: 'rh.cartographie',
-  equipe: 'manager.equipe', offres: 'manager.offres', souhaits: 'manager.souhaitsRecus',
+  equipe: 'manager.equipe', offres: 'manager.mesOffres', souhaits: 'manager.souhaitsRecus',
+  candidatures: 'manager.candidaturesActives',
 }
 export function mapKpi(k: KpiItemOut): RhKpi {
   return {
@@ -618,6 +619,37 @@ export function mapRhOffre(o: RhOffreOut): RhOffer {
     candidates: o.candidats_total,
     compatible: o.candidats_compatibles,
     retenu: o.retenu_nom ?? undefined,
+  }
+}
+
+/* Candidat d'une offre encore EN COURS — KPI « Candidatures » du dashboard. */
+export interface CandidatOffreActiveOut {
+  offre_id: number; offre_titre: string; offre_type: string; offre_statut: string
+  profil_id: number; candidature_id: number; nom: string; prenom: string | null
+  poste_actuel: string | null; score: number | null; statut: string
+}
+export interface CandidatureActive {
+  offreId: string; offreTitre: string; offreType: string
+  profilId: string; candidatureId: string; name: string; initials: string
+  posteActuel: string; score: number | null; statut: string
+}
+const CAND_ACTIVE_STATUT: Record<string, string> = {
+  deposee: 'Déposée', en_evaluation: 'En évaluation', retenue: 'Retenue',
+  rejetee: 'Refusée', retiree: 'Retirée',
+}
+export function mapCandidatureActive(c: CandidatOffreActiveOut): CandidatureActive {
+  const name = `${c.prenom ?? ''} ${c.nom}`.trim()
+  return {
+    offreId: String(c.offre_id),
+    offreTitre: c.offre_titre,
+    offreType: OFFRE_TYPE_LABEL[c.offre_type] ?? c.offre_type,
+    profilId: String(c.profil_id),
+    candidatureId: String(c.candidature_id),
+    name,
+    initials: initialsOf(name),
+    posteActuel: c.poste_actuel ?? '—',
+    score: c.score,
+    statut: CAND_ACTIVE_STATUT[c.statut] ?? c.statut,
   }
 }
 

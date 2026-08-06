@@ -142,6 +142,23 @@ class OffreCandidatOut(BaseModel):
     ecarts: list[str] = Field(default_factory=list)     # libellés des écarts
 
 
+class CandidatOffreActiveOut(BaseModel):
+    """Candidat à une offre ENCORE EN COURS (non clôturée / non retirée), avec le
+    contexte de l'offre — pour le KPI « Candidatures » du tableau de bord d'un
+    compte qui publie des offres (manager / HRBP)."""
+    offre_id: int
+    offre_titre: str
+    offre_type: str
+    offre_statut: str
+    profil_id: int
+    candidature_id: int
+    nom: str
+    prenom: str | None
+    poste_actuel: str | None
+    score: float | None
+    statut: str                              # statut de la candidature (deposee/retenue/…)
+
+
 class RhOffreOut(BaseModel):
     """Offre vue côté RH, avec les statistiques de candidatures (liste RH + revue)."""
     id: int

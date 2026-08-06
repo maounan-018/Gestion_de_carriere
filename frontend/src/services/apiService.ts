@@ -28,8 +28,9 @@ import {
   mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
-  mapMobilite, mapFamille, mapSyntheseRh,
+  mapMobilite, mapFamille, mapSyntheseRh, mapCandidatureActive,
   type MobiliteOut, type FamilleOut, type SyntheseRhOut,
+  type CandidatOffreActiveOut, type CandidatureActive,
   type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
@@ -723,6 +724,24 @@ export const apiService = {
     }
     const rows = await apiFetch<RhOffreOut[]>('/offres/rh-liste')
     return rows.map(mapRhOffre)
+  },
+  /** Mes offres PUBLIÉES (créées par le compte courant) — KPI « Offres publiées ». */
+  async getMesOffres(): Promise<RhOffer[]> {
+    if (MODE === 'mock') {
+      await delay()
+      return []
+    }
+    const rows = await apiFetch<RhOffreOut[]>('/offres/mes-offres')
+    return rows.map(mapRhOffre)
+  },
+  /** Candidats des offres du compte courant ENCORE EN COURS — KPI « Candidatures ». */
+  async getMesCandidaturesActives(): Promise<CandidatureActive[]> {
+    if (MODE === 'mock') {
+      await delay()
+      return []
+    }
+    const rows = await apiFetch<CandidatOffreActiveOut[]>('/offres/mes-candidatures-actives')
+    return rows.map(mapCandidatureActive)
   },
   async getRhOffer(key: string): Promise<RhOffer | undefined> {
     if (MODE === 'mock') {
