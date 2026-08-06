@@ -25,7 +25,8 @@ from app.models.user import User
 from app.models.carriere import ProfilStation, PeerReview
 from app.services import occupation_service, evaluation_service
 from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, ProfilOut,
-                                 ProfilCompetenceIn, ProfilCompetenceOut, AnnuaireEntry)
+                                 ProfilCompetenceIn, ProfilCompetenceOut, AnnuaireEntry,
+                                 EvaluationBilanOut)
 from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
                                   SkillNiveauOut)
 
@@ -64,6 +65,9 @@ def _to_out(db: Session, p: Profil) -> ProfilOut:
             co.evaluee_par = a.get("evaluee_par")
             co.mission = a.get("mission")
         out.competences.append(co)
+    # Historique des bilans d'évaluation (journal daté, le plus récent d'abord).
+    out.evaluations = [EvaluationBilanOut.model_validate(b)
+                       for b in evaluation_service.list_bilans(db, p.id)]
     # Insights DÉRIVÉS (scan de la donnée) : évaluation ~ niveau moyen, séniorité,
     # risque de départ, potentiel. Aucun champ « risque » n'est stocké en base.
     niveaux = [c.niveau for c in comps if c.niveau is not None]

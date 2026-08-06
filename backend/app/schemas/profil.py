@@ -52,6 +52,26 @@ class CompetenceEvaluationIn(BaseModel):
     commentaire: str | None = Field(None, max_length=2000)
 
 
+class EvaluationBilanCreate(BaseModel):
+    """Bilan d'évaluation soumis (appréciation globale) → journal d'historique."""
+    type: Literal["mission", "performance"] = "mission"
+    note: int | None = Field(None, ge=1, le=5, description="Appréciation globale (étoiles 1-5).")
+    commentaire: str | None = Field(None, max_length=4000)
+    competences_detectees: int = Field(0, ge=0, description="Nb de compétences extraites du bilan.")
+
+
+class EvaluationBilanOut(BaseModel):
+    """Une ligne d'« Historique des évaluations » (bilan daté + évaluateur)."""
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    type: str
+    note: int | None = None
+    commentaire: str | None = None
+    competences_detectees: int = 0
+    evaluateur_nom: str | None = None
+    created_at: datetime
+
+
 class CvExtractionRequest(BaseModel):
     """Entrée de l'extraction CV → profil : le texte du CV/parcours à analyser."""
     texte: str = Field(..., min_length=10, description="Texte du CV / parcours à analyser.")
@@ -130,6 +150,7 @@ class ProfilOut(BaseModel):
     synthetique: bool
     created_at: datetime
     competences: list[ProfilCompetenceOut] = Field(default_factory=list)
+    evaluations: list[EvaluationBilanOut] = Field(default_factory=list)  # historique (bilans datés)
     # Insights DÉRIVÉS par « scan » de la donnée (non stockés en base) : évaluation
     # (≈ niveau moyen /5), séniorité, risque de départ et potentiel.
     score_eval: float | None = None

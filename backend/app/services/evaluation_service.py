@@ -29,6 +29,7 @@ from app.models.profil import ProfilCompetence, CompetenceSource
 from app.models.offre import Offre
 from app.models.user import User
 from app.models.competence_evaluation import CompetenceEvaluation, EvaluationSource
+from app.models.evaluation_bilan import EvaluationBilan
 
 # Poids par source (manager prépondérant). Renormalisés sur les sources présentes.
 WEIGHTS: dict[str, float] = {
@@ -200,3 +201,40 @@ def attribution_map(db: Session, profil_id: int) -> dict[int, dict[str, str]]:
             "mission": missions.get(off_id, ""),
         }
     return out
+
+
+# --- Bilans d'évaluation (journal → « Historique des évaluations ») -----------
+
+def creer_bilan(db: Session, profil_id: int, *, type: str = "mission",
+                note: int | None = None, commentaire: str | None = None,
+                competences_detectees: int = 0,
+                evaluateur_id: int | None = None) -> EvaluationBilan:
+    """Enregistre une nouvelle appréciation datée (une ligne d'historique)."""
+    bilan = EvaluationBilan(
+        profil_id=profil_id, type=type, note=note,
+        commentaire=(commentaire or None), competences_detectees=competences_detectees,
+        evaluateur_id=evaluateur_id)
+    db.add(bilan)
+    db.commit()
+    db.refresh(bilan)
+    return bilan
+
+
+def list_bilans(db: Session, profil_id: int) -> list[dict]:
+    """Historique des bilans d'un profil (plus récent d'abord), nom de l'évaluateur
+    résolu. Forme prête à sérialiser en EvaluationBilanOut."""
+    bilans = db.scalars(
+        select(EvaluationBilan).where(EvaluationBilan.profil_id == profil_id)
+        .order_by(EvaluationBilan.created_at.desc(), EvaluationBilan.id.desc())
+    ).all()
+    if not bilans:
+        return []
+    user_ids = {b.evaluateur_id for b in bilans if b.evaluateur_id}
+    noms = {u.id: u.name for u in db.scalars(
+        select(User).where(User.id.in_(user_ids))).all()} if user_ids else {}
+    return [{
+        "id": b.id, "type": b.type, "note": b.note, "commentaire": b.commentaire,
+        "competences_detectees": b.competences_detectees,
+        "evaluateur_nom": noms.get(b.evaluateur_id),
+        "created_at": b.created_at,
+    } for b in bilans]
