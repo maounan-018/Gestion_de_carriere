@@ -19,8 +19,17 @@ import LoadingState from '@/components/ui/LoadingState.vue'
 const router = useRouter()
 const { toast } = useToast()
 
-const HORIZONS = ['6 mois', '1 an', '2-3 ans']
+const PERIODES = ['semaines', 'mois', 'années'] as const
 const TYPES = ['Management', 'Expertise', 'Mobilité géographique', 'Mission transverse']
+
+/** Décompose un horizon texte ("6 mois", "1 an"…) en nombre + période. */
+function parseHorizon(s: string): { nombre: number | null; periode: string } {
+  const m = (s || '').match(/(\d+)/)
+  const low = (s || '').toLowerCase()
+  const periode = low.includes('semaine') ? 'semaines'
+    : (low.includes('an') || low.includes('année')) ? 'années' : 'mois'
+  return { nombre: m ? parseInt(m[1], 10) : null, periode }
+}
 const inputCls =
   'w-full rounded-xl border border-border bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-green-line'
 
@@ -28,7 +37,8 @@ const loading = ref(true)
 const saving = ref(false)
 const posteActuel = ref('')
 const posteVise = ref('')
-const horizon = ref('')
+const horizonNombre = ref<number | null>(null)
+const horizonPeriode = ref<string>('mois')
 const typeEvolution = ref('')
 const mobiliteGeo = ref('')
 const disponibilite = ref('')
@@ -55,7 +65,9 @@ onMounted(async () => {
     ])
     posteActuel.value = p?.poste_actuel ?? ''
     posteVise.value = p?.poste_vise ?? ''
-    horizon.value = p?.horizon ?? ''
+    const h = parseHorizon(p?.horizon ?? '')
+    horizonNombre.value = h.nombre
+    horizonPeriode.value = h.periode
     typeEvolution.value = p?.type_evolution ?? ''
     mobiliteGeo.value = p?.mobilite_geo ?? ''
     disponibilite.value = p?.disponibilite ?? ''
@@ -74,7 +86,7 @@ async function save() {
     await apiService.updateMyProfil({
       poste_actuel: posteActuel.value.trim(),
       poste_vise: posteVise.value.trim(),
-      horizon: horizon.value,
+      horizon: horizonNombre.value ? `${horizonNombre.value} ${horizonPeriode.value}` : '',
       type_evolution: typeEvolution.value,
       mobilite_geo: mobiliteGeo.value.trim(),
       disponibilite: disponibilite.value.trim(),
@@ -228,10 +240,19 @@ async function submitExtract() {
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="mb-1 block text-xs font-semibold text-ink-2">Horizon</label>
-              <select v-model="horizon" :class="inputCls">
-                <option value="">Non précisé</option>
-                <option v-for="h in HORIZONS" :key="h" :value="h">{{ h }}</option>
-              </select>
+              <div class="flex gap-2">
+                <input
+                  v-model.number="horizonNombre"
+                  type="number"
+                  min="1"
+                  :class="inputCls"
+                  class="max-w-[7rem]"
+                  placeholder="Ex : 3"
+                />
+                <select v-model="horizonPeriode" :class="inputCls">
+                  <option v-for="pr in PERIODES" :key="pr" :value="pr">{{ pr }}</option>
+                </select>
+              </div>
             </div>
             <div>
               <label class="mb-1 block text-xs font-semibold text-ink-2">Type d'évolution souhaitée</label>

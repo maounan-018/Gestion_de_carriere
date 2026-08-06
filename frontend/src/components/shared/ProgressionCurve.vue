@@ -45,9 +45,10 @@ const dashedPath = computed(() => smooth(points.value.slice(currentIndex.value))
   <div>
     <div class="mb-3 flex items-end justify-between gap-3">
       <div>
-        <div class="text-xs font-semibold uppercase tracking-wide text-green-deep">Ma progression</div>
-        <div class="font-display text-lg font-bold text-ink">
-          Objectif · {{ stations.find((s) => s.state === 'goal')?.title }}
+        <div class="font-display text-lg font-bold text-ink">Mon parcours</div>
+        <div v-if="stations.find((s) => s.state === 'goal')"
+          class="mt-0.5 text-sm font-semibold text-green-deep">
+          Objectif : {{ stations.find((s) => s.state === 'goal')?.title }}
         </div>
       </div>
       <div class="text-right">

@@ -922,7 +922,7 @@ export const apiService = {
    *  Marquée `synthetique` (donnée de démo étiquetée). */
   async publishOffer(input: {
     titre: string
-    type: 'Poste' | 'Mission transverse' | 'Projet innovation'
+    type: 'Poste' | 'Mission transverse' | 'Projet'
     ficheId?: number | null
     description?: string
     localisation?: string
@@ -937,7 +937,7 @@ export const apiService = {
     const typeMap = {
       'Poste': 'offre_poste',
       'Mission transverse': 'mission',
-      'Projet innovation': 'projet',
+      'Projet': 'projet',
     } as const
     await apiFetch('/offres', {
       method: 'POST',
