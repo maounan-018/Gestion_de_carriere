@@ -7,6 +7,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useSessionStore } from '@/stores/session'
 import { Sparkles, FileText, UploadCloud, Check, ArrowLeft } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
@@ -14,9 +15,15 @@ import type { MyCvStatus } from '@/types/domain'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import CvPreview from '@/components/shared/CvPreview.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 
 const router = useRouter()
+// Écran partagé collab / manager / HRBP : retour vers l'espace du rôle courant.
+const retourRoute = computed(() => {
+  const r = useSessionStore().role
+  return r === 'manager' ? 'manager.profil' : r === 'rh' ? 'rh.espace' : 'collab.profil'
+})
 const { toast } = useToast()
 
 const PERIODES = ['semaines', 'mois', 'années'] as const
@@ -48,6 +55,7 @@ const aspirations = ref('')
 // CV conservé (Lot 4)
 const cv = ref<MyCvStatus | null>(null)
 const cvBusy = ref(false)
+const showCv = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const cvDate = computed(() =>
@@ -94,7 +102,7 @@ async function save() {
       aspirations: aspirations.value.trim(),
     })
     toast('Profil mis à jour', 'ok')
-    router.push({ name: 'collab.profil' })
+    router.push({ name: retourRoute.value })
   } catch (e) {
     toast(e instanceof Error ? e.message : 'Échec de la mise à jour', 'error')
   } finally {
@@ -159,7 +167,7 @@ async function submitExtract() {
 <template>
   <div class="mx-auto max-w-3xl space-y-5">
     <div class="flex items-center gap-3">
-      <BaseButton variant="secondary" size="sm" @click="router.push({ name: 'collab.profil' })">
+      <BaseButton variant="secondary" size="sm" @click="router.push({ name: retourRoute })">
         <ArrowLeft :size="15" /> Retour
       </BaseButton>
       <div>
@@ -194,13 +202,12 @@ async function submitExtract() {
             </p>
           </div>
           <div class="flex shrink-0 items-center gap-2">
-            <a
+            <button
               v-if="cv?.filename"
-              :href="apiService.cvUrl(cv.profilId)"
-              target="_blank"
-              rel="noopener"
+              type="button"
               class="text-xs font-semibold text-green-deep hover:underline"
-            >Consulter</a>
+              @click="showCv = true"
+            >Consulter</button>
             <BaseButton size="sm" :disabled="cvBusy" @click="pickFile">
               <UploadCloud :size="15" /> {{ cvBusy ? 'Envoi…' : cv?.filename ? 'Remplacer' : 'Déposer mon CV' }}
             </BaseButton>
@@ -280,7 +287,7 @@ async function submitExtract() {
       </BaseCard>
 
       <div class="sticky bottom-0 flex justify-end gap-2 rounded-2xl border border-border bg-paper/95 p-3 shadow-card backdrop-blur">
-        <BaseButton variant="secondary" @click="router.push({ name: 'collab.profil' })">Annuler</BaseButton>
+        <BaseButton variant="secondary" @click="router.push({ name: retourRoute })">Annuler</BaseButton>
         <BaseButton :disabled="saving" @click="save">
           <Check :size="15" /> {{ saving ? 'Enregistrement…' : 'Enregistrer' }}
         </BaseButton>
@@ -307,5 +314,7 @@ async function submitExtract() {
         </BaseButton>
       </template>
     </BaseModal>
+
+    <CvPreview v-if="cv" v-model="showCv" :profil-id="cv.profilId" :nom="cv.filename ?? undefined" />
   </div>
 </template>
