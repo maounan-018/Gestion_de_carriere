@@ -19,17 +19,74 @@ EMPLACEMENT MVC
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
+from app.models.offre import Offre
+from app.models.candidature import Candidature, CandidatureStatut
 from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
                                OffreCompetenceIn, OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut, VacancyOut)
-from app.services import offre_service
+                               OffreCandidatOut, RhOffreOut, VacancyOut,
+                               MissionEvalContextOut, MissionExpectedComp,
+                               MissionParticipantOut, MissionEvaluationIn, MissionEvaluationOut)
+from app.services import offre_service, evaluation_service
 
 router = APIRouter(prefix="/api/offres", tags=["Offres"])
+
+
+def _offre_du_manager(db: Session, offre_id: int, user: User) -> Offre:
+    """Charge l'offre et vérifie que l'utilisateur en est le manager créateur
+    (ou RH/ADMIN). 404 si absente, 403 hors périmètre."""
+    offre = db.get(Offre, offre_id)
+    if offre is None:
+        raise HTTPException(status_code=404, detail="Offre introuvable")
+    if user.role not in (Role.RH, Role.ADMIN) and offre.created_by != user.id:
+        raise HTTPException(status_code=403,
+                            detail="Réservé au manager de l'offre (ou RH/ADMIN).")
+    return offre
+
+
+@router.get("/{offre_id}/participants", response_model=MissionEvalContextOut,
+            summary="Contexte d'évaluation de mission : offre + compétences + participants retenus")
+def contexte_evaluation_mission(offre_id: int, user: User = Depends(get_current_user),
+                                db: Session = Depends(get_db)) -> MissionEvalContextOut:
+    """Écran d'évaluation post-clôture : renvoie l'offre, ses compétences attendues
+    et ses PARTICIPANTS RETENUS. Réservé au manager de l'offre (ou RH/ADMIN)."""
+    offre = _offre_du_manager(db, offre_id, user)
+    out = offre_service.get_offre(db, offre_id)
+    comps = [MissionExpectedComp(libelle=c.skill_label_fr or c.libelle,
+                                 skill_id=c.skill_id, importance=c.importance)
+             for c in (out.competences if out else [])]
+    parts = [MissionParticipantOut(**p) for p in offre_service.mission_participants(db, offre_id)]
+    return MissionEvalContextOut(
+        offre_id=offre.id, titre=offre.titre, type=offre.type, statut=offre.statut,
+        competences=comps, participants=parts)
+
+
+@router.post("/{offre_id}/participants/{profil_id}/evaluation",
+             response_model=MissionEvaluationOut,
+             summary="Évaluer (1-10) les compétences utilisées par un participant retenu")
+def evaluer_participant_mission(offre_id: int, profil_id: int, data: MissionEvaluationIn,
+                                user: User = Depends(get_current_user),
+                                db: Session = Depends(get_db)) -> MissionEvaluationOut:
+    """Le manager note les compétences UTILISÉES par un participant dans la mission.
+    Une compétence notée mais absente du profil y est AJOUTÉE (source
+    evaluation_mission) avec l'attribution (évaluateur + mission). Le profil doit
+    être un participant RETENU de cette offre."""
+    _offre_du_manager(db, offre_id, user)
+    cand = db.scalar(select(Candidature).where(
+        Candidature.offre_id == offre_id, Candidature.profil_id == profil_id,
+        Candidature.statut == CandidatureStatut.RETENUE))
+    if cand is None:
+        raise HTTPException(status_code=400,
+                            detail="Ce profil n'est pas un participant retenu de cette offre.")
+    res = evaluation_service.evaluer_mission(
+        db, profil_id=profil_id, offre_id=offre_id, evaluateur_id=user.id,
+        items=[c.model_dump() for c in data.competences])
+    return MissionEvaluationOut(**res)
 
 # Types d'offre autorisés par rôle (l'ADMIN n'est pas restreint).
 _TYPES_PAR_ROLE = {

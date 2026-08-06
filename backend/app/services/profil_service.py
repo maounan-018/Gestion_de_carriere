@@ -30,11 +30,16 @@ from app.schemas.carriere import (ProfilCarriereOut, StationOut, PeerReviewOut,
                                   SkillNiveauOut)
 
 
-def _skill_niveau_out(c: ProfilCompetence, pct: int | None) -> SkillNiveauOut:
-    """SkillNiveauOut enrichi du % d'acquisition (évaluations + repli niveau)."""
+def _skill_niveau_out(c: ProfilCompetence, pct: int | None,
+                      attr: dict | None = None) -> SkillNiveauOut:
+    """SkillNiveauOut enrichi du % d'acquisition (évaluations + repli niveau) et,
+    le cas échéant, de l'attribution d'une évaluation de mission."""
     out = SkillNiveauOut.model_validate(c)
     out.acquisition_pct = pct
     out.evaluee = pct is not None
+    if attr:
+        out.evaluee_par = attr.get("evaluee_par")
+        out.mission = attr.get("mission")
     return out
 
 
@@ -48,11 +53,16 @@ def _to_out(db: Session, p: Profil) -> ProfilOut:
     ).all()
     out = ProfilOut.model_validate(p)
     acq = evaluation_service.acquisition_map(db, p.id)
+    attr = evaluation_service.attribution_map(db, p.id)
     out.competences = []
     for c in comps:
         co = ProfilCompetenceOut.model_validate(c)
         co.acquisition_pct = acq.get(c.id)
         co.evaluee = co.acquisition_pct is not None
+        a = attr.get(c.id)
+        if a:
+            co.evaluee_par = a.get("evaluee_par")
+            co.mission = a.get("mission")
         out.competences.append(co)
     # Insights DÉRIVÉS (scan de la donnée) : évaluation ~ niveau moyen, séniorité,
     # risque de départ, potentiel. Aucun champ « risque » n'est stocké en base.
@@ -209,6 +219,7 @@ def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
         select(ProfilCompetence).where(ProfilCompetence.profil_id == profil_id)
         .order_by(ProfilCompetence.id)).all()
     acq = evaluation_service.acquisition_map(db, profil_id)
+    attr = evaluation_service.attribution_map(db, profil_id)
     stations = db.scalars(
         select(ProfilStation).where(ProfilStation.profil_id == profil_id)
         .order_by(ProfilStation.ordre, ProfilStation.id)).all()
@@ -222,7 +233,7 @@ def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
         type_evolution=p.type_evolution, mobilite_geo=p.mobilite_geo,
         disponibilite=p.disponibilite,
         cv_filename=p.cv_filename, cv_uploaded_at=p.cv_uploaded_at,
-        competences=[_skill_niveau_out(c, acq.get(c.id)) for c in comps],
+        competences=[_skill_niveau_out(c, acq.get(c.id), attr.get(c.id)) for c in comps],
         stations=[StationOut.model_validate(s) for s in stations],
         avis_pairs=[PeerReviewOut.model_validate(a) for a in avis],
     )
