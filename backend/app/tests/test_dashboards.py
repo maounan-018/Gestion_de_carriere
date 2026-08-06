@@ -14,7 +14,9 @@ def test_kpis_rh(client):
     body = r.json()
     assert body["scope"] == "rh"
     keys = {k["key"] for k in body["kpis"]}
-    assert {"effectif", "offres_ouvertes", "candidatures", "competences"} <= keys
+    # « Offres publiées » et « Candidatures » sont scopées au compte HRBP et
+    # mènent à une liste (rh_offres / rh_candidatures), plus à l'écran offres internes.
+    assert {"effectif", "rh_offres", "rh_candidatures", "competences"} <= keys
 
 
 def test_kpis_manager(client):

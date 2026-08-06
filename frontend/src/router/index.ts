@@ -222,6 +222,19 @@ const rhDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['rh'], title: 'Revue des candidatures' },
   },
   {
+    // Drill-down du KPI « Offres publiées » (HRBP) — vues partagées avec le manager.
+    path: 'rh/mes-offres',
+    name: 'rh.mesOffres',
+    component: () => import('@/views/manager/MesOffresView.vue'),
+    meta: { roles: ['rh'], title: 'Mes offres publiées' },
+  },
+  {
+    path: 'rh/candidatures-actives',
+    name: 'rh.candidaturesActives',
+    component: () => import('@/views/manager/CandidaturesActivesView.vue'),
+    meta: { roles: ['rh'], title: 'Candidatures · offres en cours' },
+  },
+  {
     path: 'rh/referentiel',
     name: 'rh.referentiel',
     component: () => import('@/views/rh/ReferentielView.vue'),
