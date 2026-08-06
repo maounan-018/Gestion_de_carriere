@@ -20,6 +20,8 @@ import pathlib
 # --- Environnement de test : AVANT tout import de l'app -----------------------
 _TMPDIR = tempfile.mkdtemp(prefix="bmci-test-")
 os.environ["DATABASE_PATH"] = str(pathlib.Path(_TMPDIR) / "bmci_test.db")
+# CV de profil : répertoire temporaire → les uploads de test n'écrasent PAS les CV réels.
+os.environ["CV_PROFIL_DIR"] = str(pathlib.Path(_TMPDIR) / "cv_profil")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
 os.environ.setdefault("SEED_DEMO_PASSWORD", "Test-RBAC-2026!")
 os.environ["AI_WARMUP_MODELS"] = ""  # pas de préchauffage Ollama pendant les tests

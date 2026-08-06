@@ -44,7 +44,10 @@ router = APIRouter(prefix="/api/profils", tags=["Profils"])
 
 # CV du collaborateur, conservé côté serveur (source durable ; distinct du CV
 # ponctuel attaché à une candidature). Un fichier par profil : data/cv_profil/{id}.pdf.
-_CV_PROFIL_DIR = os.path.join("data", "cv_profil")
+# Répertoire des CV de profil. Surchargeable par env (CV_PROFIL_DIR) — comme
+# DATABASE_PATH — pour ISOLER les tests (sinon les uploads de test écraseraient
+# les CV réels de data/cv_profil/).
+_CV_PROFIL_DIR = os.environ.get("CV_PROFIL_DIR", os.path.join("data", "cv_profil"))
 
 
 def _cv_profil_path(profil_id: int) -> str:
