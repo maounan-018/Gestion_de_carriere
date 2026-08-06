@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { Sparkles, Send, MessageSquare, Check, Clock } from '@lucide/vue'
+import { Sparkles, Send, MessageSquare, Check, Clock, FileText, Download } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
+import { useToast } from '@/composables/useToast'
+import { downloadPdf, type PdfBlock } from '@/utils/pdf'
 import type { ChatMessage } from '@/types/domain'
 import BaseButton from '@/components/ui/BaseButton.vue'
+
+const { toast } = useToast()
 
 /**
  * Préparation GUIDÉE de l'entretien d'un COLLABORATEUR par son MANAGER.
@@ -47,6 +51,7 @@ const busy = ref(false)
 const streamingHtml = ref('')
 const streamStatus = ref('')
 const scroller = ref<HTMLElement>()
+const synthesePlain = ref('')       // synthèse finale en texte brut (pour l'export PDF)
 const ERR = "Désolé, je n'ai pas pu répondre à l'instant. Réessayez dans un moment."
 
 const atLastStep = computed(() => currentStep.value >= STEPS.value.length - 1)
@@ -119,6 +124,10 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
       { mode: 'entretien_copilote_equipe', section, focus, ouverture, sujet: sujet() },
     )
     chat.value.push({ from: 'bot', text: raw.trim() ? formatCoachReply(raw) : ERR })
+    // Étape finale : la synthèse est produite → on la capture pour l'export PDF.
+    if (isLast(currentStep.value) && ouverture && raw.trim()) {
+      synthesePlain.value = htmlToText(formatCoachReply(raw))
+    }
   } catch {
     chat.value.push({ from: 'bot', text: ERR })
   } finally {
@@ -126,6 +135,35 @@ async function runTurn(section: string, focus: string | undefined, ouverture: bo
     streamStatus.value = ''
     streamingHtml.value = ''
   }
+}
+
+/* ---- Synthèse finale : export PDF (livrable pour conduire l'entretien) ---- */
+function htmlToText(html: string): string {
+  const d = document.createElement('div')
+  d.innerHTML = html
+  return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+function exportPdf() {
+  const who = props.subject.name
+  const meta = [props.subject.role, props.subject.pole].filter(Boolean).join(' · ')
+  const when = new Date().toLocaleDateString('fr-FR', { dateStyle: 'long' })
+  const blocks: PdfBlock[] = [
+    { type: 'h1', text: `Synthèse de préparation · entretien de ${who}` },
+    { type: 'p', text: `${meta ? meta + ' · ' : ''}${when} · Préparation manager BMCI (non contractuelle)` },
+    { type: 'spacer' },
+    { type: 'h2', text: 'Synthèse' },
+    { type: 'p', text: synthesePlain.value || 'Synthèse non disponible.' },
+    { type: 'spacer' },
+    { type: 'h2', text: 'Déroulé de la préparation' },
+  ]
+  for (const m of chat.value) {
+    const txt = htmlToText(m.text)
+    if (!txt) continue
+    blocks.push({ type: 'p', text: `${m.from === 'me' ? 'Manager' : 'Copilote'} : ${txt}` })
+  }
+  downloadPdf(`synthese-entretien-${who.replace(/\s+/g, '-')}-${when.replace(/\s+/g, '-')}`, blocks)
+  toast('Synthèse exportée en PDF', 'ok')
 }
 
 function openSection(i: number) {
@@ -210,6 +248,19 @@ onMounted(() => openSection(0))
             </span>
           </div>
         </div>
+      </div>
+
+      <!-- Étape finale : synthèse prête → export PDF (livrable de l'entretien). -->
+      <div v-if="atLastStep && synthesePlain && !busy" class="mt-3 rounded-xl border border-green-line bg-green-ghost p-4">
+        <div class="flex items-center gap-2 text-green-deep">
+          <FileText :size="16" /><b class="text-sm">Synthèse de préparation prête</b>
+        </div>
+        <p class="mt-1 text-xs text-ink-2">
+          Le bilan de la préparation de l'entretien de {{ subject.name }}. Emportez-le pour conduire l'entretien.
+        </p>
+        <BaseButton class="mt-3" size="sm" @click="exportPdf">
+          <Download :size="15" /> Télécharger la synthèse (PDF)
+        </BaseButton>
       </div>
 
       <div class="mt-3 flex items-center gap-2">
