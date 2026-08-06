@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Sparkles, Play } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import type { TeamMember } from '@/types/manager'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -12,8 +13,16 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 const mode = ref<'moi' | 'equipe'>('moi')
 const team = ref<TeamMember[]>([])
 const selected = ref<TeamMember | null>(null)
+const equipeStarted = ref(false)   // écran d'accueil explicatif avant la liste d'équipe
 const loading = ref(true)
 const error = ref('')
+
+// Étapes présentées sur l'écran d'accueil « Entretiens de l'équipe ».
+const ETAPES_EQUIPE = [
+  'Choisissez un collaborateur de votre équipe',
+  'L’IA vous interroge sur son travail, ancrée sur son profil (parcours, compétences, aspirations)',
+  'Vous recevez des conseils concrets pour conduire un entretien juste et utile',
+]
 
 async function load() {
   loading.value = true
@@ -42,7 +51,7 @@ onMounted(load)
       <button
         class="rounded-lg px-4 py-1.5 text-sm font-semibold transition"
         :class="mode === 'equipe' ? 'bg-green text-white' : 'text-ink-2 hover:text-ink'"
-        @click="((mode = 'equipe'), (selected = null))"
+        @click="((mode = 'equipe'), (selected = null), (equipeStarted = false))"
       >
         Entretiens de l'équipe
       </button>
@@ -56,6 +65,36 @@ onMounted(load)
       <ErrorState v-else-if="error" :message="error">
         <template #action><BaseButton size="sm" @click="load">Réessayer</BaseButton></template>
       </ErrorState>
+
+      <!-- ÉCRAN D'ACCUEIL explicatif (pendant de la simulation « Mon entretien »). -->
+      <div v-else-if="!equipeStarted" class="mx-auto max-w-2xl">
+        <div class="rounded-2xl border border-border bg-paper p-6 shadow-card">
+          <div class="mb-4 inline-flex items-center gap-2 rounded-full bg-green-soft px-3 py-1 text-xs font-bold text-green-deep">
+            <Sparkles :size="14" /> Préparation guidée par l'IA
+          </div>
+          <h2 class="font-display text-2xl font-bold text-ink">Préparez les entretiens de votre équipe</h2>
+          <p class="mt-2 text-sm leading-relaxed text-ink-2">
+            Cet espace vous aide à préparer l'entretien annuel de chaque membre de votre équipe. Votre
+            copilote IA, <b>ancré sur le profil du collaborateur</b>, vous interroge sur son travail et vous
+            conseille pour conduire un entretien juste et utile. Rien n'est transmis au collaborateur : vous
+            repartez avec une trame de préparation.
+          </p>
+
+          <div class="mt-5 rounded-xl border border-green-line bg-green-ghost p-4">
+            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-green-deep">Comment ça marche</p>
+            <ol class="space-y-1.5">
+              <li v-for="(s, i) in ETAPES_EQUIPE" :key="i" class="flex items-center gap-2.5 text-sm text-ink-2">
+                <span class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-green text-[11px] font-bold text-white">{{ i + 1 }}</span>
+                {{ s }}
+              </li>
+            </ol>
+          </div>
+
+          <BaseButton class="mt-5" @click="equipeStarted = true">
+            <Play :size="16" /> Voir mon équipe
+          </BaseButton>
+        </div>
+      </div>
 
       <div v-else-if="!selected" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div
