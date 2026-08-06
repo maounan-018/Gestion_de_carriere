@@ -257,6 +257,21 @@ export const apiService = {
     }
     return mapSouhait(await apiFetch<SouhaitOut>(`/souhaits/${id}`, { method: 'PATCH', body: patch }))
   },
+  /** Enrôlement (pré-auth) : infos RH DÉJÀ EN BASE pour un e-mail — l'inscription
+   *  ACTIVE un compte pré-existant et pré-remplit poste/manager/département. */
+  async annuairePreload(email: string): Promise<{
+    found: boolean; nom?: string; prenom?: string
+    poste_actuel?: string; departement?: string; manager_nom?: string
+  }> {
+    if (MODE === 'mock') {
+      return {
+        found: true, nom: 'El Amrani', prenom: 'Youssef',
+        poste_actuel: 'Conseiller clientèle particuliers',
+        departement: 'Retail Banking', manager_nom: 'Karim Naji',
+      }
+    }
+    return apiFetch(`/auth/annuaire-preload?email=${encodeURIComponent(email)}`)
+  },
   async getReco(): Promise<RecoData> {
     if (MODE === 'mock') {
       await delay()

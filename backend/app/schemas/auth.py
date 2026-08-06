@@ -29,3 +29,14 @@ class LoginResponse(BaseModel):
     # Jeton CSRF (double-submit) : le front le renvoie dans l'en-tête X-CSRF-Token
     # sur chaque requête mutante. Aussi posé en cookie NON-HttpOnly.
     csrf_token: str
+
+
+class AnnuairePreloadOut(BaseModel):
+    """Pré-remplissage d'enrôlement : infos RH DÉJÀ EN BASE pour un e-mail donné.
+    Démo : les collaborateurs BMCI existent déjà ; l'inscription active le compte."""
+    found: bool
+    nom: str | None = None
+    prenom: str | None = None
+    poste_actuel: str | None = None
+    departement: str | None = None
+    manager_nom: str | None = None

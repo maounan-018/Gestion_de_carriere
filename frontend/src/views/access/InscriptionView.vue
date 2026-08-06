@@ -46,7 +46,10 @@ const strengthLabel = computed(
 
 function submit() {
   if (!canSubmit.value) return
-  toast('Compte créé · confirmez votre e-mail', 'info')
+  // Enrôlement : on transporte l'e-mail vers l'étape de vérification puis de
+  // pré-remplissage (le compte collaborateur existe déjà, on l'ACTIVE).
+  sessionStorage.setItem('bmci-enroll-email', email.value.trim())
+  toast('E-mail vérifié · activons votre compte', 'info')
   router.push({ name: 'otp' })
 }
 </script>
@@ -54,9 +57,10 @@ function submit() {
 <template>
   <AuthCard>
     <AuthStepper :active="0" />
-    <h1 class="font-display text-xl font-bold text-ink">Créez votre compte</h1>
+    <h1 class="font-display text-xl font-bold text-ink">Activez votre compte BMCI</h1>
     <p class="mt-1 text-sm text-ink-3">
-      Utilisez votre e-mail professionnel <b>@bmci.local</b>.
+      Votre compte collaborateur existe déjà dans l'annuaire du Groupe. Activez-le avec votre
+      e-mail professionnel <b>@bmci.local</b> — vos informations RH seront pré-remplies.
     </p>
 
     <div class="mt-5 space-y-4">
@@ -145,7 +149,7 @@ function submit() {
       </div>
 
       <BaseButton block :disabled="!canSubmit" @click="submit">
-        <Check :size="16" /> Créer mon compte
+        <Check :size="16" /> Activer mon compte
       </BaseButton>
       <p class="text-center text-xs text-ink-3">
         Déjà un compte ?
