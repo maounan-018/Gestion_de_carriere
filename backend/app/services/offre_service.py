@@ -341,3 +341,21 @@ def delete_competence(db: Session, offre_id: int, comp_id: int) -> OffreOut | No
     db.delete(comp)
     db.commit()
     return _to_out(db, o)
+
+
+def mission_participants(db: Session, offre_id: int) -> list[dict]:
+    """Participants RETENUS d'une offre (candidature statut=retenue) avec nom et
+    poste — pour l'écran d'évaluation de mission (Workstream C)."""
+    rows = db.execute(
+        select(Profil.id, Profil.prenom, Profil.nom, Profil.poste_actuel)
+        .join(Candidature, Candidature.profil_id == Profil.id)
+        .where(Candidature.offre_id == offre_id,
+               Candidature.statut == CandidatureStatut.RETENUE)
+        .order_by(Profil.nom)
+    ).all()
+    return [
+        {"profil_id": pid,
+         "nom": f"{(prenom or '').strip()} {nom}".strip(),
+         "poste_actuel": poste}
+        for (pid, prenom, nom, poste) in rows
+    ]

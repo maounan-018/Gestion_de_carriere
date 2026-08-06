@@ -20,10 +20,14 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.profil import ProfilCompetence
+from app.models.profil import ProfilCompetence, CompetenceSource
+from app.models.offre import Offre
+from app.models.user import User
 from app.models.competence_evaluation import CompetenceEvaluation, EvaluationSource
 
 # Poids par source (manager prépondérant). Renormalisés sur les sources présentes.
@@ -100,3 +104,99 @@ def evaluer_competence(db: Session, profil_competence_id: int, *, score: int,
     db.commit()
     db.refresh(row)
     return row
+
+
+def _trouver_competence(db: Session, profil_id: int, libelle: str,
+                        skill_id: int | None) -> ProfilCompetence | None:
+    """Compétence détenue du profil correspondant (par skill_id canonique, sinon
+    par libellé insensible à la casse)."""
+    if skill_id is not None:
+        pc = db.scalar(select(ProfilCompetence).where(
+            ProfilCompetence.profil_id == profil_id,
+            ProfilCompetence.skill_id == skill_id))
+        if pc is not None:
+            return pc
+    lib = (libelle or "").strip().lower()
+    if not lib:
+        return None
+    for pc in db.scalars(select(ProfilCompetence).where(
+            ProfilCompetence.profil_id == profil_id)).all():
+        if (pc.skill_label_fr or pc.libelle or "").strip().lower() == lib:
+            return pc
+    return None
+
+
+def evaluer_mission(db: Session, *, profil_id: int, offre_id: int,
+                    evaluateur_id: int | None, items: list[dict]) -> dict:
+    """Évaluation de MISSION : le manager note (1-10) les compétences UTILISÉES par
+    un participant, au titre d'une offre/mission. Règles (retour tuteur) :
+      - une compétence non utilisée n'est pas notée (absente des items) ;
+      - une compétence notée mais ABSENTE du profil est AJOUTÉE (source
+        evaluation_mission) puis évaluée ;
+      - l'évaluation porte l'attribution (évaluateur + offre) pour un affichage
+        « évaluée par le manager X dans le cadre de la mission Y ».
+    Renvoie {evaluees, ajoutees}."""
+    ajoutees = evaluees = 0
+    for it in items:
+        libelle = (it.get("libelle") or "").strip()
+        score_raw = it.get("score")
+        if not libelle or score_raw is None:
+            continue
+        score = max(1, min(10, int(score_raw)))
+        skill_id = it.get("skill_id")
+        pc = _trouver_competence(db, profil_id, libelle, skill_id)
+        if pc is None:
+            pc = ProfilCompetence(
+                profil_id=profil_id, libelle=libelle,
+                skill_id=skill_id, skill_label_fr=(libelle if skill_id else None),
+                categorie=it.get("categorie"),
+                source=CompetenceSource.EVAL_MISSION,
+                acquired_at=datetime.now(timezone.utc))
+            db.add(pc)
+            db.flush()
+            ajoutees += 1
+        row = db.scalar(select(CompetenceEvaluation).where(
+            CompetenceEvaluation.profil_competence_id == pc.id,
+            CompetenceEvaluation.source == EvaluationSource.MANAGER))
+        if row is None:
+            db.add(CompetenceEvaluation(
+                profil_competence_id=pc.id, source=EvaluationSource.MANAGER,
+                score=score, evaluateur_id=evaluateur_id, offre_id=offre_id))
+        else:
+            row.score = score
+            row.evaluateur_id = evaluateur_id
+            row.offre_id = offre_id
+        evaluees += 1
+    db.commit()
+    return {"evaluees": evaluees, "ajoutees": ajoutees}
+
+
+def attribution_map(db: Session, profil_id: int) -> dict[int, dict[str, str]]:
+    """Pour les compétences évaluées par un manager AU TITRE D'UNE MISSION : renvoie
+    {profil_competence_id: {evaluee_par, mission}} pour l'affichage de l'attribution."""
+    pc_ids = [r[0] for r in db.execute(
+        select(ProfilCompetence.id).where(ProfilCompetence.profil_id == profil_id)).all()]
+    if not pc_ids:
+        return {}
+    rows = db.execute(
+        select(CompetenceEvaluation.profil_competence_id,
+               CompetenceEvaluation.evaluateur_id, CompetenceEvaluation.offre_id)
+        .where(CompetenceEvaluation.profil_competence_id.in_(pc_ids),
+               CompetenceEvaluation.source == EvaluationSource.MANAGER,
+               CompetenceEvaluation.offre_id.is_not(None))
+    ).all()
+    if not rows:
+        return {}
+    user_ids = {r[1] for r in rows if r[1]}
+    offre_ids = {r[2] for r in rows if r[2]}
+    noms = {u.id: u.name for u in db.scalars(
+        select(User).where(User.id.in_(user_ids))).all()} if user_ids else {}
+    missions = {o.id: o.titre for o in db.scalars(
+        select(Offre).where(Offre.id.in_(offre_ids))).all()} if offre_ids else {}
+    out: dict[int, dict[str, str]] = {}
+    for pc_id, ev_id, off_id in rows:
+        out[pc_id] = {
+            "evaluee_par": noms.get(ev_id, "le manager"),
+            "mission": missions.get(off_id, ""),
+        }
+    return out

@@ -137,7 +137,13 @@ const statusLabel: Record<string, string> = {
               <span class="text-xs text-ink-3">
                 <b class="text-ink-2">{{ v.recos.length }}</b> profil{{ v.recos.length > 1 ? 's' : '' }} recommandé{{ v.recos.length > 1 ? 's' : '' }}
               </span>
-              <RouterLink :to="{ name: 'manager.profilsCompatibles', params: { key: v.key } }">
+              <RouterLink
+                v-if="v.status === 'clôturé'"
+                :to="{ name: 'manager.evaluationMission', params: { key: v.key } }"
+              >
+                <BaseButton size="sm">Évaluer les participants</BaseButton>
+              </RouterLink>
+              <RouterLink v-else :to="{ name: 'manager.profilsCompatibles', params: { key: v.key } }">
                 <BaseButton size="sm" variant="secondary">Voir les profils</BaseButton>
               </RouterLink>
             </div>

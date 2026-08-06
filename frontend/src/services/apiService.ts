@@ -951,6 +951,27 @@ export const apiService = {
     if (MODE === 'mock') return []
     return apiFetch(`/competences/rechercher?q=${encodeURIComponent(q)}`)
   },
+  /** Contexte d'évaluation d'une mission : offre + compétences attendues + participants
+   *  RETENUS (écran d'évaluation post-clôture, réservé au manager de l'offre / RH). */
+  async getMissionEvalContext(offreId: string | number): Promise<{
+    offre_id: number; titre: string; type: string; statut: string
+    competences: { libelle: string; skill_id: number | null; importance: string }[]
+    participants: { profil_id: number; nom: string; poste_actuel: string | null }[]
+  }> {
+    return apiFetch(`/offres/${offreId}/participants`)
+  },
+  /** Évaluer (1-10) les compétences utilisées par un participant dans la mission.
+   *  Une compétence notée absente du profil y est ajoutée (attribution manager+mission). */
+  async evaluerParticipantMission(
+    offreId: string | number,
+    profilId: number,
+    competences: { libelle: string; skill_id?: number | null; categorie?: string | null; score: number }[],
+  ): Promise<{ evaluees: number; ajoutees: number }> {
+    return apiFetch(`/offres/${offreId}/participants/${profilId}/evaluation`, {
+      method: 'POST',
+      body: { competences },
+    })
+  },
   /** Fiches de poste (sélecteur « Publier une offre »). Filtre optionnel sur l'intitulé. */
   async getFiches(q?: string): Promise<FicheListItem[]> {
     if (MODE === 'mock') {

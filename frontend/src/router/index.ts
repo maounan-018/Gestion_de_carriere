@@ -152,6 +152,12 @@ const managerDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['manager'], title: "Détail de l'offre" },
   },
   {
+    path: 'manager/offre/:key/evaluation',
+    name: 'manager.evaluationMission',
+    component: () => import('@/views/manager/EvaluationMissionView.vue'),
+    meta: { roles: ['manager'], title: 'Évaluation de mission' },
+  },
+  {
     path: 'manager/notifications',
     name: 'manager.notifications',
     component: () => import('@/views/manager/NotificationsView.vue'),

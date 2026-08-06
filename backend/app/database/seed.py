@@ -45,7 +45,7 @@ from app.database.session import SessionLocal
 from app.models.user import User, Role, UserType
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.fiche import Fiche, FicheCompetence
-from app.models.offre import Offre
+from app.models.offre import Offre, OffreStatut, OffreType
 from app.models.candidature import Candidature, CandidatureStatut
 from app.models.notification import Notification
 from app.models.souhait import Souhait, SouhaitStatut, SouhaitKind
@@ -358,6 +358,45 @@ def _seed_candidatures_larges(db: Session, offre_ids: list[int], *, par_offre: i
                 c.statut = CandidatureStatut.EN_EVALUATION
                 db.commit()
             res["created"] += 1
+    return res
+
+
+def _seed_participants_retenus(db: Session, offre_ids: list[int], *, par_offre: int = 2) -> dict:
+    """Pour les offres de manager CLÔTURÉES (pourvue/fermee : mission/projet/gig),
+    RETIENT quelques participants (candidatures statut=retenue), issus de vrais
+    comptes collaborateurs. Objectif : l'écran d'évaluation de mission (Workstream C)
+    a des participants à évaluer. Déterministe et idempotent."""
+    res = {"retenus": 0}
+    profils = list(db.scalars(
+        select(Profil).join(User, User.id == Profil.user_id)
+        .where(User.role == Role.COLLAB).order_by(Profil.id)).all())
+    if not profils:
+        return res
+    closed = list(db.scalars(
+        select(Offre).where(
+            Offre.id.in_(offre_ids),
+            Offre.statut.in_([OffreStatut.POURVUE, OffreStatut.FERMEE]),
+            Offre.type.in_([OffreType.MISSION, OffreType.PROJET, OffreType.GIG]))
+        .order_by(Offre.id)).all())
+    for oi, offre in enumerate(closed):
+        start = (oi * 5) % len(profils)
+        for p in (profils[start:] + profils[:start])[:par_offre]:
+            existing = db.scalar(select(Candidature).where(
+                Candidature.offre_id == offre.id, Candidature.profil_id == p.id))
+            if existing is not None:
+                if existing.statut != CandidatureStatut.RETENUE:
+                    existing.statut = CandidatureStatut.RETENUE
+                    res["retenus"] += 1
+                continue
+            try:
+                out = candidature_service.create_candidature(db, CandidatureCreate(
+                    offre_id=offre.id, profil_id=p.id,
+                    motivation="[DÉMO] Participant retenu (mission clôturée)"))
+            except ValueError:
+                continue
+            db.get(Candidature, out.id).statut = CandidatureStatut.RETENUE
+            res["retenus"] += 1
+    db.commit()
     return res
 
 
@@ -930,6 +969,8 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
             # pour peupler la revue RH et « Mes candidatures » côté collaborateur.
             large_res = _seed_candidatures_larges(db, offre_ids)
             summary["candidatures_created"] += large_res["created"]
+            # Participants RETENUS sur les offres clôturées → écran d'évaluation de mission.
+            summary["participants_retenus"] = _seed_participants_retenus(db, offre_ids)["retenus"]
         else:
             logger.info("Aucune fiche avec ≥3 compétences — offres/candidatures non semées.")
         # Contenus de démo indépendants des fiches (catalogue, cloches, souhaits).

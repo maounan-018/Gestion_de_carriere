@@ -41,6 +41,9 @@ class CompetenceEvaluation(Base):
     source: Mapped[str] = mapped_column(String(12), default=EvaluationSource.MANAGER)
     score: Mapped[int] = mapped_column(Integer)                     # 1 à 10
     evaluateur_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)
+    # Contexte d'évaluation de MISSION : l'offre au titre de laquelle le manager a
+    # évalué la compétence (attribution « évaluée par X dans le cadre de la mission Y »).
+    offre_id: Mapped[int | None] = mapped_column(ForeignKey("offres.id"), default=None, index=True)
     commentaire: Mapped[str | None] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))

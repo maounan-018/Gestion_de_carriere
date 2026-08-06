@@ -41,6 +41,9 @@ class ProfilCompetenceOut(ProfilCompetenceIn):
     skill_label_fr: str | None = None
     acquisition_pct: int | None = None   # % d'acquisition (évaluations + repli niveau)
     evaluee: bool = False                 # False = en attente d'évaluation
+    # Attribution d'une évaluation de MISSION (« évaluée par X dans le cadre de Y »).
+    evaluee_par: str | None = None
+    mission: str | None = None
 
 
 class CompetenceEvaluationIn(BaseModel):

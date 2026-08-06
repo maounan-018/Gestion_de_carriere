@@ -179,3 +179,44 @@ class VacancyOut(BaseModel):
     statut: str
     created_at: datetime
     recos: list[VacancyRecoOut] = Field(default_factory=list)
+
+
+# --- Évaluation de MISSION (post-clôture) : le manager note les compétences
+#     utilisées par les participants RETENUS (Workstream C). ------------------
+class MissionParticipantOut(BaseModel):
+    profil_id: int
+    nom: str
+    poste_actuel: str | None = None
+
+
+class MissionExpectedComp(BaseModel):
+    libelle: str
+    skill_id: int | None = None
+    importance: str = "essentielle"
+
+
+class MissionEvalContextOut(BaseModel):
+    """Contexte d'évaluation d'une mission : l'offre, ses compétences attendues et
+    ses participants retenus — tout ce qu'il faut pour l'écran d'évaluation manager."""
+    offre_id: int
+    titre: str
+    type: str
+    statut: str
+    competences: list[MissionExpectedComp] = Field(default_factory=list)
+    participants: list[MissionParticipantOut] = Field(default_factory=list)
+
+
+class MissionCompetenceScore(BaseModel):
+    libelle: str = Field(..., min_length=1, max_length=300)
+    skill_id: int | None = None
+    categorie: str | None = None
+    score: int = Field(..., ge=1, le=10)
+
+
+class MissionEvaluationIn(BaseModel):
+    competences: list[MissionCompetenceScore] = Field(default_factory=list)
+
+
+class MissionEvaluationOut(BaseModel):
+    evaluees: int
+    ajoutees: int
