@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { Sparkles } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
+import { useSessionStore } from '@/stores/session'
 import type { RhOffer, RhCandidate } from '@/data/rh'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -11,6 +12,8 @@ import BasePill from '@/components/ui/BasePill.vue'
 import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
 import BaseBreadcrumb from '@/components/ui/BaseBreadcrumb.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
+import CvPreview from '@/components/shared/CvPreview.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
@@ -22,11 +25,34 @@ const candidates = ref<RhCandidate[]>([])
 const loading = ref(true)
 const error = ref('')
 
+// Vue partagée RH / manager : le manager consulte les candidats de SES offres
+// publiées (méta via « mes-offres ») ; le RH via la liste RH globale.
+const isManager = computed(() => useSessionStore().role === 'manager')
+const backHome = computed(() =>
+  isManager.value
+    ? { label: 'Mes offres publiées', to: { name: 'manager.mesOffres' } }
+    : { label: 'Offres', to: { name: 'rh.offres' } },
+)
+const ficheRoute = computed(() => (isManager.value ? 'manager.ficheCollab' : 'rh.ficheCollabRh'))
+
+// Aperçu CV intégré (visionneuse) — sans téléchargement.
+const cvOpen = ref(false)
+const cvProfilId = ref<number | null>(null)
+const cvNom = ref('')
+function voirCv(c: RhCandidate) {
+  cvProfilId.value = Number(c.personId)
+  cvNom.value = c.name
+  cvOpen.value = true
+}
+
 async function load() {
   loading.value = true
   error.value = ''
   try {
-    const o = await apiService.getRhOffer(route.params.key as string)
+    const key = route.params.key as string
+    const o = isManager.value
+      ? await apiService.getMesOffreRevue(key)
+      : await apiService.getRhOffer(key)
     offer.value = o ?? null
     candidates.value = o?.candidateList ? [...o.candidateList] : []
   } catch {
@@ -106,9 +132,7 @@ async function reevaluer(c: RhCandidate) {
 
 <template>
   <div>
-    <BaseBreadcrumb
-      :items="[{ label: 'Offres', to: { name: 'rh.offres' } }, { label: 'Revue des candidatures' }]"
-    />
+    <BaseBreadcrumb :items="[backHome, { label: 'Revue des candidatures' }]" />
 
     <LoadingState v-if="loading" label="Chargement des candidatures…" />
     <ErrorState v-else-if="error" :message="error">
@@ -148,7 +172,7 @@ async function reevaluer(c: RhCandidate) {
             <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <RouterLink
-                  :to="{ name: 'rh.ficheCollabRh', params: { id: c.personId } }"
+                  :to="{ name: ficheRoute, params: { id: c.personId } }"
                   class="text-sm font-bold text-ink hover:text-green-deep hover:underline"
                 >
                   {{ c.name }}
@@ -190,6 +214,9 @@ async function reevaluer(c: RhCandidate) {
           <p v-if="c.note" class="mt-2 text-xs italic text-ink-3">{{ c.note }}</p>
 
           <div class="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+            <BaseButton v-if="c.cvFilename" size="sm" variant="secondary" @click="voirCv(c)">
+              <AppIcon name="brief" :size="14" /> Voir le CV
+            </BaseButton>
             <BaseButton
               v-if="c.status !== 'retenu'"
               size="sm"
@@ -237,5 +264,7 @@ async function reevaluer(c: RhCandidate) {
     </template>
 
     <EmptyState v-else title="Offre introuvable" text="Cette offre n'existe pas ou a été retirée." />
+
+    <CvPreview v-if="cvProfilId" v-model="cvOpen" :profil-id="cvProfilId" :nom="cvNom" />
   </div>
 </template>

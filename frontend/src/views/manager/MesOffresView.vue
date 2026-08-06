@@ -23,7 +23,7 @@ const error = ref('')
 const showPublish = ref(false)
 // Vue partagée manager / HRBP : le détail d'offre et le type publiable dépendent du rôle.
 const isRh = computed(() => useSessionStore().role === 'rh')
-const offreDetailRoute = computed(() => (isRh.value ? 'rh.revueCandidats' : 'manager.offreDetail'))
+const offreDetailRoute = computed(() => (isRh.value ? 'rh.revueCandidats' : 'manager.revueCandidats'))
 
 async function load() {
   loading.value = true

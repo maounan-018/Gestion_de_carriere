@@ -756,6 +756,17 @@ export const apiService = {
     offre.candidateList = cands.map(mapRhCandidate)
     return offre
   },
+  /** Revue des candidats d'une offre PUBLIÉE par le manager (méta issue de
+   *  « mes-offres », puis liste nominative). Même écran que la revue RH. */
+  async getMesOffreRevue(key: string): Promise<RhOffer | undefined> {
+    if (MODE === 'mock') { await delay(160); return undefined }
+    const rows = await apiFetch<RhOffreOut[]>('/offres/mes-offres')
+    const offre = rows.map(mapRhOffre).find((o) => o.key === key)
+    if (!offre) return undefined
+    const cands = await apiFetch<OffreCandidatOut[]>(`/offres/${key}/candidats`)
+    offre.candidateList = cands.map(mapRhCandidate)
+    return offre
+  },
   async getRhNotifications(): Promise<NotificationItem[]> {
     if (MODE === 'mock') {
       await delay(200)

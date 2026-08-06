@@ -82,7 +82,7 @@ def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
         OffreCandidatOut(
             profil_id=p.id, candidature_id=c.id, nom=p.nom, prenom=p.prenom,
             poste_actuel=p.poste_actuel, departement_key=p.departement_key,
-            score=c.score, statut=c.statut,
+            score=c.score, statut=c.statut, cv_filename=p.cv_filename,
             couvertes=_libelles(c.evaluation_json, "couvertes"),
             ecarts=_libelles(c.evaluation_json, "ecarts"),
         )

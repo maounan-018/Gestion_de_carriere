@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User, Role
 from app.models.profil import Profil
 from app.models.candidature import Candidature
+from app.models.offre import Offre
 
 
 def profil_of_user(db: Session, user_id: int) -> Profil | None:
@@ -50,6 +51,18 @@ def is_manager_of_profil(db: Session, manager_user_id: int, profil: Profil) -> b
         return False
     linked = db.get(User, profil.user_id)
     return linked is not None and linked.manager_id == manager_user_id
+
+
+def is_candidate_to_my_offer(db: Session, manager_user_id: int, profil_id: int) -> bool:
+    """Vrai si `profil_id` a candidaté à une offre PUBLIÉE par ce manager
+    (Offre.created_by = lui). Ouvre la revue des candidats de SES offres (fiche/CV),
+    même hors de son équipe directe — c'est le périmètre par OFFRE."""
+    return db.scalar(
+        select(Candidature.id)
+        .join(Offre, Offre.id == Candidature.offre_id)
+        .where(Candidature.profil_id == profil_id, Offre.created_by == manager_user_id)
+        .limit(1)
+    ) is not None
 
 
 def manager_user_id_of_profil(db: Session, profil: Profil) -> int | None:
@@ -71,6 +84,8 @@ def can_view_profil(db: Session, user: User, profil: Profil) -> bool:
         return True                                  # son propre profil
     if user.role == Role.MANAGER and is_manager_of_profil(db, user.id, profil):
         return True                                  # membre de son équipe
+    if user.role == Role.MANAGER and is_candidate_to_my_offer(db, user.id, profil.id):
+        return True                                  # candidat à une de SES offres (revue)
     return False
 
 
