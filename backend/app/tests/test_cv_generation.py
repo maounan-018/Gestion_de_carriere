@@ -47,7 +47,8 @@ def test_generer_cv_ecrit_pdf_valide_et_marque_le_profil(db, tmp_path):
     reader = PdfReader(path)
     assert len(reader.pages) >= 1
     texte = reader.pages[0].extract_text()
-    assert "Youssef El Amrani" in texte
+    # Le nom est rendu en capitales dans l'en-tête (style CV) ; le poste en casse d'origine.
+    assert "YOUSSEF EL AMRANI" in texte
     assert "Conseiller clientèle particuliers" in texte
 
     # Le profil est marqué : le CV apparaît côté manager / HRBP comme un CV déposé.

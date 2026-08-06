@@ -3,20 +3,20 @@
 services/cv_generation_service.py — Génération de CV PDF à partir des données du profil.
 
 RÔLE
-    Produit un CV PDF professionnel et déterministe pour un profil, construit à
-    partir de ses données RÉELLES en base : parcours (`ProfilStation`), compétences
-    détenues (`ProfilCompetence`) et projet d'évolution (aspirations / poste visé).
-    Le fichier est écrit là où le contrôleur le sert (`data/cv_profil/{id}.pdf`) et
-    le profil est marqué `cv_filename`/`cv_uploaded_at` → il apparaît côté manager /
-    HRBP exactement comme un CV téléversé.
+    Produit un CV PDF SOBRE, ESSENTIELLEMENT TEXTE (pas de bandeaux colorés ni de
+    barres/segments), sur le modèle des CV classiques : en-tête (nom, intitulé de
+    poste, contact) puis sections en capitales — EXPÉRIENCE PROFESSIONNELLE,
+    FORMATION, COMPÉTENCES, PROJET D'ÉVOLUTION.
 
-    Comme le contenu dérive des compétences et du parcours déjà en base, le CV reste
-    COHÉRENT avec les données qu'exploitent les moteurs (reco, passerelles, inférence
-    de trajectoires) : il matérialise, en document, la « data » du collaborateur.
+    Le FOND dérive des données RÉELLES en base (parcours `ProfilStation`,
+    compétences `ProfilCompetence`, poste visé / aspirations) → le CV reste
+    COHÉRENT avec ce qu'exploitent les moteurs (reco, passerelles, inférence de
+    trajectoires). Les éléments non stockés (formation, e-mail, téléphone,
+    langues) sont SYNTHÉTIQUES mais DÉTERMINISTES par profil (seed = id), et le
+    document est explicitement marqué « données synthétiques » en pied de page.
 
 DÉPENDANCE
-    fpdf2 (pur Python, sans binaire natif). Polices « core » (Helvetica) → le texte
-    est ramené à latin-1 (`_lat`) pour éviter tout embarquement de police.
+    fpdf2 (pur Python). Polices « core » (Helvetica) → texte ramené à latin-1.
 
 EMPLACEMENT MVC
     Couche "services" : logique métier (génération de document), sans HTTP.
@@ -25,6 +25,8 @@ EMPLACEMENT MVC
 from __future__ import annotations
 
 import os
+import random
+import unicodedata
 from datetime import datetime, timezone
 
 from fpdf import FPDF
@@ -38,23 +40,15 @@ from app.models.carriere import ProfilStation, StationEtat
 # Même répertoire que le contrôleur (surchargeable par env CV_PROFIL_DIR → isole les tests).
 _CV_DIR = os.environ.get("CV_PROFIL_DIR", os.path.join("data", "cv_profil"))
 
-# Palette BMCI (miroir de frontend/src/styles/tokens.css) — hex → (r, g, b).
-GREEN = (0x00, 0x91, 0x5A)
-GREEN_DEEP = (0x00, 0x78, 0x4B)
-GREEN_SOFT = (0xE4, 0xF2, 0xEA)
-GREEN_LINE = (0xB9, 0xDE, 0xC9)
-INK = (0x0E, 0x1A, 0x14)
-INK2 = (0x41, 0x50, 0x4A)
-INK3 = (0x6E, 0x7C, 0x75)
-GOLD = (0xB8, 0x89, 0x2E)
-WARNING = (0x8A, 0x5C, 0x12)
-DANGER = (0xC2, 0x3A, 0x32)
-PAPER = (0xFF, 0xFF, 0xFF)
+# Palette sobre : encre (noir), gris, filets clairs. Aucun aplat de couleur.
+INK = (0x1A, 0x1A, 0x1A)
+GREY = (0x55, 0x55, 0x55)
+GREY_LIGHT = (0x8A, 0x8A, 0x8A)
+RULE = (0xBB, 0xBB, 0xBB)
 
-# Remplacements pour ramener un texte Unicode aux polices « core » latin-1.
 _REPL = {
     "’": "'", "‘": "'", "“": '"', "”": '"',
-    "–": "-", "—": "-", "…": "...", "•": "-",
+    "–": "-", "—": "-", "…": "...", "•": "-", "·": "-",
     "œ": "oe", "Œ": "OE", " ": " ", " ": " ",
     " ": " ", "​": "",
 }
@@ -66,84 +60,312 @@ def _lat(s: str | None) -> str:
     return s.encode("latin-1", "replace").decode("latin-1")
 
 
-def _niveau_color(niveau: int | None) -> tuple:
-    """Couleur d'un segment de maîtrise (miroir du code couleur Lot 2 : vert/ambre/rouge)."""
-    if niveau is None:
-        return INK3
-    pct = niveau * 20
-    if pct >= 70:
-        return GREEN
-    if pct >= 40:
-        return WARNING
-    return DANGER
+def _cap(s: str) -> str:
+    """Première lettre en capitale (les libellés ESCO sont en minuscules)."""
+    s = (s or "").strip()
+    return (s[:1].upper() + s[1:]) if s else s
 
+
+def _strip_accents(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c))
+
+
+# ---------------------------------------------------------------- Éléments synthétiques
+
+_ECOLES = [
+    ("ISCAE", "Casablanca"), ("ENCG", "Settat"), ("ENCG", "Casablanca"),
+    ("ENCG", "Tanger"), ("Université Hassan II", "Casablanca"),
+    ("Université Mohammed V", "Rabat"), ("HEM Business School", "Casablanca"),
+    ("Al Akhawayn University", "Ifrane"), ("EMI - École Mohammadia d'Ingénieurs", "Rabat"),
+    ("ENSIAS", "Rabat"), ("INPT", "Rabat"), ("ENSA", "Marrakech"),
+    ("Toulouse Business School", "Casablanca"), ("FSJES", "Casablanca"),
+]
+_MENTIONS = ["Mention Bien", "Mention Très Bien", "Mention Assez Bien",
+             "Major de promotion", "", ""]
+_DIPLOMES_DEFAUT = ["Master en Management (Bac+5)", "Master Économie & Gestion",
+                    "Master Sciences de Gestion", "Diplôme de l'ESC (Grande École)"]
+_DIPLOMES_PAR_FAMILLE = {
+    "risque": ["Master Gestion des Risques & Contrôle", "Master Finance de Marché",
+               "Diplôme d'Ingénieur - Ingénierie Financière"],
+    "finance": ["Master Finance d'Entreprise", "Master Comptabilité, Contrôle, Audit",
+                "Diplôme d'Expertise Comptable (en cours)"],
+    "it": ["Diplôme d'Ingénieur en Informatique", "Master Ingénierie des Systèmes d'Information",
+           "Master Data Science & Big Data"],
+    "rh": ["Master Management des Ressources Humaines", "Master Gestion des Talents"],
+    "corporate": ["Master Finance d'Entreprise", "Master Management (Grande École)",
+                  "Diplôme d'Ingénieur Financier"],
+    "conformite": ["Master Droit des Affaires", "Master Conformité & Contrôle Interne"],
+}
+
+
+def _famille_diplome(dept_key: str | None, poste: str | None) -> str | None:
+    txt = f"{dept_key or ''} {poste or ''}".lower()
+    for fam, keys in {
+        "risque": ("risque", "risk"),
+        "conformite": ("conformite", "conform", "compliance", "kyc", "lcb"),
+        "it": ("si", "informatique", "data", "digital", "tech", "systeme"),
+        "rh": ("ressources_humaines", "rh", "talent", "hrbp"),
+        "finance": ("finance", "comptab", "controle", "audit", "reporting"),
+        "corporate": ("corporate", "entreprise", "financement", "investissement", "affaires"),
+    }.items():
+        if any(k in txt for k in keys):
+            return fam
+    return None
+
+
+def _annee_diplome(profil: Profil, stations: list[ProfilStation], rng: random.Random) -> int:
+    """Année de diplôme plausible : quelques années avant l'entrée / le 1er poste."""
+    base = None
+    if getattr(profil, "date_entree", None):
+        base = profil.date_entree.year
+    else:
+        for st in stations:
+            for tok in (st.periode or "").replace("-", " ").split():
+                if tok.isdigit() and 1980 <= int(tok) <= 2100:
+                    base = int(tok)
+                    break
+            if base:
+                break
+    base = base or 2016
+    return max(1995, base - rng.randint(0, 2))
+
+
+def _contact(profil: Profil, rng: random.Random) -> tuple[str, str]:
+    prenom = _strip_accents(profil.prenom or "").lower().replace(" ", "").replace("'", "")
+    nom = _strip_accents(profil.nom or "").lower().replace(" ", "").replace("'", "")
+    email = f"{prenom}.{nom}@bnpparibas.ma" if (prenom or nom) else "collaborateur@bnpparibas.ma"
+    tel = "+212 6 {:02d} {:02d} {:02d} {:02d}".format(
+        rng.randint(0, 99), rng.randint(0, 99), rng.randint(0, 99), rng.randint(0, 99))
+    return email, tel
+
+
+def _langues(rng: random.Random) -> str:
+    parts = [
+        "Arabe (langue maternelle)",
+        "Français ({})".format(rng.choice(["courant", "bilingue", "langue maternelle"])),
+        "Anglais ({})".format(rng.choice(["courant", "professionnel", "intermédiaire", "B2", "C1"])),
+    ]
+    if rng.random() < 0.35:
+        parts.append("Espagnol ({})".format(rng.choice(["notions", "B1", "intermédiaire"])))
+    return ", ".join(parts)
+
+
+# ---------------------------------------------------------------- Gabarit PDF (sobre)
 
 class _CvPdf(FPDF):
-    """Gabarit CV : bandeau d'en-tête (page 1) + pied de page sur toutes les pages."""
-
-    def __init__(self, nom: str, sous_titre: str, meta: str):
+    def __init__(self):
         super().__init__(format="A4", unit="mm")
-        self._nom = nom
-        self._sous_titre = sous_titre
-        self._meta = meta
-        self.set_auto_page_break(auto=True, margin=18)
-        self.set_margins(15, 15, 15)
-
-    def header(self):
-        if self.page_no() != 1:
-            return
-        self.set_fill_color(*GREEN_DEEP)
-        self.rect(0, 0, self.w, 36, style="F")
-        self.set_xy(15, 9)
-        self.set_text_color(*PAPER)
-        self.set_font("Helvetica", "B", 21)
-        self.cell(self.w - 30, 9, _lat(self._nom), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        self.set_x(15)
-        self.set_font("Helvetica", "", 11.5)
-        self.set_text_color(0xDF, 0xF0, 0xE7)
-        self.cell(self.w - 30, 6, _lat(self._sous_titre), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        if self._meta:
-            self.set_x(15)
-            self.set_font("Helvetica", "", 8.5)
-            self.set_text_color(*GREEN_LINE)
-            self.cell(self.w - 30, 5, _lat(self._meta))
-        self.set_y(44)
+        self.set_auto_page_break(auto=True, margin=16)
+        self.set_margins(18, 16, 18)
 
     def footer(self):
-        self.set_y(-14)
-        self.set_draw_color(*GREEN_LINE)
+        self.set_y(-13)
+        self.set_draw_color(*RULE)
         self.set_line_width(0.2)
-        self.line(15, self.get_y(), self.w - 15, self.get_y())
-        self.set_y(-11)
+        self.line(18, self.get_y(), self.w - 18, self.get_y())
+        self.set_y(-10.5)
         self.set_font("Helvetica", "", 7.5)
-        self.set_text_color(*INK3)
+        self.set_text_color(*GREY_LIGHT)
         stamp = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-        self.cell(0, 5, _lat(f"Document généré par BMCI Carrière · {stamp}"), align="C")
+        self.cell(0, 5, _lat(f"Document de démonstration - données synthétiques - BMCI Carrière - {stamp}"),
+                  align="C")
+
+
+def _txt_w(pdf: _CvPdf) -> float:
+    return pdf.w - pdf.l_margin - pdf.r_margin
 
 
 def _section(pdf: _CvPdf, titre: str):
-    """Titre de section vert + filet, avec un peu d'air au-dessus."""
-    if pdf.get_y() > pdf.h - 40:
+    if pdf.get_y() > pdf.h - 34:
         pdf.add_page()
-    pdf.ln(3.5)
-    pdf.set_font("Helvetica", "B", 11.5)
-    pdf.set_text_color(*GREEN_DEEP)
-    pdf.cell(0, 6, _lat(titre.upper()), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    y = pdf.get_y() + 0.4
-    pdf.set_draw_color(*GREEN_LINE)
-    pdf.set_line_width(0.4)
-    pdf.line(15, y, pdf.w - 15, y)
-    pdf.ln(2.5)
+    pdf.ln(3.2)
+    pdf.set_font("Helvetica", "B", 10.5)
+    pdf.set_text_color(*INK)
+    pdf.cell(0, 5.5, _lat(titre.upper()), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    y = pdf.get_y() + 0.3
+    pdf.set_draw_color(*RULE)
+    pdf.set_line_width(0.3)
+    pdf.line(18, y, pdf.w - 18, y)
+    pdf.ln(2.2)
 
+
+def _entete(pdf: _CvPdf, nom: str, poste: str, contact: str, meta: str):
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(*INK)
+    pdf.cell(0, 8.5, _lat(nom.upper()), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if poste:
+        pdf.set_font("Helvetica", "", 11)
+        pdf.set_text_color(*GREY)
+        pdf.cell(0, 5.6, _lat(poste), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("Helvetica", "", 8.7)
+    pdf.set_text_color(*GREY)
+    pdf.cell(0, 5, _lat(contact), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if meta:
+        pdf.set_text_color(*GREY_LIGHT)
+        pdf.cell(0, 4.6, _lat(meta), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    y = pdf.get_y() + 1.4
+    pdf.set_draw_color(*INK)
+    pdf.set_line_width(0.5)
+    pdf.line(18, y, pdf.w - 18, y)
+    pdf.ln(2.6)
+
+
+def _est_formation(st: ProfilStation) -> bool:
+    """Une station de FORMATION initiale (marquée par le seed), à router vers la
+    section Formation plutôt que vers l'expérience professionnelle."""
+    return "formation initiale" in (st.description or "").lower()
+
+
+def _clean_edu_titre(t: str) -> str:
+    """Retire un suffixe « – diplômé-e / – obtention du diplôme » du titre de
+    formation (tout type de tiret)."""
+    t = (t or "").strip()
+    norm = t.replace("–", "-").replace("—", "-")
+    if " - " in norm:
+        head, tail = norm.rsplit(" - ", 1)
+        if "diplôm" in tail.lower() or "diplom" in tail.lower():
+            return head.strip()
+    return t
+
+
+def _experience(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation]):
+    # Postes RÉELLEMENT occupés (on exclut l'objectif = projet, et la formation
+    # initiale = section Formation), en ordre anté-chronologique (plus récent d'abord).
+    postes = [s for s in stations if s.etat != StationEtat.OBJECTIF and not _est_formation(s)]
+    postes = sorted(postes, key=lambda s: s.ordre, reverse=True)
+    if not postes:
+        return
+    _section(pdf, "Expérience professionnelle")
+    w = _txt_w(pdf)
+    for st in postes:
+        if pdf.get_y() > pdf.h - 26:
+            pdf.add_page()
+        actuel = st.etat == StationEtat.ACTUEL
+        # Ligne titre (gras) + période (grise, alignée à droite).
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(*INK)
+        titre = st.titre + ("  (poste actuel)" if actuel else "")
+        pdf.cell(w * 0.72, 5.4, _lat(titre))
+        pdf.set_font("Helvetica", "", 8.7)
+        pdf.set_text_color(*GREY)
+        pdf.cell(w * 0.28, 5.4, _lat(st.periode or ""), align="R",
+                 new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        if st.description:
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(*GREY)
+            pdf.multi_cell(w, 4.5, _lat(st.description.strip()))
+        pdf.ln(2.0)
+
+
+def _formation(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation], rng: random.Random):
+    _section(pdf, "Formation")
+    w = _txt_w(pdf)
+    edu = sorted((s for s in stations if _est_formation(s)), key=lambda s: s.ordre, reverse=True)
+    if edu:
+        # Formation RÉELLE issue du parcours (cohérente avec le reste de la plateforme).
+        for st in edu:
+            pdf.set_font("Helvetica", "B", 9.7)
+            pdf.set_text_color(*INK)
+            pdf.cell(w * 0.78, 5.2, _lat(_clean_edu_titre(st.titre)))
+            pdf.set_font("Helvetica", "", 8.7)
+            pdf.set_text_color(*GREY)
+            pdf.cell(w * 0.22, 5.2, _lat(st.periode or ""), align="R",
+                     new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.ln(0.8)
+        return
+    # Aucune formation en base → entrée SYNTHÉTIQUE déterministe.
+    (ecole, ville) = rng.choice(_ECOLES)
+    annee = _annee_diplome(profil, stations, rng)
+    fam = _famille_diplome(profil.departement_key, profil.poste_actuel)
+    diplome = rng.choice(_DIPLOMES_PAR_FAMILLE.get(fam, _DIPLOMES_DEFAUT))
+    mention = rng.choice(_MENTIONS)
+    pdf.set_font("Helvetica", "B", 9.7)
+    pdf.set_text_color(*INK)
+    pdf.cell(w * 0.72, 5.2, _lat(f"{ecole} - {ville}"))
+    pdf.set_font("Helvetica", "", 8.7)
+    pdf.set_text_color(*GREY)
+    pdf.cell(w * 0.28, 5.2, _lat(f"{annee - rng.randint(3, 5)} - {annee}"), align="R",
+             new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*GREY)
+    ligne = diplome + (f"  |  {mention}" if mention else "")
+    pdf.multi_cell(w, 4.6, _lat(ligne))
+    pdf.ln(0.6)
+
+
+_CAT_LABEL = {
+    "metier": "Métier", "métier": "Métier", "business": "Métier",
+    "comportementale": "Comportementales", "comportemental": "Comportementales",
+    "comportement": "Comportementales", "soft": "Comportementales", "transversale": "Comportementales",
+    "outils": "Outils & technologies", "outil": "Outils & technologies",
+    "technique": "Outils & technologies", "tech": "Outils & technologies",
+    "technologie": "Outils & technologies", "digital": "Outils & technologies",
+    "langue": "Langues", "langues": "Langues",
+}
+_CAT_ORDER = ["Métier", "Outils & technologies", "Comportementales", "Autres compétences"]
+
+
+def _competences(pdf: _CvPdf, comps: list[ProfilCompetence], rng: random.Random):
+    _section(pdf, "Compétences")
+    groupes: dict[str, list[str]] = {}
+    for c in comps[:26]:
+        label = _cap((c.skill_label_fr or c.libelle or "").strip())
+        if not label:
+            continue
+        cat = _CAT_LABEL.get((getattr(c, "categorie", None) or "").strip().lower(), "Autres compétences")
+        groupes.setdefault(cat, [])
+        if label not in groupes[cat]:
+            groupes[cat].append(label)
+    w = _txt_w(pdf)
+    ordered = [c for c in _CAT_ORDER if c in groupes] + [c for c in groupes if c not in _CAT_ORDER]
+    for cat in ordered:
+        libs = groupes[cat]
+        if not libs:
+            continue
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*INK)
+        pdf.cell(0, 4.8, _lat(cat), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*GREY)
+        pdf.multi_cell(w, 4.6, _lat(", ".join(libs)))
+        pdf.ln(1.2)
+    # Langues (synthétiques, déterministes).
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*INK)
+    pdf.cell(0, 4.8, _lat("Langues"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*GREY)
+    pdf.multi_cell(w, 4.6, _lat(_langues(rng)))
+
+
+def _projet(pdf: _CvPdf, profil: Profil):
+    lignes = []
+    if getattr(profil, "poste_vise", None):
+        details = " - ".join(x for x in (getattr(profil, "horizon", None),
+                                         getattr(profil, "type_evolution", None)) if x)
+        cible = f"Poste visé : {profil.poste_vise}" + (f"  ({details})" if details else "")
+        lignes.append(cible)
+    if getattr(profil, "aspirations", None):
+        lignes.append(profil.aspirations.strip())
+    if not lignes:
+        return
+    _section(pdf, "Projet d'évolution")
+    w = _txt_w(pdf)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*GREY)
+    for txt in lignes:
+        pdf.multi_cell(w, 4.6, _lat(txt))
+        pdf.ln(0.6)
+
+
+# ---------------------------------------------------------------- Collecte & API
 
 def _collecter(db: Session, profil: Profil):
-    """Rassemble parcours + compétences retenues pour le CV."""
     stations = list(db.scalars(
         select(ProfilStation)
         .where(ProfilStation.profil_id == profil.id)
         .order_by(ProfilStation.ordre)
     ).all())
-
     comps = list(db.scalars(
         select(ProfilCompetence).where(ProfilCompetence.profil_id == profil.id)
     ).all())
@@ -163,139 +385,6 @@ def _collecter(db: Session, profil: Profil):
     return stations, ordered
 
 
-def _bloc_projet(pdf: _CvPdf, profil: Profil):
-    """Encadré « Projet d'évolution » (poste visé / horizon / aspirations)."""
-    lignes = []
-    if profil.poste_vise:
-        cible = f"Poste visé : {profil.poste_vise}"
-        details = " · ".join(x for x in (profil.horizon, profil.type_evolution) if x)
-        if details:
-            cible += f"  ({details})"
-        lignes.append(("b", cible))
-    if profil.aspirations:
-        lignes.append(("", profil.aspirations.strip()))
-    if not lignes:
-        return
-    _section(pdf, "Projet d'évolution")
-    y0 = pdf.get_y()
-    pdf.set_fill_color(*GREEN_SOFT)
-    pdf.set_draw_color(*GREEN_LINE)
-    # Encadré : on mesure d'abord la hauteur du texte via un rendu, mais fpdf ne
-    # le fait pas simplement ; on dessine le fond après coup à hauteur connue.
-    pdf.set_xy(15, y0)
-    for style, txt in lignes:
-        pdf.set_font("Helvetica", "B" if style == "b" else "", 9.5)
-        pdf.set_text_color(*INK if style == "b" else INK2)
-        pdf.set_x(19)
-        pdf.multi_cell(pdf.w - 38, 5, _lat(txt))
-        pdf.ln(0.5)
-    y1 = pdf.get_y()
-    # Filet vertical d'accent à gauche de l'encadré.
-    pdf.set_fill_color(*GREEN)
-    pdf.rect(15, y0, 1.4, y1 - y0, style="F")
-    pdf.ln(1)
-
-
-def _bloc_parcours(pdf: _CvPdf, stations: list[ProfilStation]):
-    if not stations:
-        return
-    _section(pdf, "Parcours professionnel")
-    for st in stations:
-        if pdf.get_y() > pdf.h - 34:
-            pdf.add_page()
-        etat = st.etat
-        if etat == StationEtat.ACTUEL:
-            dot = GREEN
-        elif etat == StationEtat.OBJECTIF:
-            dot = GOLD
-        else:
-            dot = INK3
-        y0 = pdf.get_y()
-        # Puce colorée sur la marge.
-        pdf.set_fill_color(*dot)
-        pdf.ellipse(15.5, y0 + 1.3, 2.6, 2.6, style="F")
-        # Période (colorée) puis titre (gras) sur la même ligne.
-        pdf.set_xy(21, y0)
-        pdf.set_font("Helvetica", "B", 8.5)
-        pdf.set_text_color(*dot)
-        pdf.cell(30, 5, _lat(st.periode))
-        pdf.set_xy(52, y0)
-        pdf.set_font("Helvetica", "B", 10)
-        pdf.set_text_color(*INK)
-        pdf.multi_cell(pdf.w - 15 - 52, 5, _lat(st.titre))
-        if st.description:
-            pdf.set_x(52)
-            pdf.set_font("Helvetica", "", 8.5)
-            pdf.set_text_color(*INK2)
-            pdf.multi_cell(pdf.w - 15 - 52, 4.4, _lat(st.description))
-        pdf.ln(2.2)
-
-
-def _bloc_competences(pdf: _CvPdf, comps: list[ProfilCompetence]):
-    if not comps:
-        return
-    _section(pdf, "Compétences")
-    comps = comps[:14]
-    col_w = (pdf.w - 30 - 8) / 2          # deux colonnes avec gouttière
-    bar_w = 26.0
-    seg = bar_w / 5
-    x_left = 15
-    x_right = 15 + col_w + 8
-    for i in range(0, len(comps), 2):
-        if pdf.get_y() > pdf.h - 26:
-            pdf.add_page()
-        row_y = pdf.get_y()
-        for j, x0 in ((0, x_left), (1, x_right)):
-            if i + j >= len(comps):
-                continue
-            c = comps[i + j]
-            label = (c.skill_label_fr or c.libelle or "").strip()
-            label = label[:1].upper() + label[1:] if label else label   # 1re lettre en capitale (libellés ESCO minuscules)
-            niveau = c.niveau
-            pdf.set_xy(x0, row_y)
-            pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(*INK)
-            # Libellé tronqué pour laisser la place à la barre.
-            pdf.cell(col_w - bar_w - 3, 5.5, _lat(_ellipsize(pdf, label, col_w - bar_w - 4)))
-            # Barre de maîtrise (5 segments).
-            bx = x0 + col_w - bar_w
-            by = row_y + 1.4
-            filled = niveau or 0
-            fill = _niveau_color(niveau)
-            for s in range(5):
-                if s < filled:
-                    pdf.set_fill_color(*fill)
-                else:
-                    pdf.set_fill_color(0xE1, 0xEA, 0xE4)
-                pdf.rect(bx + s * seg, by, seg - 0.8, 2.6, style="F")
-            if niveau is None:
-                pdf.set_xy(bx, by - 0.6)
-                pdf.set_font("Helvetica", "", 6.5)
-                pdf.set_text_color(*INK3)
-                pdf.cell(bar_w, 4, _lat("en attente d'évaluation"))
-        pdf.set_y(row_y + 7)
-
-
-def _ellipsize(pdf: FPDF, text: str, max_w: float) -> str:
-    """Tronque `text` avec « … » pour tenir dans `max_w` mm à la police courante."""
-    text = _lat(text)
-    if pdf.get_string_width(text) <= max_w:
-        return text
-    while text and pdf.get_string_width(text + "...") > max_w:
-        text = text[:-1]
-    return (text.rstrip() + "...") if text else ""
-
-
-def _bloc_apropos(pdf: _CvPdf, profil: Profil):
-    if not profil.bio:
-        return
-    _section(pdf, "À propos")
-    pdf.set_font("Helvetica", "", 9.5)
-    pdf.set_text_color(*INK2)
-    pdf.set_x(15)
-    pdf.multi_cell(pdf.w - 30, 5, _lat(profil.bio.strip()))
-
-
 def _nom_complet(profil: Profil) -> str:
     return " ".join(x for x in (profil.prenom, profil.nom) if x).strip() or (profil.nom or "Collaborateur")
 
@@ -304,48 +393,52 @@ def _humaniser_dept(key: str | None) -> str | None:
     if not key:
         return None
     label = key.replace("_", " ").title()
-    for acro in ("Bmci", "Pme", "Rh", "Si", "Rse", "Esg"):          # acronymes mal cassés par title()
+    for acro in ("Bmci", "Pme", "Rh", "Si", "Rse", "Esg"):
         label = label.replace(acro, acro.upper())
     return label
 
 
 def generer_cv_profil(db: Session, profil_id: int, *, out_dir: str = _CV_DIR) -> str | None:
-    """Génère (ou régénère) le CV PDF du profil et le marque `cv_filename`.
+    """Génère (ou régénère) le CV PDF SOBRE du profil et le marque `cv_filename`.
     Renvoie le chemin du fichier écrit, ou None si le profil n'existe pas.
-    Idempotent : réécrit le fichier à l'identique pour des données inchangées."""
+    Déterministe (seed = id) : mêmes données → même document."""
     profil = db.get(Profil, profil_id)
     if profil is None:
         return None
 
+    rng = random.Random(profil_id)
     stations, comps = _collecter(db, profil)
 
     nom = _nom_complet(profil)
-    sous_titre = profil.poste_actuel or "Collaborateur BMCI"
+    poste = profil.poste_actuel or "Collaborateur BMCI"
+    email, tel = _contact(profil, rng)
+    contact = f"{email}   |   {tel}"
     meta_parts = []
     dept = _humaniser_dept(profil.departement_key)
     if dept:
         meta_parts.append(dept)
     if profil.matricule:
         meta_parts.append(f"Matricule {profil.matricule}")
-    if profil.date_entree:
-        meta_parts.append(f"Dans la banque depuis {profil.date_entree.year}")
-    meta = "  ·  ".join(meta_parts)
+    if getattr(profil, "date_entree", None):
+        meta_parts.append(f"Chez BMCI depuis {profil.date_entree.year}")
+    meta = "   -   ".join(meta_parts)
 
-    pdf = _CvPdf(nom, sous_titre, meta)
+    pdf = _CvPdf()
     pdf.set_title(_lat(f"CV - {nom}"))
-    pdf.set_creator("BMCI Carrière")
+    pdf.set_creator("BMCI Carriere")
     pdf.add_page()
 
-    _bloc_projet(pdf, profil)
-    _bloc_parcours(pdf, stations)
-    _bloc_competences(pdf, comps)
-    _bloc_apropos(pdf, profil)
+    _entete(pdf, nom, poste, contact, meta)
+    _experience(pdf, profil, stations)
+    _formation(pdf, profil, stations, rng)
+    if comps:
+        _competences(pdf, comps, rng)
+    _projet(pdf, profil)
 
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"{profil_id}.pdf")
     pdf.output(path)
 
-    # Nom d'affichage lisible côté fiche manager / HRBP.
     slug = "-".join(nom.split())
     profil.cv_filename = _lat(f"CV-{slug}.pdf")[:255]
     profil.cv_uploaded_at = datetime.now(timezone.utc)
@@ -356,7 +449,7 @@ def generer_cv_profil(db: Session, profil_id: int, *, out_dir: str = _CV_DIR) ->
 def generer_tous_les_cv(db: Session, *, out_dir: str = _CV_DIR,
                         only_missing: bool = False) -> dict:
     """Génère les CV de TOUS les profils. `only_missing` saute ceux qui ont déjà un
-    `cv_filename`. Renvoie un résumé {generes, ignores}."""
+    `cv_filename`. Renvoie un résumé {generes, ignores, total}."""
     profils = list(db.scalars(select(Profil).order_by(Profil.id)).all())
     generes, ignores = 0, 0
     for p in profils:
