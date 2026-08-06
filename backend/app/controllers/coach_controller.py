@@ -64,7 +64,8 @@ def coach_stream(req: CoachRequest, user: User = Depends(get_current_user)) -> S
         try:
             for ev in coach_service.chat_agent_stream(
                 db, user_id, req.message, req.history,
-                mode=req.mode, section=req.section, focus=req.focus,
+                mode=req.mode, section=req.section, section_index=req.section_index,
+                section_turns=req.section_turns, focus=req.focus,
                 ouverture=req.ouverture, sujet=req.sujet,
             ):
                 yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"

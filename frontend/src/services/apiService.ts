@@ -73,6 +73,10 @@ export interface CoachStreamHandlers {
 export interface CoachTurnOpts {
   mode?: 'carriere' | 'entretien_copilote' | 'entretien_roleplay' | 'entretien_copilote_equipe'
   section?: string
+  /** Index (0-based) de la section en cours — l'IA pilote l'avancement (balise [[SUIVANT]]). */
+  section_index?: number
+  /** Réponses déjà données dans la section (plancher anti-avance éclair côté backend). */
+  section_turns?: number
   focus?: string
   ouverture?: boolean
   sujet?: { nom: string; poste?: string; aspiration?: string; ecarts?: string[]; pole?: string }
