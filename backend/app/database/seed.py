@@ -887,6 +887,52 @@ def _seed_population(db: Session, password_hash: str) -> int:
     return seq
 
 
+def _seed_comptes_orphelins(db: Session, password_hash: str) -> dict:
+    """Garantit qu'un COMPTE loginable existe pour CHAQUE profil (exigence démo :
+    n'importe lequel des profils doit pouvoir se connecter à son espace) et que le
+    lien manager soit COHÉRENT entre `Profil.manager_id` et `User.manager_id`.
+    Sans ça, un membre listé dans « Mon équipe » (filtré sur Profil.manager_id)
+    dont le compte manque — ou dont User.manager_id diverge — renvoie 403 à
+    l'ouverture de sa fiche (« ce membre n'existe pas »). Idempotent.
+    Rôle déduit du poste (Responsable/Directeur → MANAGER, sinon COLLAB)."""
+    import unicodedata
+    profils = list(db.scalars(select(Profil).order_by(Profil.id)).all())
+    taken = {(e or "").lower() for e in db.scalars(select(User.email)).all()}
+    crees = 0
+    for p in profils:
+        if p.user_id is not None:
+            continue
+        role = Role.MANAGER if _niveau_poste(p.poste_actuel or "") >= 2 else Role.COLLAB
+        raw = f"{(p.prenom or '').strip()}.{(p.nom or '').strip()}"
+        slug = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode() \
+            .lower().replace(" ", "").strip(".") or f"profil{p.id}"
+        email = f"{slug}@bmci.local"
+        n = 1
+        while email in taken:
+            n += 1
+            email = f"{slug}.{n}@bmci.local"
+        taken.add(email)
+        u = User(email=email, name=f"{(p.prenom or '').strip()} {p.nom}".strip(),
+                 role=role, type=UserType.SYNTHETIC, password_hash=password_hash,
+                 is_active=True, manager_id=p.manager_id,
+                 departement_key=p.departement_key, matricule=p.matricule)
+        db.add(u)
+        db.flush()
+        p.user_id = u.id
+        crees += 1
+    # Cohérence : User.manager_id <- Profil.manager_id (le front liste l'équipe sur
+    # Profil.manager_id, l'ownership backend la vérifie via User.manager_id).
+    alignes = 0
+    for p in profils:
+        if p.manager_id is not None and p.user_id is not None:
+            u = db.get(User, p.user_id)
+            if u and u.manager_id != p.manager_id:
+                u.manager_id = p.manager_id
+                alignes += 1
+    db.commit()
+    return {"comptes_crees": crees, "liens_alignes": alignes}
+
+
 _ANNEE_REF = 2026  # « aujourd'hui » de la démo
 
 
@@ -1153,11 +1199,15 @@ def seed_all(db: Session, *, demo_accounts: bool, synthetic_personas: bool,
         summary["notifications_created"] = _seed_notifications(db, users_by_email)
         summary["souhaits_created"] = _seed_souhaits(db, marc_profil)
         summary["carriere_created"] = _seed_carriere(db, users_by_email)
-        # Parcours de carrière (« CV » structuré) pour toute la population (Workstream D).
-        summary["trajectoires_creees"] = _seed_trajectoires(db)["stations_creees"]
         summary["carto_created"] = _seed_carto(db)
         if population:
             summary["population_created"] = _seed_population(db, hash_password(password))
+        # Un compte loginable pour CHAQUE profil + cohérence du lien manager
+        # (après création de TOUS les profils : carto, population, candidats).
+        summary["comptes_orphelins"] = _seed_comptes_orphelins(
+            db, hash_password(password))["comptes_crees"]
+        # Parcours de carrière (« CV » structuré) — APRÈS tous les profils (carto inclus).
+        summary["trajectoires_creees"] = _seed_trajectoires(db)["stations_creees"]
         summary["entretiens_created"] = _seed_entretiens(db)
     elif synthetic_offers and not demo_accounts:
         logger.info("SEED_DEMO_ACCOUNTS=false — offres/candidatures non semées (créateurs manquants).")
@@ -1201,6 +1251,7 @@ def main() -> None:
     print("Cartographie    :", summary["carto_created"], "profils (pôles × familles)")
     print("Population       :", summary["population_created"], "comptes synthétiques (collab/manager/N+2)")
     print("Entretiens      :", summary["entretiens_created"], "créés")
+    print("Comptes orphelins:", summary.get("comptes_orphelins", 0), "créés (tous les profils loginables)")
     print("CV PDF          :", summary.get("cv_generes", 0), "générés (data/cv_profil/)")
     if summary["users_created"]:
         print("\nIdentifiants de démo (LOCAL/DÉMO uniquement) — mot de passe commun :", password)
