@@ -15,7 +15,7 @@ import {
   RH_PEOPLE, CARTO_POLES, CARTO_SKILLS, RH_KPIS, RH_ALERTS, HAUTS_POTENTIELS, VEILLE, RH_OFFERS, RH_NOTIFICATIONS, NADIA_PROFILE,
 } from '@/data/rh'
 import type { RhOffer } from '@/data/rh'
-import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas } from '@/types/rh'
+import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas, SuccessionPlan } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable, MyCvStatus,
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin, PeerReview,
@@ -132,22 +132,12 @@ const FAMILLES_MOCK: FamilleTension[] = [
   { famille: 'Outils & Tech', detenues: 18, profilsCouverts: 8, niveauMoyen: 2.8, demande: 2, tension: 'faible' },
 ]
 
-/** Départements + plan de succession (mocks hors backend). */
+/** Départements (mock hors backend). */
 const DEPTS_MOCK: { key: string; nom: string }[] = [
   { key: 'risques', nom: 'Risques' },
   { key: 'corporate_banking', nom: 'Corporate Banking' },
   { key: 'ressources_humaines', nom: 'Ressources Humaines' },
 ]
-const SUCCESSION_MOCK = {
-  effectif: 8,
-  plan:
-    'PLAN DE SUCCESSION — synthèse (démonstration)\n\n' +
-    '1. Rôles clés et successeurs internes potentiels : le poste de Directeur de pôle a 2 successeurs pressentis.\n' +
-    '2. Préparation : 1 prêt à 12 mois, 1 à développer sur 24 mois.\n' +
-    '3. Écarts à combler : management d’équipe, pilotage budgétaire.\n' +
-    '4. Risques : 1 poste critique sans relève identifiée — vivier à constituer.',
-  model: 'mock',
-}
 
 /** Référentiels éditables (mocks hors backend). */
 const GABARIT_MOCK: GabaritDoc = {
@@ -843,33 +833,32 @@ export const apiService = {
       body: { metier: input.metier, departement_key: input.departementKey },
     })
   },
-  /** Plan de succession raisonné d'un département (RH). ⚠️ En live : IA de
-   *  raisonnement lourde (qwen3.6, ~4 min) → mode ASYNCHRONE (job + polling),
-   *  comme la reco : requêtes courtes, pas de HTTP tenu (timeout proxy) ni de
-   *  verrou GPU maintenu pendant l'attente du client. */
-  async getSuccession(departementKey: string): Promise<{ effectif: number; plan: string; model: string }> {
+  /** Plan de succession CALCULÉ d'un département (RH) : successeurs internes classés
+   *  par adéquation de compétences, préparation et postes à risque. Déterministe et
+   *  INSTANTANÉ (aucun LLM) → appel synchrone. */
+  async getSuccession(departementKey: string): Promise<SuccessionPlan> {
     if (MODE === 'mock') {
-      await delay(800)
-      return SUCCESSION_MOCK
+      await delay(200)
+      return { departementKey, effectif: 0, postesCles: 0, couverts: 0, aRisque: 0, synthese: '', roles: [] }
     }
-    const { job_id } = await apiFetch<{ job_id: string }>('/rh/succession/async', {
-      method: 'POST',
-      body: { departement_key: departementKey },
-    })
-    for (let i = 0; i < 180; i++) {
-      // ~180 × 2 s = 6 min de marge (le raisonnement qwen3.6 dure ~4 min).
-      await delay(2000)
-      const s = await apiFetch<{
-        status: string
-        result?: { departement_key: string; effectif: number; plan: string; model: string }
-        error?: string
-      }>(`/rh/succession/jobs/${job_id}`)
-      if (s.status === 'done' && s.result) {
-        return { effectif: s.result.effectif, plan: s.result.plan, model: s.result.model }
-      }
-      if (s.status === 'error') throw new Error(s.error || 'Échec du plan de succession.')
+    const r = await apiFetch<{
+      departement_key: string; effectif: number; postes_cles: number; couverts: number; a_risque: number
+      synthese: string
+      roles: {
+        poste: string; titulaire: string; risque: boolean
+        successeurs: { nom: string; poste: string | null; score: number; readiness: string; ecarts: string[] }[]
+      }[]
+    }>('/rh/succession', { method: 'POST', body: { departement_key: departementKey } })
+    return {
+      departementKey: r.departement_key, effectif: r.effectif, postesCles: r.postes_cles,
+      couverts: r.couverts, aRisque: r.a_risque, synthese: r.synthese,
+      roles: r.roles.map((ro) => ({
+        poste: ro.poste, titulaire: ro.titulaire, risque: ro.risque,
+        successeurs: ro.successeurs.map((s) => ({
+          nom: s.nom, poste: s.poste ?? '', score: s.score, readiness: s.readiness, ecarts: s.ecarts,
+        })),
+      })),
     }
-    throw new Error('Le plan de succession a expiré (délai dépassé).')
   },
   /** Gabarit de fiche (référentiel éditable). */
   async getGabarit(): Promise<GabaritDoc> {

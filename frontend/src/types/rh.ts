@@ -144,3 +144,27 @@ export interface EntretienCas {
   moisDepuisDernier: number | null
   managerNom: string | null
 }
+
+/** Plan de succession CALCULÉ (déterministe) d'un pôle. */
+export interface SuccessionSuccesseur {
+  nom: string
+  poste: string
+  score: number
+  readiness: string
+  ecarts: string[]
+}
+export interface SuccessionRole {
+  poste: string
+  titulaire: string
+  risque: boolean
+  successeurs: SuccessionSuccesseur[]
+}
+export interface SuccessionPlan {
+  departementKey: string
+  effectif: number
+  postesCles: number
+  couverts: number
+  aRisque: number
+  synthese: string
+  roles: SuccessionRole[]
+}

@@ -64,23 +64,22 @@ def analyse_latest(db: Session = Depends(get_db)) -> AnalyseRhOut | None:
 
 
 @router.post("/succession", response_model=SuccessionResponse,
-             dependencies=[Depends(ia_rate_limit)],
-             summary="Plan de succession raisonné d'un pôle (IA de raisonnement lourde)")
+             summary="Plan de succession CALCULÉ d'un pôle (déterministe, instantané)")
 def succession(req: SuccessionRequest, db: Session = Depends(get_db)) -> SuccessionResponse:
-    """⚠️ Tâche BATCH : modèle de raisonnement 23 Go (qwen3.6) — lent sur 8 Go VRAM.
-    Analyse la cartographie réelle du pôle et propose successeurs/écarts/risques.
-    ⚠️ SYNCHRONE (~4 min) : préférer /succession/async depuis un front (évite le
-    timeout proxy et ne tient pas le verrou GPU pendant l'attente du client)."""
+    """Pour chaque poste d'ENCADREMENT du pôle : successeurs internes classés par
+    adéquation de compétences (recouvrement pondéré par niveau au poste du titulaire),
+    niveau de préparation, écarts à combler et postes clés À RISQUE. Aucun LLM →
+    réponse instantanée et reproductible."""
     return SuccessionResponse(**succession_service.plan_succession(db, req.departement_key))
 
 
 @router.post("/succession/async", response_model=SuccessionJobLaunched, status_code=202,
-             dependencies=[Depends(ia_rate_limit)],
              summary="Lancer le plan de succession en tâche de fond (renvoie un job_id)")
 def lancer_succession(req: SuccessionRequest,
                       user: User = Depends(get_current_user)) -> SuccessionJobLaunched:
-    """Lance le raisonnement en arrière-plan (qwen3.6 ~4 min) et renvoie aussitôt un
-    `job_id`. Le front interroge ensuite `/succession/jobs/{job_id}`."""
+    """Variante asynchrone (rétrocompat) : calcule le plan en tâche de fond et renvoie
+    aussitôt un `job_id`. Le front interroge ensuite `/succession/jobs/{job_id}`. Le
+    calcul étant désormais déterministe/instantané, `/succession` (synchrone) suffit."""
     return SuccessionJobLaunched(
         job_id=succession_service.launch_succession_job(user.id, req.departement_key))
 
