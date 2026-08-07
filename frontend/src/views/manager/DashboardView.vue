@@ -67,7 +67,7 @@ onMounted(load)
           <BaseButton variant="secondary" size="sm"><AppIcon name="route" :size="15" /> Demandes d'évolution</BaseButton>
         </RouterLink>
         <RouterLink :to="{ name: 'manager.offres' }">
-          <BaseButton variant="secondary" size="sm"><AppIcon name="brief" :size="15" /> Publier une offre</BaseButton>
+          <BaseButton variant="secondary" size="sm"><AppIcon name="brief" :size="15" /> Besoins de recrutement</BaseButton>
         </RouterLink>
         <RouterLink :to="{ name: 'manager.equipe' }">
           <BaseButton variant="secondary" size="sm"><AppIcon name="team" :size="15" /> Mon équipe</BaseButton>

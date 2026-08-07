@@ -150,6 +150,20 @@ export interface MyCvStatus {
   uploadedAt: string | null
 }
 
+export type BesoinStatut = 'transmis' | 'valide' | 'publie' | 'refuse'
+
+export interface Besoin {
+  id: number
+  managerNom: string | null
+  ficheId: number | null
+  poste: string
+  description: string | null
+  statut: BesoinStatut
+  offreId: number | null
+  motifRefus: string | null
+  createdAt: string
+}
+
 /* --------------------------------------------------------------- Souhaits */
 export type SouhaitStatus = 'Brouillon' | 'Transmise au manager' | 'En discussion'
 export interface Souhait {

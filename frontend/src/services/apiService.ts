@@ -18,7 +18,7 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable, MyCvStatus,
-  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem,
+  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
 import { apiFetch, apiUpload, getCsrf, ApiError } from './http'
@@ -165,6 +165,32 @@ const CARTO_MOCK: CartoDoc = {
     { key: 'risques', nom: 'Risques', pole: 'Fonctions support', metiers: ['Analyste risques', 'Credit officer'] },
     { key: 'corporate_banking', nom: 'Corporate Banking', pole: 'Lignes métiers commerciales', metiers: ["Chargé d'affaires entreprises"] },
   ],
+}
+
+// Forme backend d'un besoin de recrutement (snake_case) → mappée en `Besoin`.
+interface BesoinOut {
+  id: number
+  manager_nom: string | null
+  fiche_id: number | null
+  poste: string
+  description: string | null
+  statut: string
+  offre_id: number | null
+  motif_refus: string | null
+  created_at: string
+}
+function mapBesoin(b: BesoinOut): Besoin {
+  return {
+    id: b.id,
+    managerNom: b.manager_nom,
+    ficheId: b.fiche_id,
+    poste: b.poste,
+    description: b.description,
+    statut: (b.statut as Besoin['statut']),
+    offreId: b.offre_id,
+    motifRefus: b.motif_refus,
+    createdAt: b.created_at,
+  }
 }
 
 export const apiService = {
@@ -944,6 +970,42 @@ export const apiService = {
     )
     return Math.round(c.score ?? 0)
   },
+  // ---------------------------------------------- Besoins de recrutement
+  /** Le manager exprime un besoin de recrutement (transmis à la HRBP). */
+  async creerBesoin(payload: { ficheId: number | null; poste: string; description: string }): Promise<void> {
+    if (MODE === 'mock') { await delay(); return }
+    await apiFetch('/besoins', {
+      method: 'POST',
+      body: { fiche_id: payload.ficheId, poste: payload.poste, description: payload.description },
+    })
+  },
+  /** Mes besoins de recrutement (manager) — suivi de statut. */
+  async getMesBesoins(): Promise<Besoin[]> {
+    if (MODE === 'mock') { await delay(); return [] }
+    return (await apiFetch<BesoinOut[]>('/besoins/mes')).map(mapBesoin)
+  },
+  /** Tous les besoins (HRBP), option filtre statut. */
+  async getBesoins(statut?: string): Promise<Besoin[]> {
+    if (MODE === 'mock') { await delay(); return [] }
+    const qs = statut ? `?statut=${encodeURIComponent(statut)}` : ''
+    return (await apiFetch<BesoinOut[]>(`/besoins${qs}`)).map(mapBesoin)
+  },
+  /** HRBP : valider un besoin. */
+  async validerBesoin(id: number): Promise<void> {
+    if (MODE === 'mock') { await delay(); return }
+    await apiFetch(`/besoins/${id}/valider`, { method: 'POST' })
+  },
+  /** HRBP : refuser un besoin (motif optionnel). */
+  async refuserBesoin(id: number, motif?: string): Promise<void> {
+    if (MODE === 'mock') { await delay(); return }
+    await apiFetch(`/besoins/${id}/refuser`, { method: 'POST', body: { motif } })
+  },
+  /** HRBP : publier l'offre en continuité du besoin (visibilité partagée manager). */
+  async publierBesoin(id: number): Promise<void> {
+    if (MODE === 'mock') { await delay(); return }
+    await apiFetch(`/besoins/${id}/publier`, { method: 'POST', body: {} })
+  },
+
   /** Pousser un souhait existant à son manager (collab). */
   async pushSouhait(id: string): Promise<void> {
     if (MODE === 'mock') {
