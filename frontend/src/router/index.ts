@@ -284,7 +284,7 @@ const rhDetailRoutes: RouteRecordRaw[] = [
     path: 'rh/referentiel',
     name: 'rh.referentiel',
     component: () => import('@/views/rh/ReferentielView.vue'),
-    meta: { roles: ['rh'], title: 'Référentiel & gabarit de fiche' },
+    meta: { roles: ['rh'], title: 'Référentiel & fiches de poste' },
   },
   {
     path: 'rh/mon-entretien',

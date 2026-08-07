@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { BookOpen } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
-import type { GabaritDoc, GabaritKind, CartoDoc, FicheGeneree } from '@/types/referentiel'
+import type { CartoDoc, FicheGeneree } from '@/types/referentiel'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -14,9 +14,6 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 
 const { toast } = useToast()
 
-const KINDS: GabaritKind[] = ['metadata', 'freetext', 'skill_list', 'languages', 'kpi']
-const CATEGORIES = ['metier', 'comportementale', 'transversale', 'outil_technologie']
-const needsCategorie = (k: GabaritKind) => k === 'freetext' || k === 'skill_list'
 const inputCls =
   'w-full rounded-lg border border-border bg-paper px-2.5 py-1.5 text-sm outline-none focus:border-green-line'
 
@@ -31,10 +28,6 @@ const referentiels = [
 const loading = ref(true)
 const loadError = ref('')
 
-const gabarit = ref<GabaritDoc>({ version: null, sections: [] })
-const gabError = ref('')
-const gabBusy = ref(false)
-
 interface DeptEdit { key: string; nom: string; pole: string; metiersText: string }
 const depts = ref<DeptEdit[]>([])
 const cartoVersion = ref<number | null>(null)
@@ -45,8 +38,7 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const [g, c] = await Promise.all([apiService.getGabarit(), apiService.getCartographie()])
-    gabarit.value = g
+    const c = await apiService.getCartographie()
     cartoVersion.value = c.version ?? null
     depts.value = c.departements.map((d) => ({
       key: d.key, nom: d.nom, pole: d.pole ?? '', metiersText: (d.metiers ?? []).join('\n'),
@@ -58,36 +50,6 @@ async function load() {
   }
 }
 onMounted(load)
-
-// ---- Gabarit --------------------------------------------------------------
-function addSection() {
-  gabarit.value.sections.push({ key: '', label: '', kind: 'metadata', categorie: null, aide: '' })
-}
-function removeSection(i: number) {
-  gabarit.value.sections.splice(i, 1)
-}
-async function saveGabarit() {
-  gabError.value = ''
-  gabBusy.value = true
-  try {
-    const doc: GabaritDoc = {
-      version: gabarit.value.version ?? null,
-      sections: gabarit.value.sections.map((s) => ({
-        key: s.key.trim(),
-        label: s.label.trim(),
-        kind: s.kind,
-        categorie: needsCategorie(s.kind) ? (s.categorie || null) : null,
-        aide: (s.aide ?? '').trim() || null,
-      })),
-    }
-    gabarit.value = await apiService.saveGabarit(doc)
-    toast('Gabarit enregistré', 'ok')
-  } catch (e) {
-    gabError.value = (e as Error)?.message || 'Enregistrement refusé.'
-  } finally {
-    gabBusy.value = false
-  }
-}
 
 // ---- Cartographie ---------------------------------------------------------
 function addDept() {
@@ -125,6 +87,11 @@ const genDept = ref('')
 const genBusy = ref(false)
 const genError = ref('')
 const genResult = ref<FicheGeneree | null>(null)
+// Postes proposés = métiers du département choisi (sélection, plus de saisie libre).
+const genMetiers = computed<string[]>(() => {
+  const d = depts.value.find((x) => x.key === genDept.value)
+  return d ? d.metiersText.split('\n').map((m) => m.trim()).filter(Boolean) : []
+})
 async function genererFiche() {
   const metier = genMetier.value.trim()
   if (!metier || !genDept.value || genBusy.value) return
@@ -145,7 +112,7 @@ async function genererFiche() {
 <template>
   <div>
     <BaseBreadcrumb
-      :items="[{ label: 'Supervision', to: { name: 'rh.supervision' } }, { label: 'Référentiel & gabarit' }]"
+      :items="[{ label: 'Supervision', to: { name: 'rh.supervision' } }, { label: 'Référentiel & fiches' }]"
     />
 
     <BaseCard class="mb-4">
@@ -154,10 +121,10 @@ async function genererFiche() {
           <BookOpen :size="18" />
         </div>
         <div class="min-w-0">
-          <h1 class="font-display text-lg font-bold text-ink">Référentiel & gabarit · édition</h1>
+          <h1 class="font-display text-lg font-bold text-ink">Référentiel & fiches de poste</h1>
           <p class="text-sm text-ink-3">
-            Le socle qui structure les fiches de poste, la cartographie et le matching. Édition réservée RH/Admin ;
-            chaque enregistrement est validé côté serveur (un référentiel invalide est refusé).
+            Générez une fiche de poste (IA) pour un poste d'un département, et gérez la cartographie
+            départements → métiers. Réservé RH/Admin ; chaque enregistrement est validé côté serveur.
           </p>
         </div>
       </div>
@@ -191,11 +158,14 @@ async function genererFiche() {
           graphe ESCO/O*NET/SFIA). Contenu de démonstration · jamais de données réelles.
         </p>
         <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <select v-model="genDept" :class="inputCls" aria-label="Département">
+          <select v-model="genDept" :class="inputCls" aria-label="Département" @change="genMetier = ''">
             <option value="" disabled>Département…</option>
             <option v-for="d in depts" :key="d.key" :value="d.key">{{ d.nom || d.key }}</option>
           </select>
-          <input v-model="genMetier" placeholder="Métier (ex : Analyste Risque Senior)" :class="inputCls" />
+          <select v-model="genMetier" :class="inputCls" aria-label="Poste" :disabled="!genDept">
+            <option value="" disabled>{{ genDept ? 'Poste…' : 'Choisir un département d’abord' }}</option>
+            <option v-for="m in genMetiers" :key="m" :value="m">{{ m }}</option>
+          </select>
           <BaseButton :disabled="genBusy || !genMetier.trim() || !genDept" @click="genererFiche">
             <AppIcon name="spark" :size="15" /> {{ genBusy ? 'Génération…' : 'Générer' }}
           </BaseButton>
@@ -226,45 +196,6 @@ async function genererFiche() {
               >{{ c }}</span>
             </div>
           </div>
-        </div>
-      </BaseCard>
-
-      <!-- Gabarit -->
-      <BaseCard title="Gabarit de fiche de poste">
-        <template #actions>
-          <BaseButton size="sm" variant="ghost" @click="addSection">+ Ajouter une section</BaseButton>
-        </template>
-        <p class="mb-3 text-xs text-ink-3">
-          Structure imposée à toute fiche. <b>kind</b> pilote le traitement ; <b>catégorie</b> requise pour
-          freetext / skill_list.
-        </p>
-        <div class="space-y-2">
-          <div v-for="(s, i) in gabarit.sections" :key="i" class="rounded-xl border border-border bg-panel p-2.5">
-            <div class="grid gap-2 sm:grid-cols-[130px_1fr_140px]">
-              <input v-model="s.key" placeholder="clé" :class="inputCls" />
-              <input v-model="s.label" placeholder="Libellé" :class="inputCls" />
-              <select v-model="s.kind" :class="inputCls">
-                <option v-for="k in KINDS" :key="k" :value="k">{{ k }}</option>
-              </select>
-            </div>
-            <div class="mt-2 grid items-center gap-2 sm:grid-cols-[150px_1fr_auto]">
-              <select v-if="needsCategorie(s.kind)" v-model="s.categorie" :class="inputCls">
-                <option :value="null" disabled>catégorie…</option>
-                <option v-for="c in CATEGORIES" :key="c" :value="c">{{ c }}</option>
-              </select>
-              <span v-else class="text-xs text-ink-3">— (pas de catégorie)</span>
-              <input v-model="s.aide" placeholder="Aide (optionnel)" :class="inputCls" />
-              <BaseButton size="sm" variant="ghost" @click="removeSection(i)">Retirer</BaseButton>
-            </div>
-          </div>
-        </div>
-        <p v-if="gabError" class="mt-3 rounded-lg border border-warning/40 bg-warning-soft px-3 py-2 text-xs text-warning">
-          {{ gabError }}
-        </p>
-        <div class="mt-3 flex justify-end">
-          <BaseButton :disabled="gabBusy" @click="saveGabarit">
-            <AppIcon name="check" :size="15" /> {{ gabBusy ? 'Enregistrement…' : 'Enregistrer le gabarit' }}
-          </BaseButton>
         </div>
       </BaseCard>
 
