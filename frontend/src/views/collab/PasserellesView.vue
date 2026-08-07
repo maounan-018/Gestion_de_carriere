@@ -6,6 +6,7 @@
  * recommandations »). Chaque ligne redirige vers l'écran descriptif dédié.
  */
 import { ref, onMounted } from 'vue'
+import { roleRoute } from '@/composables/useRoleRoute'
 import { useRouter } from 'vue-router'
 import { ChevronRight, ArrowLeft } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
@@ -43,14 +44,14 @@ onMounted(load)
 
 // Redirection vers l'écran descriptif, clé = intitulé du métier (indépendant du tri).
 function open(p: Passerelle) {
-  router.push({ name: 'collab.passerelleDetail', params: { metier: p.title } })
+  router.push({ name: roleRoute('passerelleDetail'), params: { metier: p.title } })
 }
 </script>
 
 <template>
   <div class="space-y-5">
     <RouterLink
-      :to="{ name: 'collab.reco' }"
+      :to="{ name: roleRoute('reco') }"
       class="inline-flex items-center gap-1.5 text-sm font-semibold text-green-deep hover:underline"
     >
       <ArrowLeft :size="15" /> Retour aux recommandations
