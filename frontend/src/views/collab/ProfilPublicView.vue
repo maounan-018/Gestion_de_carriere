@@ -13,6 +13,7 @@ import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
+import AvisSection from '@/components/shared/AvisSection.vue'
 
 const route = useRoute()
 const { toast } = useToast()
@@ -85,5 +86,7 @@ watch(() => route.params.id, load)
         </p>
       </BaseCard>
     </div>
+
+    <AvisSection class="mt-5 block" :profil-id="route.params.id as string" :who="person.name" />
   </div>
 </template>

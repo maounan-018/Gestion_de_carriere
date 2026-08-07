@@ -36,8 +36,8 @@ from app.schemas.profil import (ProfilCreate, ProfilUpdate, ProfilSelfUpdate, Pr
                                  EvaluationExtractionRequest, MobiliteItem, AncrageResult,
                                  ImportResult, CompetenceEvaluationIn, FaisabiliteAspirationOut,
                                  EvaluationBilanCreate, EvaluationBilanOut)
-from app.schemas.carriere import ProfilCarriereOut
-from app.models.profil import ProfilCompetence
+from app.schemas.carriere import ProfilCarriereOut, AvisCreate, AvisListOut, PeerReviewOut
+from app.models.profil import ProfilCompetence, Profil
 from app.services import (profil_service, cv_extraction_service, profil_import_service,
                           evaluation_service, trajectory_service)
 
@@ -213,6 +213,35 @@ def carriere_profil(profil_id: int, user: User = Depends(get_current_user),
     if out is None:
         raise HTTPException(status_code=404, detail="Profil introuvable")
     return out
+
+
+@router.get("/{profil_id}/avis", response_model=AvisListOut,
+            dependencies=[Depends(get_current_user)],
+            summary="Avis (revue par les pairs) d'un profil + droit d'en déposer un")
+def lister_avis(profil_id: int, user: User = Depends(get_current_user),
+                db: Session = Depends(get_db)) -> AvisListOut:
+    p = db.get(Profil, profil_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    avis = profil_service.avis_de_profil(db, profil_id)
+    return AvisListOut(
+        avis=[PeerReviewOut.model_validate(a) for a in avis],
+        peut_noter=ownership.can_review_profil(db, user, p))
+
+
+@router.post("/{profil_id}/avis", response_model=PeerReviewOut, status_code=201,
+             summary="Déposer un avis sur un membre de son équipe / son manager direct")
+def deposer_avis(profil_id: int, data: AvisCreate,
+                 user: User = Depends(get_current_user),
+                 db: Session = Depends(get_db)) -> PeerReviewOut:
+    p = db.get(Profil, profil_id)
+    if p is None:
+        raise HTTPException(status_code=404, detail="Profil introuvable")
+    if not ownership.can_review_profil(db, user, p):
+        raise HTTPException(status_code=403,
+                            detail="Vous ne pouvez évaluer que votre équipe et votre manager direct.")
+    return PeerReviewOut.model_validate(
+        profil_service.creer_avis(db, user, profil_id, data.texte, data.etoiles))
 
 
 @router.get("/{profil_id}", response_model=ProfilOut,

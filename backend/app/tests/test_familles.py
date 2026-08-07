@@ -10,31 +10,30 @@ from app.tests.conftest import auth
 
 
 def test_familles_tension_deterministe(db):
+    """Tension par famille = écart entre l'ATTENDU (= effectif : chaque collaborateur
+    est censé maîtriser un socle) et la COUVERTURE (profils compétents, niveau ≥ 4).
+    Indépendant des offres ouvertes (cf. refonte cartographie)."""
     from app.services import dashboard_service as ds
     from app.models.profil import Profil, ProfilCompetence
-    from app.models.offre import Offre, OffreCompetence, OffreStatut
 
-    p = Profil(nom="X", departement_key="d")
-    db.add(p)
+    profils = [Profil(nom=f"P{i}", departement_key="d") for i in range(4)]
+    db.add_all(profils)
     db.flush()
-    # Famille "metier" : 1 profil la détient, 3 attendus demandés (offre OUVERTE) -> forte.
-    db.add(ProfilCompetence(profil_id=p.id, libelle="c1", categorie="metier", niveau=4))
-    o = Offre(titre="O", statut=OffreStatut.OUVERTE)
-    db.add(o)
-    db.flush()
-    for i in range(3):
-        db.add(OffreCompetence(offre_id=o.id, libelle=f"a{i}", categorie="metier"))
-    # Famille "outil_technologie" : détenue mais non demandée -> faible.
-    db.add(ProfilCompetence(profil_id=p.id, libelle="c2", categorie="outil_technologie", niveau=3))
+    # Famille "metier" : 1 seul profil compétent sur 4 -> ratio 0.25 -> forte.
+    db.add(ProfilCompetence(profil_id=profils[0].id, libelle="c1", categorie="metier", niveau=5))
+    # Famille "comportementale" : les 4 profils compétents -> ratio 1.0 -> faible.
+    for p in profils:
+        db.add(ProfilCompetence(profil_id=p.id, libelle="soft", categorie="comportementale", niveau=4))
     db.commit()
 
     res = {f.famille: f for f in ds.familles(db)}
-    assert res["metier"].demande == 3
-    assert res["metier"].profils_couverts == 1
+    assert res["metier"].demande == 4                   # ATTENDU = effectif
     assert res["metier"].detenues == 1
-    assert res["metier"].tension == "forte"            # 1 profil pour 3 attendus -> ratio < 1
-    assert res["outil_technologie"].demande == 0
-    assert res["outil_technologie"].tension == "faible"
+    assert res["metier"].profils_couverts == 1
+    assert res["metier"].tension == "forte"             # 1/4 couverts
+    assert res["comportementale"].demande == 4
+    assert res["comportementale"].profils_couverts == 4
+    assert res["comportementale"].tension == "faible"   # 4/4 couverts
 
 
 def test_familles_reservee_rh(client):
