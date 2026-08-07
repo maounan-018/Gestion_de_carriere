@@ -80,7 +80,7 @@ const NOTIF_ROUTE: Record<Role, Record<string, string>> = {
   rh: {
     rhOffres: 'rh.offres', offres: 'rh.offres', cartographie: 'rh.cartographie',
     hautsPotentiels: 'rh.hautsPotentiels', veille: 'rh.entretiens', alertes: 'rh.alertes',
-    annuaire: 'rh.annuaire', souhaitsRecus: 'rh.annuaire',
+    annuaire: 'rh.annuaire', souhaitsRecus: 'rh.souhaitsRecus',
   },
 }
 
@@ -246,7 +246,7 @@ export function mapVeille(v: VeilleOut): VeilleType {
 
 const ALERTE_ICON: Record<string, IconKey> = { potential: 'spark', succession: 'route', retention: 'shield' }
 const ALERTE_ROUTE: Record<string, string> = {
-  hautsPotentiels: 'rh.hautsPotentiels', veille: 'rh.entretiens', souhaitsRecus: 'rh.annuaire',
+  hautsPotentiels: 'rh.hautsPotentiels', veille: 'rh.entretiens', souhaitsRecus: 'rh.souhaitsRecus',
 }
 export function mapAlerte(a: AlerteOut): RhAlert {
   return {
