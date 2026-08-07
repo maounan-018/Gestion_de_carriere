@@ -17,6 +17,10 @@ class BesoinRefus(BaseModel):
     motif: str | None = Field(None, max_length=400)
 
 
+class BesoinContact(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000)
+
+
 class BesoinPublier(BaseModel):
     """Ajustements HRBP à la publication (sinon dérivés du besoin)."""
     titre: str | None = Field(None, max_length=200)

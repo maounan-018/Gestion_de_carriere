@@ -70,16 +70,18 @@ def create_notification(db: Session, *, user_id: int, titre: str, type: str = "i
     return n
 
 
-def communiquer_aux_rh(db: Session, *, from_name: str, sujet: str, message: str) -> int:
+def communiquer_aux_rh(db: Session, *, from_name: str, sujet: str, message: str,
+                       to_route: str = "rh.notifications") -> int:
     """Crée une notification pour CHAQUE utilisateur RH/ADMIN (message d'un manager).
-    Renvoie le nombre de destinataires. Une seule transaction."""
+    `to_route` = écran ciblé au clic (défaut : les notifications). Renvoie le nombre
+    de destinataires. Une seule transaction."""
     from app.models.user import User, Role
     rh = db.scalars(select(User).where(User.role.in_([Role.RH, Role.ADMIN]))).all()
     titre = (sujet.strip() or f"Message de {from_name}")[:200]
     texte = f"De {from_name} (manager) : {message.strip()}"[:1000]
     for u in rh:
         create_notification(db, user_id=u.id, titre=titre, type="info",
-                            texte=texte, to_route="rh.notifications", commit=False)
+                            texte=texte, to_route=to_route, commit=False)
     db.commit()
     return len(rh)
 

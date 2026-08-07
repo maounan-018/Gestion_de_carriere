@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
-from app.schemas.besoin import BesoinCreate, BesoinOut, BesoinRefus, BesoinPublier
+from app.schemas.besoin import BesoinCreate, BesoinOut, BesoinRefus, BesoinPublier, BesoinContact
 from app.schemas.offre import OffreOut
 from app.services import besoin_service
 
@@ -38,6 +38,25 @@ def mes_besoins(user: User = Depends(get_current_user),
             summary="Lister les besoins de recrutement (HRBP) — option filtre statut")
 def lister(statut: str | None = Query(None), db: Session = Depends(get_db)) -> list[BesoinOut]:
     return besoin_service.lister_besoins(db, statut)
+
+
+@router.get("/{besoin_id}", response_model=BesoinOut,
+            dependencies=[Depends(require_roles(Role.RH, Role.ADMIN))],
+            summary="Détail d'un besoin de recrutement (HRBP)")
+def detail(besoin_id: int, db: Session = Depends(get_db)) -> BesoinOut:
+    out = besoin_service.get_besoin(db, besoin_id)
+    if out is None:
+        raise HTTPException(status_code=404, detail="Besoin introuvable")
+    return out
+
+
+@router.post("/{besoin_id}/contacter", status_code=204,
+             summary="Contacter le manager émetteur du besoin (HRBP)")
+def contacter(besoin_id: int, data: BesoinContact,
+              user: User = Depends(require_roles(Role.RH, Role.ADMIN)),
+              db: Session = Depends(get_db)) -> None:
+    if not besoin_service.contacter_manager(db, besoin_id, user.name, data.message):
+        raise HTTPException(status_code=404, detail="Besoin introuvable")
 
 
 @router.post("/{besoin_id}/valider", response_model=BesoinOut,
