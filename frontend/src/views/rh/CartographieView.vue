@@ -126,9 +126,9 @@ const tone = (t: FamilleTension['tension']) =>
     <!-- Panneau complémentaire : tensions par famille (offre interne vs demande). -->
     <BaseCard v-if="!loading && !error && familles.length" title="Tensions par famille de compétences">
       <p class="mb-3.5 text-xs text-ink-3">
-        Offre interne <b class="text-ink-2">détenue</b> (collaborateurs qui possèdent la famille) vs
-        <b class="text-ink-2">demande</b> des offres ouvertes. La tension monte quand la demande dépasse
-        la couverture interne.
+        <b class="text-ink-2">Attendu</b> = tout l'effectif (socle attendu de chacun) vs
+        <b class="text-ink-2">couverture</b> réelle (collaborateurs compétents, niveau ≥ 3).
+        La tension monte quand peu de collaborateurs sont compétents dans la famille.
       </p>
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div v-for="f in familles" :key="f.famille" class="rounded-xl border border-border bg-panel p-3.5">
@@ -137,14 +137,14 @@ const tone = (t: FamilleTension['tension']) =>
             <BasePill :tone="tone(f.tension)">tension {{ f.tension }}</BasePill>
           </div>
           <div class="mb-2 flex items-center gap-2">
-            <span class="w-16 shrink-0 text-[11px] text-ink-3">détenu</span>
+            <span class="w-16 shrink-0 text-[11px] text-ink-3">compétents</span>
             <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel-2">
               <div class="h-full rounded-full bg-green" :style="{ width: pct(f.profilsCouverts) + '%' }" />
             </div>
             <span class="w-20 shrink-0 text-right text-[11px] text-ink-2">{{ f.profilsCouverts }} profils</span>
           </div>
           <div class="flex items-center gap-2">
-            <span class="w-16 shrink-0 text-[11px] text-ink-3">demandé</span>
+            <span class="w-16 shrink-0 text-[11px] text-ink-3">attendu</span>
             <div class="h-2 flex-1 overflow-hidden rounded-full bg-panel-2">
               <div class="h-full rounded-full bg-green-deep" :style="{ width: pct(f.demande) + '%' }" />
             </div>

@@ -72,7 +72,7 @@ class FamilleCompetence(BaseModel):
     detenues: int              # nb de compétences détenues (volume) dans la famille
     profils_couverts: int      # nb de profils ayant ≥1 compétence de la famille
     niveau_moyen: float | None  # niveau moyen (compétences niveautées)
-    demande: int               # nb d'attendus des offres OUVERTES dans la famille
+    demande: int               # ATTENDU = effectif total (socle attendu de chaque collaborateur)
     tension: str               # "faible" | "moyenne" | "forte" (demande vs couverture interne)
 
 
