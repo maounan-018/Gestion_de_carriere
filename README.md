@@ -17,7 +17,7 @@ jamais faire sortir une seule donnée de l'infrastructure de la banque.
 
 Ce projet **réplique les bonnes pratiques** du projet frère *ObjectifSMART-AI*
 (`bmci-smartobjective`) et **élève le niveau graphique** par rapport à la
-maquette UI/UX initiale (voir `design/`).
+maquette UI/UX initiale.
 
 ---
 
@@ -40,7 +40,7 @@ modèles (`scripts/pull_models.sh`), et la base `backend/bmci_carrieres.db`
 
 | Volet | État |
 |---|---|
-| Cartographie des parcours & maquette UI/UX (34 écrans, 3 rôles) | ✅ fait — dans `design/` |
+| Cartographie des parcours & maquette UI/UX (34 écrans, 3 rôles) | ✅ fait |
 | Fondation du dépôt (structure, docs d'architecture) | ✅ fait |
 | Recherche modèles IA locaux + référentiels | ✅ documentée (`docs/`) |
 | Ingestion des référentiels (ESCO/O*NET/SFIA) | ✅ fait — 14 173 compétences, 4 059 métiers vectorisés + crosswalk |
@@ -49,10 +49,8 @@ modèles (`scripts/pull_models.sh`), et la base `backend/bmci_carrieres.db`
 | Modèle métier (Fiche + 164 fiches persistées, Profil CRUD) | ✅ fait — Offre/Candidature : modèles posés, **CRUD à faire** |
 | Sécurité (auth locale, sessions, RBAC, audit) | ⏳ code posé & guards branchés — à seeder / tester / durcir |
 | Backend FastAPI — reste | ⏳ CRUD Offre/Candidature, matching sur entités, dashboards RH |
-| Frontend Vue (implémentation des écrans maquettés) | ⬜ à construire (maquettes HTML prêtes dans `design/`) |
+| Frontend Vue (implémentation des écrans maquettés) | ⬜ à construire |
 | SSO SAML + provisioning | ⬜ placeholder documenté — à porter depuis smart-objective |
-
-> Détail exhaustif et priorisé dans [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
@@ -60,10 +58,8 @@ modèles (`scripts/pull_models.sh`), et la base `backend/bmci_carrieres.db`
 
 | Document | Contenu |
 |---|---|
-| [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Vue d'ensemble, couches, flux de données, **briques techniques**, adéquation matériel |
-| [`IA-MODELES-LOCAUX.md`](docs/IA-MODELES-LOCAUX.md) | **Un modèle par tâche** : embeddings, reranking, extraction, génération, agent — VRAM, install, sources |
 | [`REFERENTIELS-COMPETENCES.md`](docs/REFERENTIELS-COMPETENCES.md) | **ESCO / O*NET / SFIA** bilingues : licences, formats, ingestion, crosswalk |
-| [`SSO-SAML-ET-IDENTITE.md`](docs/SSO-SAML-ET-IDENTITE.md) | SAML 2.0, JIT provisioning, **répertoire des comptes** (réels, service, synthétiques) |
+| [`DEPLOIEMENT-VERCEL.md`](docs/DEPLOIEMENT-VERCEL.md) | Déploiement du front sur Vercel + backend local (cross-origin, auth Bearer) |
 
 ---
 
@@ -73,9 +69,6 @@ modèles (`scripts/pull_models.sh`), et la base `backend/bmci_carrieres.db`
 bmci-gestion-carrieres/
 ├── README.md
 ├── docs/                     # Architecture & décisions techniques (ci-dessus)
-├── design/                   # 🎨 Travail UI/UX déplacé ici
-│   ├── maquette/             #   prototype HTML (34 écrans) + pipeline d'assemblage
-│   └── assets/               #   portraits (personas) et ressources
 ├── backend/                  # ⏳ FastAPI (MVC + SQLAlchemy) — miroir smart-objective
 │   └── app/{auth,controllers,core,database,middlewares,models,repositories,schemas,services,utils,tests}
 ├── frontend/                 # ⏳ Vue 3 (Vite, Tailwind, Pinia)
