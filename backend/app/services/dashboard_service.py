@@ -87,6 +87,12 @@ def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
 # Famille par défaut quand la compétence détenue n'a pas de catégorie renseignée.
 _FAM_DEFAUT = "transversale"
 
+# Familles CANONIQUES (colonnes de la cartographie), dans l'ordre d'affichage. On
+# n'affiche QUE celles-ci : les catégories parasites (« savoir », « savoir-faire »…
+# présentes sur de rares compétences) ne polluent plus la heatmap ni les tensions.
+_FAMILLES_CANON = ("metier", "comportementale", "transversale",
+                   "outil_technologie", "data", "leadership")
+
 
 def _humanize(key: str) -> str:
     """Clé de département → libellé lisible ('retail_banking' → 'Retail Banking')."""
@@ -99,11 +105,12 @@ def cartographie(db: Session) -> CartoMatrix:
     toute famille présent apparaît automatiquement (N × M variables)."""
     fam = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
 
-    # Colonnes : familles distinctes réellement présentes (triées).
-    familles = [r[0] for r in db.execute(
+    # Colonnes : familles CANONIQUES présentes (ordre fixe ; on ignore les
+    # catégories parasites type « savoir »/« savoir-faire »).
+    present = {r[0] for r in db.execute(
         select(fam).join(Profil, Profil.id == ProfilCompetence.profil_id)
-        .where(Profil.departement_key.isnot(None))
-        .distinct().order_by(fam)).all()]
+        .where(Profil.departement_key.isnot(None)).distinct()).all()}
+    familles = [f for f in _FAMILLES_CANON if f in present]
 
     # Effectif + niveau moyen global par pôle.
     effectifs = dict(db.execute(
@@ -192,51 +199,54 @@ def cartographie_equipe(db: Session, manager_user_id: int) -> CartoMatrix:
 
 
 # ------------------------------------------------- Familles de compétences
-def _tension(demande: int, profils_couverts: int) -> str:
-    """Signal INDICATIF de tension sur une famille : demande (offres ouvertes) vs
-    couverture interne (profils la détenant). Pas de demande -> faible ; demandé mais
-    personne ne le détient -> forte ; sinon selon le ratio couverts/demande."""
-    if demande == 0:
+_SEUIL_COMPETENT = 4   # niveau (1-5) = MAÎTRISE dans une famille (bar discriminant pour la tension)
+
+
+def _tension(attendu: int, profils_couverts: int) -> str:
+    """Tension d'une famille = écart entre l'ATTENDU (tout l'effectif : chaque
+    collaborateur est censé maîtriser un socle dans chaque famille) et la COUVERTURE
+    (profils réellement compétents, niveau ≥ 3). Faible si ≥ 66 % couverts, moyenne
+    si ≥ 33 %, forte sinon — indépendant des offres ouvertes (souvent rares)."""
+    if attendu <= 0:
         return "faible"
-    if profils_couverts == 0:
-        return "forte"
-    ratio = profils_couverts / demande
-    if ratio >= 2:
+    taux = profils_couverts / attendu
+    if taux >= 0.66:
         return "faible"
-    if ratio >= 1:
+    if taux >= 0.33:
         return "moyenne"
     return "forte"
 
 
 def familles(db: Session) -> list[FamilleCompetence]:
-    """Cartographie par FAMILLE de compétences (catégorie), au-delà des départements :
-    offre interne DÉTENUE (profils/compétences/niveau) confrontée à la DEMANDE des
-    offres ouvertes → signal de tension. Familles = catégories réellement présentes
-    (défaut `transversale` quand la compétence n'est pas catégorisée)."""
+    """Cartographie par FAMILLE de compétences : pour chaque famille, l'ATTENDU est
+    l'effectif (socle attendu de tous) confronté à la COUVERTURE réelle (profils
+    compétents, niveau ≥ 3) → signal de tension. Indépendant des offres ouvertes,
+    donc cohérent même quand elles sont peu nombreuses."""
+    effectif = _count(db, select(Profil.id))
     fam_p = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
-    supply = {
-        f: (det, couv, moy)
-        for f, det, couv, moy in db.execute(
-            select(fam_p, func.count(ProfilCompetence.id),
-                   func.count(distinct(ProfilCompetence.profil_id)),
-                   func.avg(ProfilCompetence.niveau))
+    # Volume détenu + niveau moyen par famille.
+    vol = {
+        f: (det, moy)
+        for f, det, moy in db.execute(
+            select(fam_p, func.count(ProfilCompetence.id), func.avg(ProfilCompetence.niveau))
             .group_by(fam_p)).all()
     }
-    fam_o = func.coalesce(OffreCompetence.categorie, _FAM_DEFAUT)
-    demand = dict(db.execute(
-        select(fam_o, func.count(OffreCompetence.id))
-        .join(Offre, Offre.id == OffreCompetence.offre_id)
-        .where(Offre.statut == OffreStatut.OUVERTE)
-        .group_by(fam_o)).all())
+    # Profils COMPÉTENTS (au moins une compétence de la famille à niveau ≥ 3).
+    couverts = dict(db.execute(
+        select(fam_p, func.count(distinct(ProfilCompetence.profil_id)))
+        .where(ProfilCompetence.niveau >= _SEUIL_COMPETENT)
+        .group_by(fam_p)).all())
 
     out: list[FamilleCompetence] = []
-    for f in sorted(set(supply) | set(demand)):
-        det, couv, moy = supply.get(f, (0, 0, None))
-        dem = demand.get(f, 0)
+    for f in _FAMILLES_CANON:
+        if f not in vol:
+            continue
+        det, moy = vol[f]
+        couv = int(couverts.get(f, 0))
         out.append(FamilleCompetence(
             famille=f, detenues=det, profils_couverts=couv,
             niveau_moyen=round(moy, 2) if moy is not None else None,
-            demande=dem, tension=_tension(dem, couv)))
+            demande=effectif, tension=_tension(effectif, couv)))
     return out
 
 
