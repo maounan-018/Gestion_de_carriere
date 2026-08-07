@@ -60,6 +60,10 @@ function viewFor(name: string) {
       return () => import('@/views/rh/SupervisionView.vue')
     case 'rh.coach':
       return () => import('@/views/rh/CoachView.vue')
+    case 'rh.besoins':
+      return () => import('@/views/rh/BesoinsRhView.vue')
+    case 'rh.souhaitsRecus':
+      return () => import('@/views/rh/MobilitesRhView.vue')
     default:
       return () => import('@/views/Placeholder.vue')
   }
@@ -260,12 +264,6 @@ const rhDetailRoutes: RouteRecordRaw[] = [
     name: 'rh.revueCandidats',
     component: () => import('@/views/rh/RevueCandidatsView.vue'),
     meta: { roles: ['rh'], title: 'Revue des candidatures' },
-  },
-  {
-    path: 'rh/besoins',
-    name: 'rh.besoins',
-    component: () => import('@/views/rh/BesoinsRhView.vue'),
-    meta: { roles: ['rh'], title: 'Besoins de recrutement' },
   },
   {
     // Drill-down du KPI « Offres publiées » (HRBP) — vues partagées avec le manager.
