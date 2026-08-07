@@ -133,6 +133,12 @@ class Settings:
         self.SAML_SIMULATION = os.getenv("SAML_SIMULATION", "false").strip().lower() in ("1", "true", "yes")
         self.SEED_DEMO_ACCOUNTS = os.getenv("SEED_DEMO_ACCOUNTS", "true").strip().lower() in ("1", "true", "yes")
         self.SEED_SYNTHETIC_PERSONAS = os.getenv("SEED_SYNTHETIC_PERSONAS", "true").strip().lower() in ("1", "true", "yes")
+
+        # --- Workflow offres ---
+        # Publication DIRECTE d'offres par les managers. DÉSACTIVÉ par décision RH :
+        # le manager exprime un BESOIN de recrutement, la HRBP valide et publie.
+        # Réactivable sans redéploiement de code (repasser à "true").
+        self.MANAGER_PEUT_PUBLIER = os.getenv("MANAGER_PEUT_PUBLIER", "false").strip().lower() in ("1", "true", "yes")
         self.SEED_SYNTHETIC_OFFERS = os.getenv("SEED_SYNTHETIC_OFFERS", "true").strip().lower() in ("1", "true", "yes")
 
         # --- Cookies de session (HttpOnly) + CSRF double-submit ---
