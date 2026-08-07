@@ -2,17 +2,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
-import type { Offer } from '@/types/domain'
+import { MANAGER_PEUT_PUBLIER } from '@/config/features'
+import type { Offer, Besoin } from '@/types/domain'
 import type { Vacancy } from '@/types/manager'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import PublishOffreModal from '@/components/shared/PublishOffreModal.vue'
+import BesoinModal from '@/components/shared/BesoinModal.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 
 const offers = ref<Offer[]>([])
 const vacancies = ref<Vacancy[]>([])
+const besoins = ref<Besoin[]>([])
 const loading = ref(true)
 const error = ref('')
 const ligne = ref<string>('Tout')
@@ -21,9 +24,10 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    ;[offers.value, vacancies.value] = await Promise.all([
+    ;[offers.value, vacancies.value, besoins.value] = await Promise.all([
       apiService.getManagerOffers(),
       apiService.getVacancies(),
+      apiService.getMesBesoins(),
     ])
   } catch {
     error.value = 'Impossible de charger les offres.'
@@ -32,6 +36,14 @@ async function load() {
   }
 }
 onMounted(load)
+
+// Suivi des besoins de recrutement (workflow manager → HRBP).
+const besoinTone: Record<Besoin['statut'], 'new' | 'ai' | 'warn' | 'mut'> = {
+  transmis: 'warn', valide: 'ai', publie: 'new', refuse: 'mut',
+}
+const besoinLabel: Record<Besoin['statut'], string> = {
+  transmis: 'Transmis à la HRBP', valide: 'Validé', publie: 'Offre publiée', refuse: 'Non retenu',
+}
 
 // Filtres dérivés des offres réellement chargées (plus de liste figée → jamais vide).
 const MANAGER_OFFER_LIGNES = computed(() => {
@@ -43,9 +55,9 @@ const filtered = computed(() =>
   offers.value.filter((o) => ligne.value === 'Tout' || o.ligne === ligne.value),
 )
 
-// Publier une offre · formulaire riche partagé (fiche de poste + détails).
-// Un manager publie des missions/projets ; les POSTES relèvent de la RH (allowPoste=false).
+// Publication directe : réservée si le flag est réactivé (sinon → besoin de recrutement).
 const showPublish = ref(false)
+const showBesoin = ref(false)
 
 const statusTone: Record<string, 'new' | 'ai' | 'warn' | 'mut'> = {
   ouvert: 'new', validation: 'warn', brouillon: 'mut', 'clôturé': 'mut',
@@ -71,7 +83,12 @@ const statusLabel: Record<string, string> = {
           {{ f }}
         </button>
       </div>
-      <BaseButton size="sm" @click="showPublish = true"><Plus :size="15" /> Publier une offre</BaseButton>
+      <BaseButton v-if="MANAGER_PEUT_PUBLIER" size="sm" @click="showPublish = true">
+        <Plus :size="15" /> Publier une offre
+      </BaseButton>
+      <BaseButton v-else size="sm" @click="showBesoin = true">
+        <Plus :size="15" /> Exprimer un besoin de recrutement
+      </BaseButton>
     </div>
 
     <LoadingState v-if="loading" label="Chargement des offres…" />
@@ -80,6 +97,38 @@ const statusLabel: Record<string, string> = {
     </ErrorState>
 
     <template v-else>
+      <!-- Mes besoins de recrutement (workflow manager → HRBP) -->
+      <div v-if="!MANAGER_PEUT_PUBLIER">
+        <h3 class="mb-2 font-display text-base font-bold text-ink">
+          Mes besoins de recrutement <span class="text-sm font-normal text-ink-3">· transmis à la HRBP</span>
+        </h3>
+        <div v-if="!besoins.length" class="rounded-2xl border border-dashed border-border bg-paper p-4 text-sm text-ink-3">
+          Aucun besoin exprimé. Cliquez « Exprimer un besoin de recrutement » pour transmettre un besoin à la HRBP.
+        </div>
+        <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <component
+            :is="b.offreId ? 'RouterLink' : 'div'"
+            v-for="b in besoins"
+            :key="b.id"
+            :to="b.offreId ? { name: 'manager.mesOffres' } : undefined"
+            class="block rounded-2xl border border-border bg-paper p-4 shadow-card"
+            :class="b.offreId ? 'transition hover:-translate-y-0.5 hover:border-green-line hover:shadow-float' : ''"
+          >
+            <div class="flex items-start justify-between gap-2">
+              <BasePill :tone="besoinTone[b.statut]">{{ besoinLabel[b.statut] }}</BasePill>
+            </div>
+            <h4 class="mt-2 text-sm font-bold text-ink">{{ b.poste }}</h4>
+            <p v-if="b.description" class="mt-0.5 line-clamp-2 text-xs text-ink-3">{{ b.description }}</p>
+            <p v-if="b.statut === 'publie'" class="mt-2 text-[11px] font-semibold text-green-deep">
+              Offre publiée → suivre les candidatures
+            </p>
+            <p v-else-if="b.statut === 'refuse' && b.motifRefus" class="mt-2 text-[11px] text-ink-3">
+              Motif : {{ b.motifRefus }}
+            </p>
+          </component>
+        </div>
+      </div>
+
       <!-- Ma mobilité -->
       <div>
         <h3 class="mb-2 font-display text-base font-bold text-ink">
@@ -152,6 +201,7 @@ const statusLabel: Record<string, string> = {
       </div>
     </template>
 
-    <PublishOffreModal v-model="showPublish" :allow-poste="false" @published="load" />
+    <PublishOffreModal v-if="MANAGER_PEUT_PUBLIER" v-model="showPublish" :allow-poste="false" @published="load" />
+    <BesoinModal v-model="showBesoin" @created="load" />
   </div>
 </template>

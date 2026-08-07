@@ -242,6 +242,12 @@ const rhDetailRoutes: RouteRecordRaw[] = [
     meta: { roles: ['rh'], title: 'Revue des candidatures' },
   },
   {
+    path: 'rh/besoins',
+    name: 'rh.besoins',
+    component: () => import('@/views/rh/BesoinsRhView.vue'),
+    meta: { roles: ['rh'], title: 'Besoins de recrutement' },
+  },
+  {
     // Drill-down du KPI « Offres publiées » (HRBP) — vues partagées avec le manager.
     path: 'rh/mes-offres',
     name: 'rh.mesOffres',

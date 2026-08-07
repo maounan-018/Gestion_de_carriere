@@ -12,6 +12,7 @@ import {
   Award,
   LayoutGrid,
   Settings,
+  Inbox,
 } from '@lucide/vue'
 import type { NavItem } from '@/types/ui'
 import type { Role } from '@/types/domain'
@@ -47,6 +48,7 @@ export const NAV_CONFIG: Record<Role, NavItem[]> = {
     { name: 'rh.hautsPotentiels', label: 'Hauts potentiels', icon: Award },
     { name: 'rh.cartographie', label: 'Cartographie', icon: LayoutGrid },
     { name: 'rh.entretiens', label: 'Entretiens', icon: MessageSquare },
+    { name: 'rh.besoins', label: 'Besoins de recrutement', icon: Inbox },
     { name: 'rh.offres', label: 'Offres internes', icon: Briefcase },
     { name: 'rh.annuaire', label: 'Annuaire', icon: Users },
     { name: 'rh.espace', label: 'Mon espace', icon: UserIcon },

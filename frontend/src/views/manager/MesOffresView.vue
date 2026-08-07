@@ -9,6 +9,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Plus } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { useSessionStore } from '@/stores/session'
+import { MANAGER_PEUT_PUBLIER } from '@/config/features'
 import type { RhOffer } from '@/data/rh'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
@@ -51,9 +52,11 @@ const statusLabel: Record<RhOffer['status'], string> = {
     <div class="flex flex-wrap items-center justify-between gap-2">
       <div>
         <h2 class="font-display text-2xl font-bold text-ink">Mes offres publiées</h2>
-        <p class="text-sm text-ink-3">Les offres que vous avez créées · statut et candidatures.</p>
+        <p class="text-sm text-ink-3">Les offres qui vous concernent · statut et candidatures.</p>
       </div>
-      <BaseButton size="sm" @click="showPublish = true"><Plus :size="15" /> Publier une offre</BaseButton>
+      <BaseButton v-if="isRh || MANAGER_PEUT_PUBLIER" size="sm" @click="showPublish = true">
+        <Plus :size="15" /> Publier une offre
+      </BaseButton>
     </div>
 
     <LoadingState v-if="loading" label="Chargement de vos offres…" />
@@ -88,6 +91,6 @@ const statusLabel: Record<RhOffer['status'], string> = {
       </RouterLink>
     </div>
 
-    <PublishOffreModal v-model="showPublish" :allow-poste="isRh" @published="load" />
+    <PublishOffreModal v-if="isRh || MANAGER_PEUT_PUBLIER" v-model="showPublish" :allow-poste="isRh" @published="load" />
   </div>
 </template>

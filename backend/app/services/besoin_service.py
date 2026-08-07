@@ -76,7 +76,7 @@ def valider(db: Session, besoin_id: int, hrbp_user_id: int) -> BesoinOut | None:
     notification_service.create_notification(
         db, user_id=b.manager_user_id, titre="Besoin validé",
         texte=f"Votre besoin « {b.poste} » a été validé par la HRBP ; l'offre va être publiée.",
-        to_route="manager.besoins")
+        to_route="manager.offres")
     return _to_out(db, b)
 
 
@@ -94,7 +94,7 @@ def refuser(db: Session, besoin_id: int, hrbp_user_id: int, motif: str | None) -
         db, user_id=b.manager_user_id, titre="Besoin non retenu",
         texte=f"Votre besoin « {b.poste} » n'a pas été retenu."
               + (f" Motif : {b.motif_refus}" if b.motif_refus else ""),
-        to_route="manager.besoins")
+        to_route="manager.offres")
     return _to_out(db, b)
 
 
