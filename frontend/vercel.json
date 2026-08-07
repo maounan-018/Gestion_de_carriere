@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "//": "Fallback SPA (vue-router en history mode) : toute route non-fichier retombe sur index.html, sinon un refresh sur /collab/offres renvoie 404. Les vrais fichiers (assets buildés) sont servis par le filesystem AVANT ce rewrite. L'API n'est PAS proxifiée : le front appelle directement le backend local (VITE_API_BASE) en Bearer.",
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}

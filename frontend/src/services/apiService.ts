@@ -21,7 +21,7 @@ import type {
   Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin, PeerReview,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
-import { apiFetch, apiUpload, getCsrf, ApiError } from './http'
+import { apiFetch, apiUpload, apiBlob, getCsrf, getToken, ApiError, API_BASE, IS_CROSS_ORIGIN } from './http'
 import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
 import {
@@ -362,14 +362,16 @@ export const apiService = {
       .filter((m) => (m.text || '').trim())
       .map((m) => ({ role: m.from === 'me' ? 'user' : 'assistant', content: stripHtml(m.text) }))
 
+    const token = getToken()
     const csrf = getCsrf()
-    const res = await fetch('/api/coach/stream', {
+    const res = await fetch(`${API_BASE}/coach/stream`, {
       method: 'POST',
-      credentials: 'include',
+      credentials: IS_CROSS_ORIGIN ? 'omit' : 'include',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'text/event-stream',
-        ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(!IS_CROSS_ORIGIN && csrf ? { 'X-CSRF-Token': csrf } : {}),
       },
       body: JSON.stringify({ message, history: hist, ...opts }),
     })
@@ -1239,7 +1241,13 @@ export const apiService = {
   },
   /** URL de téléchargement du CV d'un profil (même origine via proxy ; cookies inclus
    *  par la navigation). Le backend applique l'ownership (propriétaire / manager / RH). */
+  /** CV PDF d'un profil, téléchargé en Blob avec l'auth (Bearer cross-origin ou
+   *  cookie same-origin). L'appelant crée l'object URL pour l'aperçu/téléchargement
+   *  — nécessaire car une `<iframe>`/`<a>` ne porte pas d'en-tête d'auth. */
+  async cvBlob(profilId: number): Promise<Blob> {
+    return apiBlob(`/profils/${profilId}/cv`)
+  },
   cvUrl(profilId: number): string {
-    return `/api/profils/${profilId}/cv`
+    return `${API_BASE}/profils/${profilId}/cv`
   },
 }

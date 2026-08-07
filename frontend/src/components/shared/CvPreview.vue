@@ -1,21 +1,50 @@
 <script setup lang="ts">
 /**
- * Visionneuse de CV intégrée à la plateforme : aperçu direct du PDF dans une
- * iframe (le backend le sert en `inline`), sans obliger au téléchargement.
- * Un bouton « Télécharger » reste disponible (attribut download → sauvegarde).
+ * Visionneuse de CV intégrée : le PDF est téléchargé en Blob AUTHENTIFIÉ (via
+ * apiService.cvBlob → en-tête Bearer en cross-origin, cookie en same-origin) puis
+ * affiché dans une iframe via un object URL. Une `<iframe src>` ou un `<a href>`
+ * ne peut pas porter d'en-tête d'auth ni contourner `frame-ancestors` du backend :
+ * passer par le Blob règle les deux (l'object URL est de la même origine que l'app).
+ * Un bouton « Télécharger » réutilise le même object URL.
  */
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import { X, Download } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 
 const props = defineProps<{ modelValue: boolean; profilId: number | null; nom?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [boolean] }>()
 
-const url = computed(() => (props.profilId != null ? apiService.cvUrl(props.profilId) : ''))
-// L'iframe est anti-cache : le cache HTTP peut resservir une ancienne réponse
-// (ex. en-têtes de framing obsolètes) et bloquer l'aperçu. Régénéré à l'ouverture.
-const bust = ref(Date.now())
-const iframeUrl = computed(() => (url.value ? `${url.value}?t=${bust.value}` : ''))
+const objectUrl = ref('')
+const loading = ref(false)
+const error = ref('')
+
+const downloadName = () =>
+  `cv-${(props.nom || 'profil').trim().replace(/\s+/g, '-').toLowerCase() || 'profil'}.pdf`
+
+function revoke() {
+  if (objectUrl.value) {
+    URL.revokeObjectURL(objectUrl.value)
+    objectUrl.value = ''
+  }
+}
+
+async function load() {
+  if (props.profilId == null) return
+  revoke()
+  error.value = ''
+  loading.value = true
+  const id = props.profilId
+  try {
+    const blob = await apiService.cvBlob(id)
+    // Le profil a pu changer pendant le téléchargement : on ignore une réponse obsolète.
+    if (id !== props.profilId) return
+    objectUrl.value = URL.createObjectURL(blob)
+  } catch (e) {
+    error.value = (e as Error)?.message || 'CV indisponible.'
+  } finally {
+    if (id === props.profilId) loading.value = false
+  }
+}
 
 function close() {
   emit('update:modelValue', false)
@@ -27,14 +56,18 @@ watch(
   () => props.modelValue,
   (open) => {
     if (open) {
-      bust.value = Date.now()
+      load()
       document.addEventListener('keydown', onKey)
     } else {
       document.removeEventListener('keydown', onKey)
+      revoke()
     }
   },
 )
-onUnmounted(() => document.removeEventListener('keydown', onKey))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKey)
+  revoke()
+})
 </script>
 
 <template>
@@ -55,8 +88,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
           </h3>
           <div class="flex shrink-0 items-center gap-2">
             <a
-              :href="url"
-              download
+              v-if="objectUrl"
+              :href="objectUrl"
+              :download="downloadName()"
               class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-green-deep hover:bg-green-soft"
             >
               <Download :size="14" /> Télécharger
@@ -70,11 +104,21 @@ onUnmounted(() => document.removeEventListener('keydown', onKey))
             </button>
           </div>
         </div>
-        <iframe
-          :src="iframeUrl"
-          title="Aperçu du CV"
-          class="min-h-0 flex-1 w-full bg-panel-2"
-        />
+        <div class="relative min-h-0 flex-1 bg-panel-2">
+          <iframe
+            v-if="objectUrl"
+            :src="objectUrl"
+            title="Aperçu du CV"
+            class="h-full w-full"
+          />
+          <div
+            v-else
+            class="grid h-full w-full place-items-center px-6 text-center text-sm text-ink-3"
+          >
+            <span v-if="loading">Chargement du CV…</span>
+            <span v-else-if="error">{{ error }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </Teleport>

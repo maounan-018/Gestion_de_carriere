@@ -62,6 +62,16 @@ class SecurityHeadersMiddleware:
         path = scope.get("path", "")
         skip_csp = _is_doc(path)
 
+        # Private Network Access (Chrome) : un site public/HTTPS (ex. front Vercel)
+        # qui appelle une adresse privée/localhost (backend FastAPI local) déclenche
+        # un préflight portant `Access-Control-Request-Private-Network: true`. Le
+        # backend DOIT répondre `Access-Control-Allow-Private-Network: true` pour que
+        # la requête réelle soit autorisée. Le CORSMiddleware ne gère pas cet en-tête.
+        wants_pna = any(
+            k == b"access-control-request-private-network" and v == b"true"
+            for k, v in (scope.get("headers") or [])
+        )
+
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
                 headers = message.setdefault("headers", [])
@@ -73,6 +83,8 @@ class SecurityHeadersMiddleware:
                     headers.append((b"content-security-policy", _API_CSP))
                 if settings.is_production and b"strict-transport-security" not in present:
                     headers.append(_HSTS)
+                if wants_pna and b"access-control-allow-private-network" not in present:
+                    headers.append((b"access-control-allow-private-network", b"true"))
             await send(message)
 
         # Plafond de taille : Content-Length déclaré > limite -> 413 immédiat.

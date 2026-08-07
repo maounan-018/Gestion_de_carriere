@@ -131,6 +131,10 @@ class Settings:
                 "(ex: http://localhost:3000). Le wildcard \"*\" est interdit."
             )
         self.ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()]
+        # Optionnel : autorise un MOTIF d'origines (regex) en plus de la liste — utile
+        # pour les URLs de PREVIEW Vercel (aléatoires) sans ré-éditer à chaque déploi.
+        # Ex : ALLOWED_ORIGIN_REGEX=https://.*\.vercel\.app$  (vide = désactivé).
+        self.ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None
 
         # --- Authentification / SSO ---
         self.AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "local").strip().lower()

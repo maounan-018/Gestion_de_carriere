@@ -53,6 +53,15 @@ def extract_token(request: Request) -> str | None:
 def _check_csrf(request: Request) -> None:
     if request.method in _SAFE_METHODS:
         return
+    # Auth par en-tête Bearer (aucun cookie de session) : le CSRF double-submit ne
+    # protège QUE l'auth par cookie (envoyé automatiquement par le navigateur, donc
+    # rejouable en cross-site). Un jeton Bearer, lui, doit être posé explicitement
+    # par notre JS et n'est jamais envoyé tout seul → pas de vecteur CSRF. On saute
+    # donc le contrôle dans ce cas (déploiement front cross-origin → backend local).
+    if not request.cookies.get(settings.SESSION_COOKIE):
+        authz = request.headers.get("Authorization", "")
+        if authz.lower().startswith("bearer "):
+            return
     cookie = request.cookies.get(settings.CSRF_COOKIE)
     header = request.headers.get(settings.CSRF_HEADER)
     if not cookie or not header or cookie != header:

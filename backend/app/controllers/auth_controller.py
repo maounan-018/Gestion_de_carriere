@@ -48,7 +48,9 @@ def login(req: LoginRequest, request: Request, response: Response,
     token = auth_service.create_session(db, user, ip=ip, ua=ua)
     csrf = generate_token()
     _set_auth_cookies(response, token, csrf)
-    return {"utilisateur": user.to_public(), "csrf_token": csrf}
+    # `token` : consommé UNIQUEMENT par un front cross-origin (auth Bearer) ; le
+    # front same-origin l'ignore et s'appuie sur le cookie HttpOnly.
+    return {"utilisateur": user.to_public(), "csrf_token": csrf, "token": token}
 
 
 @router.post("/logout", summary="Déconnexion (révoque la session)")
