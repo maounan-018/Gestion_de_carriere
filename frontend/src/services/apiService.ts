@@ -990,6 +990,16 @@ export const apiService = {
     const qs = statut ? `?statut=${encodeURIComponent(statut)}` : ''
     return (await apiFetch<BesoinOut[]>(`/besoins${qs}`)).map(mapBesoin)
   },
+  /** Détail d'un besoin (HRBP). */
+  async getBesoin(id: number): Promise<Besoin | null> {
+    if (MODE === 'mock') { await delay(); return null }
+    return mapBesoin(await apiFetch<BesoinOut>(`/besoins/${id}`))
+  },
+  /** HRBP : contacter le manager émetteur du besoin. */
+  async contacterManagerBesoin(id: number, message: string): Promise<void> {
+    if (MODE === 'mock') { await delay(); return }
+    await apiFetch(`/besoins/${id}/contacter`, { method: 'POST', body: { message } })
+  },
   /** HRBP : valider un besoin. */
   async validerBesoin(id: number): Promise<void> {
     if (MODE === 'mock') { await delay(); return }

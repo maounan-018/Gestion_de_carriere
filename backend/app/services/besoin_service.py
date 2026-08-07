@@ -41,8 +41,25 @@ def creer_besoin(db: Session, manager_user_id: int, data: BesoinCreate) -> Besoi
         db, from_name=(mgr.name if mgr else "Un manager"),
         sujet="Besoin de recrutement",
         message=f"Nouveau besoin de recrutement sur « {b.poste} ». "
-                + (b.description or "Sans description."))
+                + (b.description or "Sans description."),
+        to_route="rh.besoins")   # clic sur la notif → écran des besoins
     return _to_out(db, b)
+
+
+def get_besoin(db: Session, besoin_id: int) -> BesoinOut | None:
+    b = _get(db, besoin_id)
+    return _to_out(db, b) if b else None
+
+
+def contacter_manager(db: Session, besoin_id: int, from_name: str, message: str) -> bool:
+    """La HRBP contacte le manager émetteur du besoin (notification). False si absent."""
+    b = _get(db, besoin_id)
+    if b is None:
+        return False
+    notification_service.create_notification(
+        db, user_id=b.manager_user_id, titre=f"Message de la HRBP · besoin « {b.poste} »",
+        texte=f"De {from_name} : {message.strip()}"[:1000], to_route="manager.offres")
+    return True
 
 
 def mes_besoins(db: Session, manager_user_id: int) -> list[BesoinOut]:

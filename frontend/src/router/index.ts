@@ -224,6 +224,12 @@ const managerDetailRoutes: RouteRecordRaw[] = [
 // Écrans de détail hors navigation (RH).
 const rhDetailRoutes: RouteRecordRaw[] = [
   {
+    path: 'rh/besoin/:id',
+    name: 'rh.besoinDetail',
+    component: () => import('@/views/rh/BesoinDetailRhView.vue'),
+    meta: { roles: ['rh'], title: 'Détail du besoin' },
+  },
+  {
     path: 'rh/collaborateur/:id',
     name: 'rh.ficheCollabRh',
     component: () => import('@/views/rh/FicheCollabRhView.vue'),

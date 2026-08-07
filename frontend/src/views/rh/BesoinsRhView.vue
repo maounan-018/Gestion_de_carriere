@@ -96,8 +96,11 @@ function refuser(b: Besoin) {
               <BasePill :tone="tone[b.statut]">{{ label[b.statut] }}</BasePill>
               <span class="text-xs text-ink-3">Demandé par {{ b.managerNom || 'un manager' }}</span>
             </div>
-            <h4 class="mt-1.5 text-sm font-bold text-ink">{{ b.poste }}</h4>
-            <p v-if="b.description" class="mt-0.5 text-xs text-ink-2">{{ b.description }}</p>
+            <RouterLink :to="{ name: 'rh.besoinDetail', params: { id: b.id } }"
+              class="mt-1.5 block text-sm font-bold text-ink hover:text-green-deep hover:underline">
+              {{ b.poste }}
+            </RouterLink>
+            <p v-if="b.description" class="mt-0.5 line-clamp-2 text-xs text-ink-2">{{ b.description }}</p>
             <p v-if="b.statut === 'refuse' && b.motifRefus" class="mt-1 text-[11px] text-ink-3">
               Motif : {{ b.motifRefus }}
             </p>
