@@ -273,7 +273,8 @@ def synthese(db: Session) -> dict:
 # Seuil « haut potentiel » : niveau moyen de compétences >= 4.5/5 (score >= 90).
 # C'est un VRAI critère (top ~12 % de la population niveautée), pas un « top N »
 # arbitraire — le nombre est donc stable et cohérent entre l'alerte et l'écran.
-SEUIL_HP = 4.5
+SEUIL_HP = 4.1  # niveau moyen (1-5) au-delà duquel un profil est « haut potentiel »
+# (le max observé sur la population est ~4.36 : à 4.5 personne n'était jamais détecté).
 
 
 def hauts_potentiels(db: Session, *, limit: int = 50) -> list[HautPotentielItem]:
