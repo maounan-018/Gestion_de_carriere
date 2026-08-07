@@ -343,9 +343,13 @@ def _roleplay_system(sujet) -> str:
     )
 
 
-def _entretien_messages(system: str, history: list, user_turn: str) -> list[dict]:
+def _entretien_messages(system: str, history: list, user_turn: str,
+                        keep: int | None = _MAX_HISTORY) -> list[dict]:
     msgs: list[dict] = [{"role": "system", "content": system}]
-    for m in history[-_MAX_HISTORY:]:
+    # `keep=None` → TOUT l'historique (indispensable pour la SYNTHÈSE, qui doit être
+    # ancrée dans l'ENSEMBLE de l'entretien, pas seulement ses derniers échanges).
+    hist = history if keep is None else history[-keep:]
+    for m in hist:
         role = "user" if getattr(m, "role", "user") == "user" else "assistant"
         contenu = getattr(m, "content", "")
         if contenu:
@@ -354,12 +358,14 @@ def _entretien_messages(system: str, history: list, user_turn: str) -> list[dict
     return msgs
 
 
-def _entretien_stream(system: str, history: list, user_turn: str):
-    """Streame une réponse d'entretien (tâche `coach` = mistral-nemo, SANS outils)."""
+def _entretien_stream(system: str, history: list, user_turn: str, *,
+                      keep: int | None = _MAX_HISTORY, num_ctx: int | None = None):
+    """Streame une réponse d'entretien (tâche `coach` = mistral-nemo, SANS outils).
+    `keep=None` inclut tout l'historique (synthèse) ; `num_ctx` peut être élargi."""
     cfg = settings.task_model(_TASK)
     model = cfg.get("model", "mistral-nemo")
-    num_ctx = int(cfg.get("num_ctx", 8192))
-    messages = _entretien_messages(system, history, user_turn)
+    num_ctx = num_ctx or int(cfg.get("num_ctx", 8192))
+    messages = _entretien_messages(system, history, user_turn, keep=keep)
     try:
         got = False
         for ev in chat_stream(model, messages, tools=None, num_ctx=num_ctx):
@@ -408,14 +414,18 @@ def _sujet_contexte(sujet) -> str:
 def _synthese_system(equipe: bool, contexte: str) -> str:
     """System prompt DÉDIÉ à la (re)génération de la synthèse — découplé du flux de
     sections (pas de balise, pas de question) pour un résultat fiable et aéré."""
-    src = ("les réponses du manager à propos de son collaborateur et les questions du coach"
-           if equipe else "les réponses du collaborateur et les questions du coach")
+    src = ("ce que le manager a dit de son collaborateur"
+           if equipe else "ce que le collaborateur a dit")
     return (
-        "Tu es un coach RH bienveillant. En te fondant UNIQUEMENT sur l'échange de préparation "
-        f"d'entretien annuel ci-dessus ({src}), rédige la SYNTHÈSE finale, en français. Écris "
-        "SEULEMENT la synthèse : ne pose aucune question, n'ouvre aucune nouvelle section, "
-        "n'utilise aucune balise technique, aucun markdown, aucune puce, aucun astérisque.\n\n"
-        "CONTEXTE :\n" + fence(contexte)
+        "Tu es un coach RH bienveillant. Rédige la SYNTHÈSE finale (en français) de cette "
+        f"préparation d'entretien annuel, en te fondant EXCLUSIVEMENT sur {src} dans "
+        "l'échange ci-dessus (ses réponses RÉELLES, ses mots, ses exemples chiffrés). "
+        "N'INVENTE RIEN : n'ajoute aucun élément qui n'a pas été évoqué dans la conversation. "
+        "Si une rubrique n'a pas été abordée, dis-le brièvement plutôt que de l'inventer. "
+        "Le contexte ci-dessous n'est qu'un REPÈRE d'identité (poste), PAS une source de "
+        "contenu — ne le recopie pas. Écris SEULEMENT la synthèse : aucune question, aucune "
+        "balise technique, aucun markdown, aucune puce, aucun astérisque.\n\n"
+        "CONTEXTE (repère d'identité, ne pas recopier) :\n" + fence(contexte)
     )
 
 
@@ -618,7 +628,10 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
         ctx = _sujet_contexte(sujet) if (equipe and sujet is not None) else _profil_contexte(db, user_id)
         turn = ("Rédige la synthèse finale de cette préparation d'entretien annuel, fondée sur les "
                 "échanges ci-dessus. " + _SYNTHESE_STRUCT)
-        yield from _entretien_stream(_synthese_system(equipe, ctx), history, turn)
+        # Synthèse : TOUT l'historique (keep=None) + contexte élargi → ancrée dans
+        # l'ENSEMBLE de l'entretien, pas seulement ses derniers échanges.
+        yield from _entretien_stream(_synthese_system(equipe, ctx), history, turn,
+                                     keep=None, num_ctx=8192)
         return
 
     # --- Modes ENTRETIEN : rôle natif (system prompt dédié), sans outils ---
