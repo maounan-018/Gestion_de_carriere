@@ -138,7 +138,7 @@ onMounted(load)
 
       <!-- Passerelles RÉSUMÉES → écran dédié listant toutes les recommandations. -->
       <BaseCard title="Passerelles métiers">
-        <template #actions><BasePill tone="ai"><Sparkles :size="12" /> recherche sémantique</BasePill></template>
+        <template #actions><BasePill tone="ai"><Sparkles :size="12" /> compétences en commun</BasePill></template>
         <p class="mb-2.5 text-xs text-ink-3">
           Évolutions alternatives fondées sur vos compétences transférables. Cliquez pour l'analyse détaillée.
         </p>

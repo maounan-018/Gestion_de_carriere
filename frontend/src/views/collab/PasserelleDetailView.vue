@@ -48,8 +48,8 @@ onMounted(load)
 function description(p: Passerelle): string {
   return (
     `Le métier « ${p.title} » présente une ${p.label.toLowerCase()} avec votre profil `
-    + `(${p.pct} % de compétences en commun), identifiée par recherche sémantique sur le `
-    + `référentiel ${p.source.toUpperCase()}. C'est une passerelle d'évolution alternative `
+    + `(${p.pct} % de vos compétences en commun), mesurée par recouvrement réel de vos `
+    + `compétences avec celles du métier au référentiel ${p.source.toUpperCase()}. C'est une passerelle d'évolution alternative `
     + `à votre poste visé${posteVise.value ? ` (${posteVise.value})` : ''} : les compétences `
     + `déjà acquises y sont largement transférables, ce qui en fait une piste de mobilité interne `
     + `réaliste. Explorez les offres internes correspondantes pour concrétiser cette évolution.`
