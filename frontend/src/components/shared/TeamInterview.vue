@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { Sparkles, Send, MessageSquare, Check, Clock, FileText, Download } from '@lucide/vue'
+import { Sparkles, Send, MessageSquare, Check, Clock, FileText, Download, RefreshCw } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
 import { useToast } from '@/composables/useToast'
@@ -86,6 +86,7 @@ async function runTurn(ouverture: boolean, message: string) {
   streamingHtml.value = ''
   let raw = ''
   const fromStep = currentStep.value
+  let reachedSyntheseNow = false
   try {
     await apiService.streamCoachMessage(
       message,
@@ -110,8 +111,12 @@ async function runTurn(ouverture: boolean, message: string) {
     if (advance && currentStep.value < STEPS.length - 1) {
       currentStep.value++
       stepAnswers.value = 0
+      if (currentStep.value === STEPS.length - 1) reachedSyntheseNow = true
     }
-    if (currentStep.value === STEPS.length - 1 && currentStep.value > fromStep && clean) {
+    // Synthèse produite par le tour DÉDIÉ (ouverture sur la dernière section) : capture ce
+    // tour-là uniquement (1re génération auto OU bouton), jamais après un simple message.
+    const isRegen = ouverture && fromStep === STEPS.length - 1
+    if (isRegen && clean) {
       synthesePlain.value = htmlToText(formatCoachReply(clean))
     }
   } catch {
@@ -121,6 +126,7 @@ async function runTurn(ouverture: boolean, message: string) {
     streamStatus.value = ''
     streamingHtml.value = ''
   }
+  if (reachedSyntheseNow) await runTurn(true, '')
 }
 
 async function answer(text?: string) {
@@ -132,12 +138,19 @@ async function answer(text?: string) {
   await runTurn(false, t)
 }
 
+/** Régénère la synthèse À LA DEMANDE (bouton), en tenant compte des messages récents. */
+function regenSynthese() {
+  if (busy.value || !atLastStep.value) return
+  runTurn(true, '')
+}
+
 onMounted(() => runTurn(true, ''))
 
 /* ---- Synthèse finale : export PDF (livrable pour conduire l'entretien) ---- */
 function htmlToText(html: string): string {
   const d = document.createElement('div')
-  d.innerHTML = html
+  // Conserve les sauts de ligne (les <br> → \n) pour une synthèse AÉRÉE (paragraphes).
+  d.innerHTML = (html || '').replace(/<br\s*\/?>/gi, '\n')
   return (d.textContent || '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -150,10 +163,16 @@ function exportPdf() {
     { type: 'p', text: `${meta ? meta + ' · ' : ''}${when} · Préparation manager BMCI (non contractuelle)` },
     { type: 'spacer' },
     { type: 'h2', text: 'Synthèse' },
-    { type: 'p', text: synthesePlain.value || 'Synthèse non disponible.' },
-    { type: 'spacer' },
-    { type: 'h2', text: 'Déroulé de la préparation' },
   ]
+  const parts = (synthesePlain.value || 'Synthèse non disponible.')
+    .split(/\n{2,}/)
+    .map((p) => p.replace(/\s*\n\s*/g, ' ').trim())
+    .filter(Boolean)
+  for (const p of parts) {
+    blocks.push({ type: 'p', text: p })
+    blocks.push({ type: 'spacer' })
+  }
+  blocks.push({ type: 'h2', text: 'Déroulé de la préparation' })
   for (const m of chat.value) {
     const txt = htmlToText(m.text)
     if (!txt) continue
@@ -237,10 +256,16 @@ function exportPdf() {
         </div>
         <p class="mt-1 text-xs text-ink-2">
           Le bilan de la préparation de l'entretien de {{ subject.name }}. Emportez-le pour conduire l'entretien.
+          Vous pouvez le régénérer si vous avez ajouté des éléments depuis.
         </p>
-        <BaseButton class="mt-3" size="sm" @click="exportPdf">
-          <Download :size="15" /> Télécharger la synthèse (PDF)
-        </BaseButton>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <BaseButton size="sm" @click="exportPdf">
+            <Download :size="15" /> Télécharger la synthèse (PDF)
+          </BaseButton>
+          <BaseButton variant="secondary" size="sm" :disabled="busy" @click="regenSynthese">
+            <RefreshCw :size="15" /> Régénérer la synthèse
+          </BaseButton>
+        </div>
       </div>
 
       <div class="mt-3 flex items-center gap-2 rounded-xl border border-border bg-panel px-3 py-2">

@@ -276,6 +276,7 @@ _ENTRETIEN_PLAN = [
     {"label": "Synthèse finale", "kind": "synthese", "points": ""},
 ]
 _PLAN_ORDRE = ", ".join(f"« {s['label']} »" for s in _ENTRETIEN_PLAN[1:])
+_LAST_IDX = len(_ENTRETIEN_PLAN) - 1  # index de la section « Synthèse finale »
 
 
 def _entretien_methode(sujet: str) -> str:
@@ -378,6 +379,45 @@ def _entretien_stream(system: str, history: list, user_turn: str):
 # passer à la suivante (garantit qu'on « fait le tour » des points, pas d'avance éclair).
 _MIN_ECHANGES_SECTION = 2
 
+# Mise en forme AÉRÉE de la synthèse finale (paragraphes courts par thème, lignes vides).
+_SYNTHESE_STRUCT = (
+    "Présente-la AÉRÉE : de courts paragraphes séparés par une LIGNE VIDE (deux retours à la ligne), "
+    "un paragraphe par thème et dans l'ordre « Objectifs et missions », « Réussites », « Difficultés "
+    "et enseignements », « Compétences et axes de progrès », « Aspirations et formations ». Chaque "
+    "paragraphe commence par son thème suivi de deux points, en une ou deux phrases, sans puce, sans "
+    "astérisque et sans markdown. Termine par une courte phrase d'encouragement, sur une ligne à part."
+)
+
+
+def _sujet_contexte(sujet) -> str:
+    """Contexte court d'un collaborateur (mode équipe) pour la synthèse."""
+    poste = (getattr(sujet, "poste", "") or "").strip()
+    pole = getattr(sujet, "pole", None)
+    if pole:
+        poste = f"{poste} · {pole}" if poste else str(pole)
+    parts = [f"Collaborateur : {getattr(sujet, 'nom', '')}".strip()]
+    if poste:
+        parts.append(f"Poste : {poste}")
+    if getattr(sujet, "aspiration", None):
+        parts.append(f"Aspiration : {sujet.aspiration}")
+    if getattr(sujet, "ecarts", None):
+        parts.append(f"Points à développer : {', '.join(sujet.ecarts)}")
+    return "\n".join(parts)
+
+
+def _synthese_system(equipe: bool, contexte: str) -> str:
+    """System prompt DÉDIÉ à la (re)génération de la synthèse — découplé du flux de
+    sections (pas de balise, pas de question) pour un résultat fiable et aéré."""
+    src = ("les réponses du manager à propos de son collaborateur et les questions du coach"
+           if equipe else "les réponses du collaborateur et les questions du coach")
+    return (
+        "Tu es un coach RH bienveillant. En te fondant UNIQUEMENT sur l'échange de préparation "
+        f"d'entretien annuel ci-dessus ({src}), rédige la SYNTHÈSE finale, en français. Écris "
+        "SEULEMENT la synthèse : ne pose aucune question, n'ouvre aucune nouvelle section, "
+        "n'utilise aucune balise technique, aucun markdown, aucune puce, aucun astérisque.\n\n"
+        "CONTEXTE :\n" + fence(contexte)
+    )
+
 
 def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False, turns: int = 0) -> str:
     """Consigne d'un tour d'entretien (copilote self OU copilote d'équipe). L'IA décide
@@ -395,7 +435,14 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
     qui = "le manager (à propos de son collaborateur)" if equipe else "le collaborateur"
     dire = "ce que dit le manager de son collaborateur" if equipe else "ce que dit le collaborateur"
 
+    cur = _ENTRETIEN_PLAN[idx]
+    nxt = _ENTRETIEN_PLAN[idx + 1] if idx + 1 < n else None
+
     if ouverture:
+        # Régénération de la synthèse À LA DEMANDE (bouton) : on est déjà sur la dernière section.
+        if cur["kind"] == "synthese":
+            return ("Mets à jour la synthèse finale de la préparation en tenant compte de TOUT l'échange, "
+                    "y compris les tout derniers messages. " + _SYNTHESE_STRUCT + " N'utilise aucune balise.")
         if equipe:
             return ("Ouvre la préparation : salue le manager, présente-toi en une phrase comme son copilote "
                     "pour préparer l'entretien annuel de son collaborateur, dis en une phrase que vous allez "
@@ -405,9 +452,6 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
                 "son copilote de préparation de l'entretien annuel, explique en une phrase que vous allez le "
                 "préparer ensemble section par section, et demande-lui simplement s'il est prêt. Ne traite "
                 "encore aucun contenu et n'utilise aucune balise.")
-
-    cur = _ENTRETIEN_PLAN[idx]
-    nxt = _ENTRETIEN_PLAN[idx + 1] if idx + 1 < n else None
     reponse = f"Message de {'le manager' if equipe else 'le collaborateur'} : « {message.strip()} »."
 
     def next_body() -> str:
@@ -418,8 +462,8 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
             return ("donner deux ou trois conseils personnalisés et concrets pour réussir l'entretien, "
                     "fondés sur l'échange, puis demander s'il reste un point à ajuster")
         if nxt["kind"] == "synthese":
-            return ("rédiger la synthèse finale structurée de tout ce qui a été préparé, fondée sur les "
-                    "réponses réelles, et terminer en encourageant")
+            return ("dire en une phrase que vous avez fait le tour de la préparation et que tu établis "
+                    "maintenant sa synthèse (sans rédiger la synthèse toi-même ici)")
         return (f"relier naturellement ce qui vient d'être dit au thème « {nxt['label']} » et poser sa "
                 f"première question ouverte portant sur {nxt['points']}")
 
@@ -565,6 +609,18 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
     produit pas de texte, un tour de réponse streame ses tokens). Multi-sauts
     d'outils supportés. Repli mono-coup (émis en un bloc) si le flux échoue.
     NE FERME PAS `db` : c'est l'appelant (controller) qui possède la session."""
+    # --- (Re)génération de la SYNTHÈSE finale : parcours DÉDIÉ, découplé du flux de
+    #     sections (prompt focalisé, sans balise ni question) → résultat fiable et aéré.
+    #     Déclenché par le front à l'arrivée sur la synthèse ET par le bouton « Régénérer ».
+    if (mode in ("entretien_copilote", "entretien_copilote_equipe")
+            and ouverture and section_index == _LAST_IDX):
+        equipe = mode == "entretien_copilote_equipe"
+        ctx = _sujet_contexte(sujet) if (equipe and sujet is not None) else _profil_contexte(db, user_id)
+        turn = ("Rédige la synthèse finale de cette préparation d'entretien annuel, fondée sur les "
+                "échanges ci-dessus. " + _SYNTHESE_STRUCT)
+        yield from _entretien_stream(_synthese_system(equipe, ctx), history, turn)
+        return
+
     # --- Modes ENTRETIEN : rôle natif (system prompt dédié), sans outils ---
     if mode == "entretien_copilote":
         system = (_ENTRETIEN_COPILOTE_SYSTEM + "\n\nPROFIL DU COLLABORATEUR :\n"
