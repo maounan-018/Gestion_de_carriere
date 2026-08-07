@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-tests/test_succession.py — Plan de succession (tâche IA `raisonnement_batch`).
-Teste sans Ollama (`generate` monkeypatché) : contexte réel + repli + pôle vide.
+tests/test_succession.py — Plan de succession CALCULÉ (déterministe, sans LLM).
+Teste le recouvrement pondéré de compétences : couverture, poste à risque, pôle vide.
 """
 
 import time
@@ -11,51 +11,70 @@ from app.models.profil import Profil, ProfilCompetence
 from app.tests.conftest import auth, hdr
 
 
-def test_contexte_reel_du_pole(db, monkeypatch):
-    p1 = Profil(nom="Alami", prenom="Nadia", poste_actuel="Responsable RH",
-                departement_key="rh", aspirations="Directrice des Talents", synthetique=True)
-    p2 = Profil(nom="El Amrani", prenom="Youssef", poste_actuel="Conseiller",
-                departement_key="rh", synthetique=True)
-    db.add_all([p1, p2])
+def test_succession_calculee_couverture(db):
+    """Un poste d'encadrement dont un collaborateur couvre les compétences →
+    successeur viable identifié, poste non à risque, écarts calculés."""
+    holder = Profil(nom="Alami", prenom="Nadia", poste_actuel="Responsable RH",
+                    departement_key="rh", synthetique=True)
+    cand = Profil(nom="El Amrani", prenom="Youssef", poste_actuel="Conseiller RH",
+                  departement_key="rh", synthetique=True)
+    db.add_all([holder, cand])
     db.flush()
-    db.add(ProfilCompetence(profil_id=p1.id, libelle="Gestion des talents", niveau=5))
+    db.add_all([
+        ProfilCompetence(profil_id=holder.id, libelle="Gestion des talents", niveau=5),
+        ProfilCompetence(profil_id=holder.id, libelle="Recrutement", niveau=4),
+        ProfilCompetence(profil_id=cand.id, libelle="Gestion des talents", niveau=4),
+        ProfilCompetence(profil_id=cand.id, libelle="Recrutement", niveau=4),
+    ])
     db.commit()
 
-    cap = {}
-
-    def fake_generate(task, prompt, system="", is_valid=None):
-        cap.update(task=task, prompt=prompt, system=system)
-        return "Plan de succession détaillé."
-
-    monkeypatch.setattr(ss, "generate", fake_generate)
     out = ss.plan_succession(db, "rh")
 
     assert out["effectif"] == 2
-    assert out["plan"] == "Plan de succession détaillé."
-    assert cap["task"] == "raisonnement_batch"
-    # Données réelles du pôle injectées ET fencées.
-    assert "Nadia Alami" in cap["prompt"]
-    assert "Gestion des talents" in cap["prompt"]
-    assert "<donnee>" in cap["prompt"]
+    assert out["postes_cles"] == 1          # seul "Responsable RH" est un poste clé
+    assert out["couverts"] == 1
+    assert out["a_risque"] == 0
+    role = out["roles"][0]
+    assert role["titulaire"] == "Nadia Alami"
+    assert role["risque"] is False
+    succ = role["successeurs"][0]
+    assert succ["nom"] == "Youssef El Amrani"
+    # couvert = min(4,5)+min(4,4)=8 ; total=9 → round(100*8/9)=89 → « Prêt »
+    assert succ["score"] == 89
+    assert succ["readiness"] == "Prêt"
+    assert "Gestion des talents" in succ["ecarts"]   # niveau 4 < 5 du titulaire
 
 
-def test_repli_si_indisponible(db, monkeypatch):
-    db.add(Profil(nom="X", departement_key="rh", synthetique=True))
+def test_succession_poste_a_risque(db):
+    """Un poste d'encadrement sans collaborateur au profil compatible → À RISQUE."""
+    holder = Profil(nom="Bennis", prenom="Salma", poste_actuel="Directrice Financière",
+                    departement_key="fin", synthetique=True)
+    cand = Profil(nom="Ouzzine", prenom="Karim", poste_actuel="Agent d'accueil",
+                  departement_key="fin", synthetique=True)
+    db.add_all([holder, cand])
+    db.flush()
+    db.add_all([
+        ProfilCompetence(profil_id=holder.id, libelle="Trésorerie", niveau=5),
+        ProfilCompetence(profil_id=cand.id, libelle="Accueil", niveau=2),
+    ])
     db.commit()
 
-    def boom(*a, **k):
-        raise RuntimeError("ollama down")
+    out = ss.plan_succession(db, "fin")
 
-    monkeypatch.setattr(ss, "generate", boom)
-    out = ss.plan_succession(db, "rh")
-    assert "indisponible" in out["plan"].lower()
+    assert out["postes_cles"] == 1
+    assert out["a_risque"] == 1
+    assert out["couverts"] == 0
+    role = out["roles"][0]
+    assert role["risque"] is True
+    assert role["successeurs"] == []
 
 
-def test_pole_vide(db, monkeypatch):
-    monkeypatch.setattr(ss, "generate", lambda task, prompt, system="", is_valid=None: prompt)
+def test_pole_vide(db):
     out = ss.plan_succession(db, "pole_inconnu")
     assert out["effectif"] == 0
-    assert "Aucun collaborateur" in out["plan"]  # le prompt (échoé) contient le contexte vide
+    assert out["roles"] == []
+    assert out["postes_cles"] == 0
+    assert "Aucun poste d'encadrement" in out["synthese"]
 
 
 # ---------------------------------------------------------- Version ASYNCHRONE

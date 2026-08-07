@@ -24,11 +24,33 @@ class SuccessionRequest(BaseModel):
                                  description="Pôle/département à analyser (ex. 'retail_banking').")
 
 
+class SuccesseurOut(BaseModel):
+    """Successeur interne pressenti pour un poste clé (calcul déterministe)."""
+    nom: str
+    poste: str | None
+    score: int                    # adéquation au poste clé (0-100)
+    readiness: str                # « Prêt » | « 12-24 mois » | « À développer »
+    ecarts: list[str] = Field(default_factory=list)   # compétences clés à combler
+
+
+class PosteCleOut(BaseModel):
+    """Poste clé (rôle d'encadrement) et sa relève interne."""
+    poste: str
+    titulaire: str
+    successeurs: list[SuccesseurOut] = Field(default_factory=list)
+    risque: bool                  # aucun successeur interne viable
+
+
 class SuccessionResponse(BaseModel):
     departement_key: str
     effectif: int                 # nb de collaborateurs pris en compte
-    plan: str                     # plan de succession rédigé (raisonnement)
-    model: str
+    postes_cles: int = 0          # nb de postes d'encadrement analysés
+    couverts: int = 0             # postes clés avec au moins un successeur viable
+    a_risque: int = 0             # postes clés sans successeur
+    roles: list[PosteCleOut] = Field(default_factory=list)
+    synthese: str = ""            # résumé calculé (texte court)
+    plan: str = ""                # rétrocompat (= synthese)
+    model: str = "calcul déterministe"
 
 
 class SuccessionJobLaunched(BaseModel):

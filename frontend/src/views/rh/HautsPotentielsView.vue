@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { apiService } from '@/services/apiService'
 import { useToast } from '@/composables/useToast'
-import type { HautPotentiel, RhPerson } from '@/types/rh'
+import type { HautPotentiel, RhPerson, SuccessionPlan } from '@/types/rh'
+import { scoreText } from '@/utils/score'
 import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseChip from '@/components/ui/BaseChip.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import BasePill from '@/components/ui/BasePill.vue'
 import BaseAvatar from '@/components/ui/BaseAvatar.vue'
@@ -17,11 +19,14 @@ const loading = ref(true)
 const error = ref('')
 const { toast } = useToast()
 
-// Plan de succession (IA de raisonnement, POST /rh/succession).
+// Plan de succession CALCULÉ (déterministe, instantané — POST /rh/succession).
 const depts = ref<{ key: string; nom: string }[]>([])
 const selectedDept = ref('')
 const succBusy = ref(false)
-const succPlan = ref<{ effectif: number; plan: string; model: string } | null>(null)
+const succPlan = ref<SuccessionPlan | null>(null)
+const readinessTone: Record<string, 'new' | 'ai' | 'warn'> = {
+  'Prêt': 'new', '12-24 mois': 'ai', 'À développer': 'warn',
+}
 
 async function load() {
   loading.value = true
@@ -92,15 +97,11 @@ async function generateSuccession() {
         </div>
       </BaseCard>
 
-      <BaseCard title="Postes critiques · succession">
-        <div class="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-warning/25 bg-warning-soft p-3">
-          <AppIcon name="flag" :size="18" class="text-warning" />
-          <div class="min-w-0 flex-1">
-            <h4 class="text-sm font-bold text-ink">Directeur Asset Management</h4>
-            <p class="text-xs text-ink-2">Poste clé sans successeur désigné · vivier à constituer.</p>
-          </div>
-        </div>
-
+      <BaseCard title="Postes clés · plan de succession">
+        <p class="mb-3 text-xs text-ink-3">
+          Relève interne calculée par adéquation de compétences : successeurs pressentis, niveau de
+          préparation et postes clés à risque (aucun successeur prêt).
+        </p>
         <div class="flex flex-wrap items-end gap-3">
           <div>
             <label class="mb-1 block text-xs font-semibold text-ink-2">Département à analyser</label>
@@ -112,20 +113,53 @@ async function generateSuccession() {
             </select>
           </div>
           <BaseButton :disabled="succBusy || !selectedDept" @click="generateSuccession">
-            <AppIcon name="route" :size="15" />
-            {{ succBusy ? 'Analyse en cours…' : 'Générer le plan de succession' }}
+            <AppIcon name="route" :size="15" /> {{ succBusy ? 'Calcul…' : 'Calculer le plan de succession' }}
           </BaseButton>
         </div>
-        <p v-if="succBusy" class="mt-2 text-xs text-ink-3">
-          Raisonnement IA en cours · cela peut prendre plus d'une minute.
-        </p>
 
-        <div v-if="succPlan" class="mt-4 rounded-xl border border-border bg-panel p-4">
-          <p class="mb-2 text-xs text-ink-3">
-            Effectif analysé : {{ succPlan.effectif }} · modèle {{ succPlan.model }}
+        <template v-if="succPlan">
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <BasePill tone="ai">{{ succPlan.postesCles }} poste(s) clé(s)</BasePill>
+            <BasePill tone="new">{{ succPlan.couverts }} avec relève</BasePill>
+            <BasePill :tone="succPlan.aRisque ? 'warn' : 'mut'">{{ succPlan.aRisque }} à risque</BasePill>
+            <span class="text-xs text-ink-3">· effectif analysé : {{ succPlan.effectif }}</span>
+          </div>
+          <p v-if="!succPlan.roles.length" class="mt-3 text-sm text-ink-3">
+            Aucun poste d'encadrement identifié dans ce département.
           </p>
-          <div class="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{{ succPlan.plan }}</div>
-        </div>
+          <div v-else class="mt-3 space-y-3">
+            <div
+              v-for="(r, i) in succPlan.roles"
+              :key="i"
+              class="rounded-xl border p-3.5"
+              :class="r.risque ? 'border-warning/30 bg-warning-soft/40' : 'border-border bg-panel'"
+            >
+              <div class="flex flex-wrap items-center gap-2">
+                <h4 class="text-sm font-bold text-ink">{{ r.poste }}</h4>
+                <BasePill v-if="r.risque" tone="warn">Poste à risque</BasePill>
+                <span class="text-xs text-ink-3">· titulaire : {{ r.titulaire }}</span>
+              </div>
+              <p v-if="r.risque" class="mt-1 text-xs text-ink-2">
+                Aucun successeur interne suffisamment prêt · vivier à constituer.
+              </p>
+              <div v-else class="mt-2 space-y-2">
+                <div
+                  v-for="(s, j) in r.successeurs"
+                  :key="j"
+                  class="flex flex-wrap items-center gap-2 border-t border-border pt-2 first:border-0 first:pt-0"
+                >
+                  <span class="text-sm font-semibold text-ink">{{ s.nom }}</span>
+                  <span class="text-xs text-ink-3">{{ s.poste }}</span>
+                  <span class="font-display text-sm font-bold" :class="scoreText(s.score)">{{ s.score }} %</span>
+                  <BasePill :tone="readinessTone[s.readiness] ?? 'mut'">{{ s.readiness }}</BasePill>
+                  <span v-if="s.ecarts.length" class="flex flex-wrap items-center gap-1 text-xs text-ink-3">
+                    · à combler : <BaseChip v-for="e in s.ecarts" :key="e">{{ e }}</BaseChip>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
       </BaseCard>
     </template>
   </div>
