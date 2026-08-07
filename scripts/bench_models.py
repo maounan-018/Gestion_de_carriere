@@ -4,7 +4,7 @@ Benchmark de modèles Ollama locaux — BMCI Gestion des Carrières.
 
 Mesure, pour chaque modèle, le débit de génération et de prompt (tokens/s) et
 le placement GPU/CPU, à num_ctx fixé. Sert à choisir le meilleur modèle par
-tâche (voir docs/IA-MODELES-LOCAUX.md). Stdlib uniquement — aucune dépendance.
+tâche. Stdlib uniquement — aucune dépendance.
 
 Leçon clé : TOUJOURS fixer num_ctx. Le défaut Ollama (128K) fait déborder le
 cache KV sur le CPU et effondre le débit. 4096-8192 = 100% GPU sur les 8B.

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Télécharge la panoplie de modèles IA locaux (Ollama) — BMCI Gestion des Carrières
-# Voir docs/IA-MODELES-LOCAUX.md pour le rôle de chaque modèle.
 set -e
 
 echo "== Embeddings & reranking (multilingues FR/EN) =="

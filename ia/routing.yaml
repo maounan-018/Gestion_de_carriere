@@ -101,4 +101,4 @@ taches:
     num_ctx: 2048
     think: false                # capacité de qwen3 SANS la lenteur des chaînes <think>
 
-# Pool complet : voir scripts/pull_models.sh — Méthode : docs/IA-MODELES-LOCAUX.md
+# Pool complet : voir scripts/pull_models.sh
