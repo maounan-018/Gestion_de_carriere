@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.database.session import get_db
 from app.auth.dependencies import require_roles, get_current_user
 from app.models.user import User, Role
@@ -38,12 +39,14 @@ router = APIRouter(prefix="/api/offres", tags=["Offres"])
 
 
 def _offre_du_manager(db: Session, offre_id: int, user: User) -> Offre:
-    """Charge l'offre et vérifie que l'utilisateur en est le manager créateur
-    (ou RH/ADMIN). 404 si absente, 403 hors périmètre."""
+    """Charge l'offre et vérifie que l'utilisateur en est le CRÉATEUR ou le
+    manager d'ORIGINE (`manager_id`, cas d'un besoin publié en continuité par la
+    HRBP → visibilité partagée), ou RH/ADMIN. 404 si absente, 403 hors périmètre."""
     offre = db.get(Offre, offre_id)
     if offre is None:
         raise HTTPException(status_code=404, detail="Offre introuvable")
-    if user.role not in (Role.RH, Role.ADMIN) and offre.created_by != user.id:
+    if (user.role not in (Role.RH, Role.ADMIN)
+            and offre.created_by != user.id and offre.manager_id != user.id):
         raise HTTPException(status_code=403,
                             detail="Réservé au manager de l'offre (ou RH/ADMIN).")
     return offre
@@ -100,6 +103,13 @@ _TYPES_PAR_ROLE = {
 def creer_offre(data: OffreCreate,
                 user: User = Depends(require_roles(Role.RH, Role.MANAGER, Role.ADMIN)),
                 db: Session = Depends(get_db)) -> OffreOut:
+    # Décision RH : le manager ne publie plus directement (il exprime un BESOIN,
+    # la HRBP publie). Réversible via le flag MANAGER_PEUT_PUBLIER.
+    if user.role == Role.MANAGER and not settings.MANAGER_PEUT_PUBLIER:
+        raise HTTPException(
+            status_code=403,
+            detail="La publication directe est désactivée pour les managers : "
+                   "exprimez un besoin de recrutement, la HRBP publiera l'offre.")
     # Règle type↔rôle : chaque rôle ne publie que ses types d'offre (ADMIN : tout).
     autorises = _TYPES_PAR_ROLE.get(user.role)
     if autorises is not None and data.type not in autorises:
@@ -157,7 +167,9 @@ def offres_vacances(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Ro
             summary="Mes offres PUBLIÉES (créées par le compte courant) + statistiques de candidatures")
 def mes_offres(user: User = Depends(require_roles(Role.MANAGER, Role.RH, Role.ADMIN)),
                db: Session = Depends(get_db)) -> list[RhOffreOut]:
-    return offre_service.rh_offres(db, created_by=user.id)
+    # Le manager voit AUSSI les offres nées de ses besoins (publiées par la HRBP,
+    # donc created_by=HRBP mais manager_id=lui) → visibilité partagée.
+    return offre_service.rh_offres(db, created_by=user.id, ou_manager=user.id)
 
 
 @router.get("/mes-candidatures-actives", response_model=list[CandidatOffreActiveOut],

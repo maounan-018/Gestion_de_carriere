@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, or_
 from sqlalchemy.orm import Session
 
 from app.models.fiche import FicheCompetence
@@ -90,12 +90,17 @@ def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
     ]
 
 
-def rh_offres(db: Session, *, created_by: int | None = None) -> list[RhOffreOut]:
+def rh_offres(db: Session, *, created_by: int | None = None,
+              ou_manager: int | None = None) -> list[RhOffreOut]:
     """Liste des offres avec statistiques de candidatures (total, compatibles
     au-dessus du seuil, candidat retenu). Si `created_by` est fourni, ne renvoie
-    que les offres PUBLIÉES PAR cet utilisateur (écran « Mes offres publiées »)."""
+    que les offres PUBLIÉES PAR cet utilisateur (écran « Mes offres publiées ») —
+    étendu à `ou_manager` pour inclure les offres dont il est le manager d'ORIGINE
+    (besoin publié en continuité par la HRBP → visibilité partagée)."""
     stmt = select(Offre).order_by(Offre.id.desc())
-    if created_by is not None:
+    if created_by is not None and ou_manager is not None:
+        stmt = stmt.where(or_(Offre.created_by == created_by, Offre.manager_id == ou_manager))
+    elif created_by is not None:
         stmt = stmt.where(Offre.created_by == created_by)
     offres = db.scalars(stmt).all()
     if not offres:

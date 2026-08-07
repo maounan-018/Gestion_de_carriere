@@ -9,6 +9,7 @@ from app.models.fiche import Fiche, FicheCompetence, FicheSource
 from app.models.user import User, UserSession, Role, UserType
 from app.models.audit_log import AuditLog, AuditEventType
 from app.models.offre import Offre, OffreCompetence, OffreType, OffreStatut
+from app.models.besoin import BesoinRecrutement, BesoinStatut
 from app.models.candidature import Candidature, CandidatureStatut
 from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.notification import Notification, NotificationType

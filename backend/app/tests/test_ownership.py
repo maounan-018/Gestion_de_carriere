@@ -50,9 +50,11 @@ def test_liste_profils_manager_bornee_a_son_equipe(client):
     assert any(p["nom"] == "El Amrani" for p in profils)
 
 
-def test_manager_voit_candidat_de_son_offre_hors_equipe(client):
+def test_manager_voit_candidat_de_son_offre_hors_equipe(client, monkeypatch):
     """Périmètre par OFFRE : le manager consulte la fiche/CV d'un candidat à une
     offre QU'IL A PUBLIÉE, même si ce candidat n'est pas dans son équipe."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "MANAGER_PEUT_PUBLIER", True)  # le manager publie ici
     # Le manager publie une offre (created_by = lui, côté serveur).
     csrf_mgr = auth(client, "manager")
     off = client.post("/api/offres", json={"titre": "Mission Revue", "type": "mission"},

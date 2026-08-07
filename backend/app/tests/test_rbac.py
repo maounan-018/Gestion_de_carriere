@@ -67,11 +67,20 @@ def test_rh_ne_pousse_que_offre_poste(client):
                        headers=hdr(csrf)).status_code == 201
 
 
-def test_manager_ne_pousse_pas_offre_poste(client):
+def test_manager_ne_pousse_pas_offre_poste(client, monkeypatch):
+    from app.core.config import settings
+    # Par défaut la publication manager est DÉSACTIVÉE (flag off) → 403 pour tout type.
     csrf = auth(client, "manager")
     assert client.post("/api/offres", json={"titre": "Poste Y", "type": "offre_poste"},
                        headers=hdr(csrf)).status_code == 403
     assert client.post("/api/offres", json={"titre": "Mission Y", "type": "mission"},
+                       headers=hdr(csrf)).status_code == 403
+    # Flag réactivé : la règle type↔rôle s'applique (mission OK, poste interdit au manager).
+    monkeypatch.setattr(settings, "MANAGER_PEUT_PUBLIER", True)
+    csrf = auth(client, "manager")
+    assert client.post("/api/offres", json={"titre": "Poste Z", "type": "offre_poste"},
+                       headers=hdr(csrf)).status_code == 403
+    assert client.post("/api/offres", json={"titre": "Mission Z", "type": "mission"},
                        headers=hdr(csrf)).status_code == 201
 
 
