@@ -54,7 +54,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None, index=True)
     departement_key: Mapped[str | None] = mapped_column(String(48), default=None)
-    matricule: Mapped[str | None] = mapped_column(String(32), default=None)
+    matricule: Mapped[str | None] = mapped_column(String(64), default=None)  # 64 : matricules synthétiques DEMO-CARTO (jusqu'à 38 car.)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))
 

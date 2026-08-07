@@ -39,7 +39,7 @@ class Profil(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None, index=True)  # null = persona synthétique
     nom: Mapped[str] = mapped_column(String(120))
     prenom: Mapped[str | None] = mapped_column(String(120), default=None)
-    matricule: Mapped[str | None] = mapped_column(String(32), default=None, index=True)
+    matricule: Mapped[str | None] = mapped_column(String(64), default=None, index=True)  # 64 : matricules synthétiques DEMO-CARTO (jusqu'à 38 car.)
     poste_actuel: Mapped[str | None] = mapped_column(String(200), default=None)
     departement_key: Mapped[str | None] = mapped_column(String(48), default=None, index=True)
     manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)

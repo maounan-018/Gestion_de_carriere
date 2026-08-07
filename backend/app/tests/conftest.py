@@ -20,6 +20,10 @@ import pathlib
 # --- Environnement de test : AVANT tout import de l'app -----------------------
 _TMPDIR = tempfile.mkdtemp(prefix="bmci-test-")
 os.environ["DATABASE_PATH"] = str(pathlib.Path(_TMPDIR) / "bmci_test.db")
+# Tests HERMÉTIQUES : on neutralise tout DATABASE_URL (ex. Supabase posé dans
+# .env.local) pour rester sur la base SQLite jetable ci-dessus — jamais taper une
+# base distante. load_dotenv n'écrase pas une variable déjà présente dans l'env.
+os.environ["DATABASE_URL"] = ""
 # CV de profil : répertoire temporaire → les uploads de test n'écrasent PAS les CV réels.
 os.environ["CV_PROFIL_DIR"] = str(pathlib.Path(_TMPDIR) / "cv_profil")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
