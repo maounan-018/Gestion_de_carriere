@@ -479,8 +479,16 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
 
     if cur["kind"] == "intro":
         first = _ENTRETIEN_PLAN[1]
-        return (f"{reponse}\nDémarre l'entretien : écris {_SUIVANT} en tête de ta réponse, puis invite "
-                f"{qui} à parler de {first['points']} avec une question ouverte.")
+        return (
+            f"{reponse}\n"
+            f"Détermine d'abord si {qui} se dit PRÊT à commencer.\n"
+            f"- S'il est clairement prêt (« oui », « on y va », « d'accord »…) : écris {_SUIVANT} "
+            f"en tête de ta réponse, puis invite {qui} à parler de {first['points']} avec une "
+            f"question ouverte.\n"
+            f"- S'il n'est PAS prêt, hésite, dit « non », pose une question ou demande un moment : "
+            f"réponds avec bienveillance (rassure-le, ou réponds à sa question), NE mets SURTOUT PAS "
+            f"la balise {_SUIVANT}, ne démarre PAS la première section, et propose gentiment de "
+            f"commencer quand il se sentira prêt.")
 
     if cur["kind"] == "q":
         base = (f"Section en cours : « {cur['label']} ». Points à faire aborder : {cur['points']}.\n{reponse}\n"
