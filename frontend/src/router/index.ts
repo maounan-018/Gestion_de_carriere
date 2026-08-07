@@ -32,7 +32,8 @@ function viewFor(name: string) {
     case 'manager.profil':
       return () => import('@/views/manager/ProfilView.vue')
     case 'manager.reco':
-      return () => import('@/views/manager/RecoView.vue')
+      // Reco manager = MÊME écran que le collaborateur (vue partagée, role-aware).
+      return () => import('@/views/collab/RecoView.vue')
     case 'manager.entretien':
       return () => import('@/views/manager/EntretienView.vue')
     case 'manager.offres':
@@ -117,6 +118,25 @@ const collabDetailRoutes: RouteRecordRaw[] = [
     name: 'rh.editProfil',
     component: () => import('@/views/collab/EditProfilView.vue'),
     meta: { roles: ['rh'], title: 'Éditer mon profil' },
+  },
+  {
+    // Sous-écrans reco PARTAGÉS avec le manager (vues collab réutilisées, role-aware).
+    path: 'manager/formation',
+    name: 'manager.formation',
+    component: () => import('@/views/collab/FormationsView.vue'),
+    meta: { roles: ['manager'], title: 'Formations' },
+  },
+  {
+    path: 'manager/passerelles',
+    name: 'manager.passerelles',
+    component: () => import('@/views/collab/PasserellesView.vue'),
+    meta: { roles: ['manager'], title: 'Passerelles métiers' },
+  },
+  {
+    path: 'manager/passerelle/:metier',
+    name: 'manager.passerelleDetail',
+    component: () => import('@/views/collab/PasserelleDetailView.vue'),
+    meta: { roles: ['manager'], title: 'Passerelle métier' },
   },
   {
     path: 'collab/passerelles',

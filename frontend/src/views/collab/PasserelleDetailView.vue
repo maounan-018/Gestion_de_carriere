@@ -6,6 +6,7 @@
  * ← liste des passerelles · → offres internes correspondantes · → Coach.
  */
 import { ref, computed, onMounted } from 'vue'
+import { roleRoute } from '@/composables/useRoleRoute'
 import { useRoute, useRouter } from 'vue-router'
 import { Sparkles, ArrowLeft, Search } from '@lucide/vue'
 import { apiService } from '@/services/apiService'
@@ -59,7 +60,7 @@ function description(p: Passerelle): string {
 <template>
   <div class="space-y-5">
     <RouterLink
-      :to="{ name: 'collab.passerelles' }"
+      :to="{ name: roleRoute('passerelles') }"
       class="inline-flex items-center gap-1.5 text-sm font-semibold text-green-deep hover:underline"
     >
       <ArrowLeft :size="15" /> Toutes les passerelles
@@ -93,10 +94,10 @@ function description(p: Passerelle): string {
       </BaseCard>
 
       <div class="flex flex-wrap gap-3">
-        <BaseButton @click="router.push({ name: 'collab.offres', query: { q: pass.title } })">
+        <BaseButton @click="router.push({ name: roleRoute('offres'), query: { q: pass.title } })">
           <Search :size="15" /> Voir les offres internes correspondantes
         </BaseButton>
-        <RouterLink :to="{ name: 'collab.coach' }">
+        <RouterLink :to="{ name: roleRoute('coach') }">
           <BaseButton variant="ai"><Sparkles :size="15" /> En discuter avec le Coach</BaseButton>
         </RouterLink>
       </div>
@@ -104,7 +105,7 @@ function description(p: Passerelle): string {
 
     <ErrorState v-else message="Cette passerelle n'existe plus.">
       <template #action>
-        <RouterLink :to="{ name: 'collab.passerelles' }"><BaseButton size="sm">Retour</BaseButton></RouterLink>
+        <RouterLink :to="{ name: roleRoute('passerelles') }"><BaseButton size="sm">Retour</BaseButton></RouterLink>
       </template>
     </ErrorState>
   </div>
