@@ -147,9 +147,12 @@ describe('mapOffre', () => {
     expect(o.managerInformed).toBe(false)
     expect(o.noteOk).toBe(true)
   })
-  it('une MISSION informe le manager', () => {
+  it('un type hérité (mission) est étiqueté « Poste » mais garde sa confidentialité d\'origine', () => {
+    // Décision RH : le LIBELLÉ est unifié en « Poste » (offres internes = postes),
+    // mais la sémantique de confidentialité suit encore le type brut (mission =
+    // manager informé) — cf. isPoste dans mapOffre.
     const o = mapOffre({ ...base, type: 'mission' })
-    expect(o.type).toBe('Mission transverse')
+    expect(o.type).toBe('Poste')
     expect(o.managerInformed).toBe(true)
     expect(o.noteOk).toBe(false)
   })
@@ -165,7 +168,7 @@ describe('mapCandidature', () => {
     expect(r.title).toBe('Analyste Senior')
     expect(r.status).toBe('Retenue')
     expect(r.tone).toBe('ok')
-    expect(r.type).toBe('Mission transverse')
+    expect(r.type).toBe('Poste') // type hérité normalisé (offres internes = postes)
   })
 })
 

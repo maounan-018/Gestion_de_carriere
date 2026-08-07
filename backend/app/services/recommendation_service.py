@@ -56,8 +56,14 @@ _CACHE_TTL_S = 1800  # 30 min
 _reco_cache: dict[str, tuple[float, dict]] = {}
 
 
+# Version de l'ALGORITHME de reco : incluse dans la signature pour que tout
+# changement de logique (ici : passerelles à score réel de compétences en commun)
+# invalide NATURELLEMENT les recos persistées avec l'ancienne logique → recalcul.
+_RECO_ALGO_VERSION = "v2-passerelles-reelles"
+
+
 def _reco_signature(profil_id: int, poste_texte: str, labels: list[str]) -> str:
-    raw = f"{profil_id}\n{poste_texte}\n" + "\n".join(sorted(labels))
+    raw = f"{_RECO_ALGO_VERSION}\n{profil_id}\n{poste_texte}\n" + "\n".join(sorted(labels))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -214,8 +220,43 @@ def _plan_llm(poste_texte: str, score: int, a_developper: list[dict]) -> str:
         return ""
 
 
+def _passerelles_calculees(db: Session, poste_texte: str, job_title: str | None,
+                           profil_skill_ids: list[int] | None, max_parcours: int) -> list[dict]:
+    """Passerelles métiers avec score RÉELLEMENT CALCULÉ = part des compétences du
+    collaborateur EN COMMUN avec le métier (recouvrement réel de `skill_id`, pas une
+    proximité sémantique). `pertinence` (0-1) = compétences partagées / compétences
+    ancrées du profil → le « % de compétences en commun » affiché.
+
+    Repli SÉMANTIQUE (proximité reranker au poste visé) si le profil n'a pas assez de
+    compétences ancrées au graphe pour un calcul fiable — jamais d'écran vide."""
+    skill_ids = [int(s) for s in (profil_skill_ids or []) if s]
+    total = len(set(skill_ids))
+    exclure = {poste_texte.strip().lower(), (job_title or "").strip().lower()} - {""}
+
+    if total >= 2:
+        metiers = occupation_service.suggest_occupations(
+            db, skill_ids, k=max_parcours, min_shared=2, exclude_labels=exclure)
+        if metiers:
+            passerelles = []
+            for m in metiers:
+                shared = int(m.get("competences_partagees", 0))
+                passerelles.append({
+                    "metier": m["metier"], "source": m["source"],
+                    "pertinence": round(min(1.0, shared / total), 4),
+                    "competences_partagees": shared})
+            passerelles.sort(key=lambda p: p["pertinence"], reverse=True)
+            return passerelles
+
+    # Repli sémantique : profil trop maigre pour un recouvrement fiable.
+    metiers = occupation_service.search_occupations(db, poste_texte, k=max_parcours)
+    return [{"metier": m["metier"], "source": m["source"],
+             "pertinence": m.get("rerank_score", m.get("score", 0.0))}
+            for m in metiers if m["metier"].strip().lower() not in exclure]
+
+
 def recommander(db: Session, profil_competences: list[str], poste_texte: str,
-                seuil: float = 0.5, max_parcours: int = 5, max_axes: int = 6) -> dict:
+                seuil: float = 0.5, max_parcours: int = 5, max_axes: int = 6,
+                profil_skill_ids: list[int] | None = None) -> dict:
     """Produit la recommandation formation & parcours (conforme à RecommendationResponse)."""
     # 1) Exigences du poste + couverture (réutilise le matching). Le GATE d'ancrage
     #    écarte les correspondances au graphe peu fiables (évite les écarts hors-sujet).
@@ -228,15 +269,10 @@ def recommander(db: Session, profil_competences: list[str], poste_texte: str,
     ecarts.sort(key=lambda e: 0 if str(e.get("importance", "")).lower().startswith("essent") else 1)
     a_developper = [_enrichir_ecart(db, e) for e in ecarts[:max_axes]]
 
-    # 3) Parcours : métiers proches du POSTE VISÉ (recherche sémantique de métiers,
-    #    embeddings + reranker) — bien plus pertinent que le recouvrement de compétences.
-    #    Le descriptif complet donne un meilleur signal que le seul intitulé.
-    metiers = occupation_service.search_occupations(db, poste_texte, k=max_parcours)
-    passerelles = [
-        {"metier": m["metier"], "source": m["source"],
-         "pertinence": m.get("rerank_score", m.get("score", 0.0))}
-        for m in metiers
-    ]
+    # 3) Passerelles : score RÉEL de compétences en commun (recouvrement de skill_id
+    #    entre le collaborateur et chaque métier), pas une simple proximité sémantique.
+    passerelles = _passerelles_calculees(
+        db, poste_texte, extraction.get("job_title"), profil_skill_ids, max_parcours)
 
     # 4) Synthèse (meilleur modèle FR), ancrée sur les écarts.
     plan = _plan_llm(poste_texte, score, a_developper)
@@ -284,6 +320,8 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
         select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
     ).all()
     labels = [c.skill_label_fr or c.libelle for c in comps] or ["(profil sans compétence)"]
+    # skill_id ancrés au graphe → passerelles à score RÉEL de compétences en commun.
+    skill_ids = [c.skill_id for c in comps if c.skill_id]
     # POSTE VISÉ = même source que l'affichage (carte « poste visé » + courbe) : le champ
     # structuré `poste_vise` d'abord, puis `aspirations`, puis le poste actuel. Ainsi
     # éditer l'objectif dans « Mon profil » recalcule la reco (signature de cache changée).
@@ -314,7 +352,7 @@ def recommander_pour_user(db: Session, user_id: int) -> dict:
         _reco_cache[sig] = (now, persistee)
         logger.info("Reco servie depuis la base (profil %d).", p.id)
         return persistee
-    result = recommander(db, labels, poste_texte)
+    result = recommander(db, labels, poste_texte, profil_skill_ids=skill_ids)
     result["confiance"] = norm["confiance"]   # 'clair' (normalisé) ou 'indisponible' (brut)
     _persister_reco(db, p.id, sig, poste_texte, result)
     _reco_cache[sig] = (now, result)

@@ -60,8 +60,8 @@ function open(p: Passerelle) {
     <div>
       <h2 class="font-display text-2xl font-bold text-ink">Passerelles métiers</h2>
       <p class="text-sm text-ink-3">
-        Évolutions alternatives fondées sur vos compétences transférables · recherche sémantique
-        ESCO · O*NET · SFIA. Cliquez une passerelle pour son analyse détaillée.
+        Évolutions alternatives fondées sur vos compétences transférables · score =
+        recouvrement réel de vos compétences (ESCO · O*NET · SFIA). Cliquez une passerelle pour son analyse détaillée.
       </p>
     </div>
 
