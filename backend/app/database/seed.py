@@ -161,34 +161,36 @@ def _get_or_create_profil(db: Session, user: User, spec: dict) -> tuple[Profil |
 
 
 # --- Offres + candidatures synthétiques (débloque les écrans offres/revue) ----
+# Décision RH : les offres internes sont UNIQUEMENT des POSTES (plus de mission/
+# projet/gig). Toutes poussées par la HRBP (Nadia) ; `manager ?`=True → l'offre
+# porte la marque du manager concerné (Karim) → visibilité partagée. Quelques
+# offres CLÔTURÉES (pourvue) pour alimenter l'évaluation des participants retenus.
 # Plan appliqué aux fiches choisies (une offre par fiche) : (type, statut, créateur, manager ?).
-# Les 2 premières (offre_poste ouvertes, poussées RH) servent de cibles de « revue candidats ».
 _OFFRE_PLAN = [
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #1
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),  # cible revue #2
-    ("mission",     "ouverte",   "karim.naji@bmci.local", True),   # cible Youssef (#2)
-    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
-    ("projet",      "brouillon", "karim.naji@bmci.local", True),
-    ("offre_poste", "pourvue",   "nadia.alami@bmci.local",     False),
-    # --- Catalogue élargi : postes/missions/projets répartis sur les départements ---
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("projet",      "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("projet",      "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("mission",     "ouverte",   "karim.naji@bmci.local", True),
-    ("offre_poste", "ouverte",   "nadia.alami@bmci.local",     False),
-    ("gig",         "ouverte",   "karim.naji@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),  # cible revue #1
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),  # cible revue #2
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),   # concerné : Karim
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "pourvue",   "nadia.alami@bmci.local", True),   # clôturée → éval participants
+    ("offre_poste", "pourvue",   "nadia.alami@bmci.local", True),   # clôturée → éval participants
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "pourvue",   "nadia.alami@bmci.local", True),   # clôturée → éval participants
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", False),
+    ("offre_poste", "ouverte",   "nadia.alami@bmci.local", True),
 ]
 _TYPE_LABEL = {"mission": "Mission", "projet": "Projet", "gig": "Gig"}  # offre_poste = pas de suffixe
 
@@ -364,10 +366,11 @@ def _seed_candidatures_larges(db: Session, offre_ids: list[int], *, par_offre: i
 
 
 def _seed_participants_retenus(db: Session, offre_ids: list[int], *, par_offre: int = 2) -> dict:
-    """Pour les offres de manager CLÔTURÉES (pourvue/fermee : mission/projet/gig),
-    RETIENT quelques participants (candidatures statut=retenue), issus de vrais
-    comptes collaborateurs. Objectif : l'écran d'évaluation de mission (Workstream C)
-    a des participants à évaluer. Déterministe et idempotent."""
+    """Pour les offres CLÔTURÉES (pourvue/fermee), RETIENT quelques participants
+    (candidatures statut=retenue), issus de vrais comptes collaborateurs. Objectif :
+    l'écran d'évaluation des participants (Workstream C) a des personnes à évaluer.
+    Les offres étant désormais toutes des POSTES, on ne filtre plus par type.
+    Déterministe et idempotent."""
     res = {"retenus": 0}
     profils = list(db.scalars(
         select(Profil).join(User, User.id == Profil.user_id)
@@ -377,8 +380,7 @@ def _seed_participants_retenus(db: Session, offre_ids: list[int], *, par_offre: 
     closed = list(db.scalars(
         select(Offre).where(
             Offre.id.in_(offre_ids),
-            Offre.statut.in_([OffreStatut.POURVUE, OffreStatut.FERMEE]),
-            Offre.type.in_([OffreType.MISSION, OffreType.PROJET, OffreType.GIG]))
+            Offre.statut.in_([OffreStatut.POURVUE, OffreStatut.FERMEE]))
         .order_by(Offre.id)).all())
     for oi, offre in enumerate(closed):
         start = (oi * 5) % len(profils)

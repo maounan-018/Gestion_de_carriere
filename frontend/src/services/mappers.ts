@@ -420,9 +420,10 @@ export interface OffreCompatOut {
   competences: string[]; score_compat: number | null; couvertes: number; ecarts: number
 }
 
+// Décision RH : les offres internes sont uniquement des POSTES. Tout type
+// (y compris données héritées mission/projet/gig) est présenté comme « Poste ».
 const OFFRE_TYPE_LABEL: Record<string, OfferType> = {
-  offre_poste: 'Poste', mission: 'Mission transverse',
-  projet: 'Projet', gig: 'Mission transverse',
+  offre_poste: 'Poste', mission: 'Poste', projet: 'Poste', gig: 'Poste',
 }
 const OFFRE_STATUT_LABEL: Record<string, string> = {
   brouillon: 'Brouillon', ouverte: 'Ouverte', pourvue: 'Pourvue',
