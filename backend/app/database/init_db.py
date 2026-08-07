@@ -22,20 +22,51 @@ logger = logging.getLogger(__name__)
 
 
 def _create_vec_table() -> None:
-    """Crée les tables vectorielles sqlite-vec (vec0) : compétences ET métiers.
-    Tolérant : si l'extension n'est pas chargée, on log et on continue."""
+    """Crée les tables vectorielles (embeddings compétences ET métiers), selon le
+    dialecte : sqlite-vec (vec0) en local, pgvector (vector + index HNSW) sur
+    Supabase/Postgres. Tolérant : si l'extension n'est pas chargée, on log et on
+    continue (la recherche vectorielle se dégrade sans faire tomber le démarrage)."""
+    dim = settings.EMBED_DIM
     try:
-        with engine.connect() as conn:
-            conn.exec_driver_sql(
-                f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_skills USING vec0("
-                f"skill_id INTEGER PRIMARY KEY, embedding FLOAT[{settings.EMBED_DIM}])"
-            )
-            conn.exec_driver_sql(
-                f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_occupations USING vec0("
-                f"occupation_id INTEGER PRIMARY KEY, embedding FLOAT[{settings.EMBED_DIM}])"
-            )
-            conn.commit()
-        logger.info("Tables vectorielles vec_skills / vec_occupations prêtes (dim %d).", settings.EMBED_DIM)
+        if engine.dialect.name == "postgresql":
+            # pgvector : colonne vector(dim) + index HNSW cosine (aligné sur
+            # l'opérateur <=> utilisé par database/vector_search.py). FK vers les
+            # tables sources (intégrité : un embedding référence toujours une ligne).
+            with engine.connect() as conn:
+                conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS vector")
+                conn.exec_driver_sql(
+                    f"CREATE TABLE IF NOT EXISTS vec_skills ("
+                    f"skill_id INTEGER PRIMARY KEY REFERENCES skills(id) ON DELETE CASCADE, "
+                    f"embedding vector({dim}) NOT NULL)"
+                )
+                conn.exec_driver_sql(
+                    f"CREATE TABLE IF NOT EXISTS vec_occupations ("
+                    f"occupation_id INTEGER PRIMARY KEY REFERENCES occupations(id) ON DELETE CASCADE, "
+                    f"embedding vector({dim}) NOT NULL)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_vec_skills_hnsw ON vec_skills "
+                    "USING hnsw (embedding vector_cosine_ops)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_vec_occupations_hnsw ON vec_occupations "
+                    "USING hnsw (embedding vector_cosine_ops)"
+                )
+                conn.commit()
+            logger.info("Tables vectorielles pgvector prêtes (vector(%d) + HNSW).", dim)
+        else:
+            # sqlite-vec : tables virtuelles vec0 (défaut local).
+            with engine.connect() as conn:
+                conn.exec_driver_sql(
+                    f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_skills USING vec0("
+                    f"skill_id INTEGER PRIMARY KEY, embedding FLOAT[{dim}])"
+                )
+                conn.exec_driver_sql(
+                    f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_occupations USING vec0("
+                    f"occupation_id INTEGER PRIMARY KEY, embedding FLOAT[{dim}])"
+                )
+                conn.commit()
+            logger.info("Tables vectorielles vec_skills / vec_occupations prêtes (dim %d).", dim)
     except Exception as e:  # noqa: BLE001
         logger.warning("tables vectorielles non créées (%s) — recherche vectorielle indisponible.", e)
 
