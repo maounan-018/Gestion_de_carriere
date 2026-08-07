@@ -34,11 +34,16 @@ def include_object(obj, name, type_, reflected, compare_to):
     return True
 
 
+# render_as_batch (recréation de table pour ALTER) est un contournement SQLITE only.
+# Postgres supporte ALTER TABLE nativement → batch désactivé hors SQLite.
+_IS_SQLITE = engine.dialect.name == "sqlite"
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=str(engine.url), target_metadata=target_metadata,
         literal_binds=True, include_object=include_object,
-        render_as_batch=True, dialect_opts={"paramstyle": "named"},
+        render_as_batch=_IS_SQLITE, dialect_opts={"paramstyle": "named"},
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -48,7 +53,7 @@ def run_migrations_online() -> None:
     with engine.connect() as connection:
         context.configure(
             connection=connection, target_metadata=target_metadata,
-            include_object=include_object, render_as_batch=True,  # SQLite : ALTER via batch
+            include_object=include_object, render_as_batch=_IS_SQLITE,  # SQLite : ALTER via batch
         )
         with context.begin_transaction():
             context.run_migrations()

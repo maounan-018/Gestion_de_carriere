@@ -30,16 +30,15 @@ from app.models.skill import Skill
 from app.models.skill_mapping import SkillMapping
 from app.models.skill_crosswalk import SkillCrosswalk
 from app.models.referential import SourceCode
+from app.database.vector_search import knn_sql
 from app.services.embedding_service import embed_text
 from app.services import reranker_service, ai_router
 
 logger = logging.getLogger(__name__)
 
-_KNN = (
-    "SELECT s.id, s.label_fr, s.label_en, vk.distance "
-    "FROM vec_skills vk JOIN skills s ON s.id = vk.skill_id "
-    "WHERE vk.embedding MATCH :q AND k = :k ORDER BY vk.distance"
-)
+_KNN = knn_sql(
+    "s.id, s.label_fr, s.label_en",
+    "vec_skills", "vk", "skills s ON s.id = vk.skill_id")
 
 _SYSTEM = """Tu es un expert des référentiels de compétences (RH).
 On te donne DEUX libellés de compétence : une SOURCE et un CANDIDAT ESCO.

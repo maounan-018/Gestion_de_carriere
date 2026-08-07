@@ -21,15 +21,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.database.vector_search import knn_sql
 from app.services.embedding_service import embed_text
 from app.services import reranker_service
 
-_SQL_OCC = (
-    "SELECT o.id, o.label_fr, o.label_en, o.source, vo.distance "
-    "FROM vec_occupations vo JOIN occupations o ON o.id = vo.occupation_id "
-    "WHERE vo.embedding MATCH :q AND k = :k "
-    "ORDER BY vo.distance"
-)
+# KNN métiers, dialecte-agnostique (sqlite-vec MATCH / pgvector <=>).
+_SQL_OCC = knn_sql(
+    "o.id, o.label_fr, o.label_en, o.source",
+    "vec_occupations", "vo", "occupations o ON o.id = vo.occupation_id")
 
 
 def search_occupations(db: Session, query: str, k: int = 5,
