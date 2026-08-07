@@ -25,20 +25,20 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.database.vector_search import knn_sql, bool_true
 from app.services.embedding_service import embed_text
 from app.services import reranker_service
 
-_SQL = (
-    "SELECT s.id, s.label_fr, s.label_en, s.skill_type, "
-    "       s.description_fr, s.description_en, vk.distance "
-    "FROM vec_skills vk JOIN skills s ON s.id = vk.skill_id "
-    "WHERE vk.embedding MATCH :q AND k = :k {canon} "
-    "ORDER BY vk.distance"
-)
+_SELECT = "s.id, s.label_fr, s.label_en, s.skill_type, s.description_fr, s.description_en"
+_JOIN = "skills s ON s.id = vk.skill_id"
 # Dédoublonnage : ne renvoyer que les compétences canoniques (les doublons O*NET/
 # SFIA alignés sur ESCO par le crosswalk sont marqués canonical=False -> masqués,
 # au profit de leur équivalent ESCO). Les compétences sans équivalent restent visibles.
-_CANON_FILTER = "AND s.canonical = 1"
+# Prédicat booléen portable (SQLite 0/1 vs Postgres booléen).
+_CANON_FILTER = bool_true("s.canonical")
+# Deux variantes précompilées (avec/sans filtre canonique), une fois pour toutes.
+_SQL_CANON = knn_sql(_SELECT, "vec_skills", "vk", _JOIN, extra_where=_CANON_FILTER)
+_SQL_ALL = knn_sql(_SELECT, "vec_skills", "vk", _JOIN)
 
 
 def _passage(c: dict) -> str:
@@ -71,7 +71,7 @@ def search_skills(db: Session, query: str, k: int = 5,
     pool = max(k * 5, 25) if use_rerank else k
 
     vec = json.dumps(embed_text(query))
-    sql = _SQL.format(canon=_CANON_FILTER if canonical_only else "")
+    sql = _SQL_CANON if canonical_only else _SQL_ALL
     rows = db.execute(text(sql), {"q": vec, "k": pool}).fetchall()
 
     cand: list[dict] = []

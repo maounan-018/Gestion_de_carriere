@@ -97,7 +97,12 @@ class Settings:
         self.RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").strip().lower() in ("1", "true", "yes")
 
         # --- Base de données ---
+        # DEV : SQLite fichier (défaut). PROD/Supabase : poser DATABASE_URL
+        # (ex. postgresql+psycopg://user:pass@host:6543/postgres?sslmode=require).
+        # Les préfixes hérités postgres:// et postgresql:// sont normalisés vers le
+        # driver psycopg v3 (postgresql+psycopg://) pour SQLAlchemy 2.x.
         self.DB_PATH = os.getenv("DATABASE_PATH", "bmci_carrieres.db")
+        self.DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
         # --- Référentiels de compétences (ia/referentiels/) ---
         self.REFERENTIELS_DIR = os.getenv("REFERENTIELS_DIR", "").strip() or os.path.join(REPO_ROOT, "ia", "referentiels")
@@ -148,6 +153,29 @@ class Settings:
         # "auto" = sécurisé en production (HTTPS), permissif en dev (HTTP localhost).
         self._cookie_secure_raw = os.getenv("COOKIE_SECURE", "auto").strip().lower()
         self.COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax").strip().lower()
+
+    @property
+    def sqlalchemy_url(self) -> str:
+        """URL SQLAlchemy effective. DATABASE_URL (Postgres/Supabase) si présent,
+        sinon SQLite fichier local. Normalise les préfixes Postgres hérités vers
+        le driver psycopg v3."""
+        raw = self.DATABASE_URL
+        if not raw:
+            return f"sqlite:///{self.DB_PATH}"
+        if raw.startswith("postgres://"):
+            raw = "postgresql+psycopg://" + raw[len("postgres://"):]
+        elif raw.startswith("postgresql://"):
+            raw = "postgresql+psycopg://" + raw[len("postgresql://"):]
+        return raw
+
+    @property
+    def db_dialect(self) -> str:
+        """Dialecte cible : 'postgresql' ou 'sqlite' (pilote les hooks moteur)."""
+        return "postgresql" if self.sqlalchemy_url.startswith("postgresql") else "sqlite"
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.db_dialect == "sqlite"
 
     @property
     def is_production(self) -> bool:
