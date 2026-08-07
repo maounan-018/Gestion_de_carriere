@@ -17,6 +17,7 @@ import LoadingState from '@/components/ui/LoadingState.vue'
 import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import CvPreview from '@/components/shared/CvPreview.vue'
+import AvisSection from '@/components/shared/AvisSection.vue'
 
 const route = useRoute()
 const { toast } = useToast()
@@ -197,6 +198,8 @@ async function save() {
         </BaseButton>
       </template>
     </BaseModal>
+
+    <AvisSection :profil-id="route.params.id as string" :who="p.name" />
 
     <CvPreview v-if="p" v-model="showCv" :profil-id="Number(p.id)" :nom="p.name" />
   </div>

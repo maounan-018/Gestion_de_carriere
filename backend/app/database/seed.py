@@ -980,6 +980,31 @@ def _seed_comptes_orphelins(db: Session, password_hash: str) -> dict:
         db.flush()
         p.user_id = u.id
         crees += 1
+    # Rattachement : tout profil SANS manager (hors chefs de département) reçoit un
+    # manager de son département → couverture d'équipe complète pour les 343 (avis
+    # d'équipe, « Mon équipe », périmètre des revues par les pairs).
+    mgrs_by_dept: dict[str, list[User]] = {}
+    for u in db.scalars(select(User).where(User.role == Role.MANAGER)).all():
+        if u.departement_key:
+            mgrs_by_dept.setdefault(u.departement_key, []).append(u)
+    all_mgrs = [u for lst in mgrs_by_dept.values() for u in lst]
+    rattaches = 0
+    for p in profils:
+        if p.manager_id is not None or p.user_id is None:
+            continue
+        if _niveau_poste(p.poste_actuel or "") >= 3:   # chef de département : reste sans manager
+            continue
+        cands = [m for m in mgrs_by_dept.get(p.departement_key, []) if m.id != p.user_id] \
+            or [m for m in all_mgrs if m.id != p.user_id]
+        if not cands:
+            continue
+        m = cands[_carto_hash(str(p.id)) % len(cands)]
+        p.manager_id = m.id
+        u = db.get(User, p.user_id)
+        if u:
+            u.manager_id = m.id
+        rattaches += 1
+
     # Cohérence : User.manager_id <- Profil.manager_id (le front liste l'équipe sur
     # Profil.manager_id, l'ownership backend la vérifie via User.manager_id).
     alignes = 0
@@ -990,7 +1015,7 @@ def _seed_comptes_orphelins(db: Session, password_hash: str) -> dict:
                 u.manager_id = p.manager_id
                 alignes += 1
     db.commit()
-    return {"comptes_crees": crees, "liens_alignes": alignes}
+    return {"comptes_crees": crees, "liens_alignes": alignes, "rattaches": rattaches}
 
 
 def _naturaliser_competences(db: Session) -> int:

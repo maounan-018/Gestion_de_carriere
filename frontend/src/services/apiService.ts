@@ -18,7 +18,7 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable, MyCvStatus,
-  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin,
+  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin, PeerReview,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
 import { apiFetch, apiUpload, getCsrf, ApiError } from './http'
@@ -972,6 +972,27 @@ export const apiService = {
   },
   // ---------------------------------------------- Besoins de recrutement
   /** Le manager exprime un besoin de recrutement (transmis à la HRBP). */
+  /** Avis (revue par les pairs) d'un profil + droit d'en déposer un (équipe / manager direct). */
+  async getAvis(profilId: string): Promise<{ avis: PeerReview[]; peutNoter: boolean }> {
+    if (MODE === 'mock') return { avis: [], peutNoter: false }
+    const r = await apiFetch<{
+      avis: { auteur_nom: string; auteur_role: string | null; initiales: string | null; texte: string; etoiles: number }[]
+      peut_noter: boolean
+    }>(`/profils/${profilId}/avis`)
+    return {
+      peutNoter: r.peut_noter,
+      avis: r.avis.map((a) => ({
+        initials: a.initiales || a.auteur_nom.split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase(),
+        name: a.auteur_nom,
+        role: a.auteur_role ?? '',
+        text: a.texte,
+        stars: a.etoiles,
+      })),
+    }
+  },
+  async creerAvis(profilId: string, texte: string, etoiles: number): Promise<void> {
+    await apiFetch(`/profils/${profilId}/avis`, { method: 'POST', body: { texte, etoiles } })
+  },
   async creerBesoin(payload: { ficheId: number | null; poste: string; description: string }): Promise<void> {
     if (MODE === 'mock') { await delay(); return }
     await apiFetch('/besoins', {

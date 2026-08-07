@@ -243,6 +243,29 @@ def get_carriere(db: Session, profil_id: int) -> ProfilCarriereOut | None:
     )
 
 
+def avis_de_profil(db: Session, profil_id: int) -> list[PeerReview]:
+    """Avis (revue par les pairs) d'un profil, du plus récent au plus ancien."""
+    return list(db.scalars(
+        select(PeerReview).where(PeerReview.profil_id == profil_id)
+        .order_by(PeerReview.id.desc())).all())
+
+
+def creer_avis(db: Session, author: User, profil_id: int, texte: str, etoiles: int) -> PeerReview:
+    """Dépose un avis sur `profil_id` au nom de `author`. Le DROIT (équipe / manager
+    direct) est vérifié par le contrôleur (ownership). Identité de l'auteur dérivée
+    de son compte/profil."""
+    ap = db.scalar(select(Profil).where(Profil.user_id == author.id))
+    nom = (author.name or (f"{(ap.prenom or '').strip()} {ap.nom}".strip() if ap else "Collègue")).strip()
+    role = ap.poste_actuel if ap else None
+    initiales = ("".join(w[0] for w in nom.split()[:2]).upper() or "?")[:8]
+    avis = PeerReview(profil_id=profil_id, auteur_nom=nom[:120], auteur_role=(role or None),
+                      initiales=initiales, texte=texte.strip(), etoiles=int(etoiles))
+    db.add(avis)
+    db.commit()
+    db.refresh(avis)
+    return avis
+
+
 def update_profil(db: Session, profil_id: int, data: ProfilUpdate) -> ProfilOut | None:
     """Mise à jour partielle (champs non-None uniquement). None si introuvable."""
     p = db.get(Profil, profil_id)

@@ -18,6 +18,7 @@ import ErrorState from '@/components/ui/ErrorState.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import ScoringInfo from '@/components/shared/ScoringInfo.vue'
 import CvPreview from '@/components/shared/CvPreview.vue'
+import AvisSection from '@/components/shared/AvisSection.vue'
 
 const route = useRoute()
 const { toast } = useToast()
@@ -257,6 +258,8 @@ async function submitEval() {
         </BaseButton>
       </template>
     </BaseModal>
+
+    <AvisSection :profil-id="route.params.id as string" :who="m.name" />
 
     <CvPreview v-if="m" v-model="showCv" :profil-id="Number(m.id)" :nom="m.name" />
   </div>

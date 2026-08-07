@@ -53,6 +53,26 @@ def is_manager_of_profil(db: Session, manager_user_id: int, profil: Profil) -> b
     return linked is not None and linked.manager_id == manager_user_id
 
 
+def can_review_profil(db: Session, user: User, target: Profil) -> bool:
+    """Droit de laisser un AVIS : uniquement sur son ÉQUIPE (ses subordonnés directs
+    ou ses coéquipiers = même manager) et sur son MANAGER DIRECT. Jamais sur soi-même
+    ni sur un profil hors de son équipe. RH/ADMIN inclus (périmètre global)."""
+    if target.user_id is None or target.user_id == user.id:
+        return False
+    if _is_global(user):
+        return True
+    if target.user_id == user.manager_id:          # ma cible est mon manager direct
+        return True
+    linked = db.get(User, target.user_id)
+    if linked is None:
+        return False
+    if linked.manager_id == user.id:               # la cible me reporte (je suis son manager)
+        return True
+    if user.manager_id is not None and linked.manager_id == user.manager_id:
+        return True                                # coéquipier : même manager direct
+    return False
+
+
 def is_candidate_to_my_offer(db: Session, manager_user_id: int, profil_id: int) -> bool:
     """Vrai si `profil_id` a candidaté à une offre PUBLIÉE par ce manager
     (Offre.created_by = lui). Ouvre la revue des candidats de SES offres (fiche/CV),
