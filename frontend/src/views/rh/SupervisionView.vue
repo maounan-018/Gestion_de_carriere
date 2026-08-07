@@ -106,9 +106,9 @@ function pct(i: Item): number {
         <BookOpen :size="18" />
       </div>
       <div class="min-w-0 flex-1">
-        <h4 class="text-sm font-bold text-ink">Référentiel de compétences &amp; gabarit de fiche</h4>
+        <h4 class="text-sm font-bold text-ink">Référentiel &amp; génération de fiches de poste</h4>
         <p class="text-xs text-ink-3">
-          Référentiels ESCO · O*NET · SFIA, familles de compétences et structure type des fiches.
+          Référentiels ESCO · O*NET · SFIA, cartographie départements → métiers, génération de fiches.
         </p>
       </div>
       <ChevronRight :size="18" class="shrink-0 text-ink-3" />
