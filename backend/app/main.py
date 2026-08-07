@@ -49,13 +49,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — origines explicites + credentials (cookies). JAMAIS "*" avec credentials.
+# CORS — origines explicites (liste + regex optionnelle) + credentials (cookies).
+# JAMAIS "*" avec credentials. Le regex sert aux URLs de preview Vercel (aléatoires).
+# En cross-origin, l'auth passe par Bearer (les cookies same-origin restent gérés
+# pour le dév) ; `expose_headers` inutile (le front lit tout via le corps JSON).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origin_regex=settings.ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*", settings.CSRF_HEADER],
+    allow_headers=["*", settings.CSRF_HEADER, "Authorization"],
 )
 
 # Compression GZip des réponses (listes offres/candidatures, cartographie, synthèse

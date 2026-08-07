@@ -29,6 +29,11 @@ class LoginResponse(BaseModel):
     # Jeton CSRF (double-submit) : le front le renvoie dans l'en-tête X-CSRF-Token
     # sur chaque requête mutante. Aussi posé en cookie NON-HttpOnly.
     csrf_token: str
+    # Jeton de session, aussi posé en cookie HttpOnly (chemin same-origin). Renvoyé
+    # dans le corps pour l'auth CROSS-ORIGIN par en-tête `Authorization: Bearer`,
+    # quand le front (ex. déployé sur Vercel) et le backend (FastAPI local) sont sur
+    # des origines différentes : les cookies cross-site ne s'appliquent alors pas.
+    token: str
 
 
 class AnnuairePreloadOut(BaseModel):

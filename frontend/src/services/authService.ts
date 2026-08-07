@@ -1,6 +1,6 @@
 import type { Role, User } from '@/types/domain'
 import { PERSONAS, DEMO_CREDENTIALS } from '@/data/personas'
-import { apiFetch, setCsrf } from './http'
+import { apiFetch, setCsrf, setToken } from './http'
 
 /**
  * Service d'authentification — respecte la bascule `VITE_API_MODE` (comme apiService).
@@ -29,6 +29,8 @@ interface BackendUser {
 interface LoginResponse {
   utilisateur: BackendUser
   csrf_token: string
+  // Jeton de session pour l'auth Bearer cross-origin (ignoré en same-origin).
+  token: string
 }
 
 function mapRole(role: string): Role {
@@ -77,6 +79,7 @@ export const authService = {
       body: { email, password },
     })
     setCsrf(res.csrf_token)
+    setToken(res.token) // cross-origin : mémorise le Bearer ; same-origin : no-op
     return mapUser(res.utilisateur)
   },
 
@@ -102,6 +105,7 @@ export const authService = {
   async logout(): Promise<void> {
     if (MODE === 'mock') {
       setCsrf(null)
+      setToken(null)
       return
     }
     try {
@@ -110,6 +114,7 @@ export const authService = {
       /* session déjà expirée : on nettoie quand même côté client */
     } finally {
       setCsrf(null)
+      setToken(null)
     }
   },
 }
