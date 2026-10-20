@@ -31,10 +31,21 @@ def test_extraire_cv_ancre_et_niveau(db, monkeypatch):
 
 def test_cv_extraction_enrichit_profil_owner(client, monkeypatch):
     from app.services import cv_extraction_service as cv
+    from app.database.session import SessionLocal
+    from app.models.skill import Skill
+    # L'ancrage persistera `skill_id` dans `profil_competences` : avec FK ON (session.py),
+    # ce `skill_id` DOIT exister dans `skills`. On en crée un dédié au test au lieu
+    # d'un id hard-codé (le seed de `client` ne charge pas le graphe ESCO complet).
+    with SessionLocal() as s:
+        skill = Skill(label_fr="Gestion des risques (test)",
+                      label_en="Risk management (test)",
+                      skill_type="skill")
+        s.add(skill); s.commit()
+        skill_id = skill.id
     monkeypatch.setattr(cv, "generate", lambda *a, **k: {
         "competences": [{"libelle": "Gestion du risque", "type": "savoir-faire", "niveau": 3}]})
     monkeypatch.setattr(cv, "search_skills", lambda db, libelle, k=1: [
-        {"skill_id": 7, "label_fr": "Gestion des risques", "label_en": "x",
+        {"skill_id": skill_id, "label_fr": "Gestion des risques", "label_en": "x",
          "skill_type": "skill", "distance": 0.2, "score": 0.8}])
 
     csrf = auth(client, "collab")
@@ -43,7 +54,7 @@ def test_cv_extraction_enrichit_profil_owner(client, monkeypatch):
                     json={"texte": "CV : 10 ans en gestion des risques bancaires."})
     assert r.status_code == 200, r.text
     cv_comps = [c for c in r.json()["competences"] if c["source"] == "cv"]
-    assert any(c["libelle"] == "Gestion du risque" and c["skill_id"] == 7 and c["niveau"] == 3
+    assert any(c["libelle"] == "Gestion du risque" and c["skill_id"] == skill_id and c["niveau"] == 3
                for c in cv_comps)
 
 

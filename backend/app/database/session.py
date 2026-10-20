@@ -55,19 +55,20 @@ if settings.is_sqlite:
 
     @event.listens_for(engine, "connect")
     def _sqlite_pragmas(dbapi_conn, _record):
-        """Réglages SQLite pour la concurrence et la latence (modèle sync threadpoolé :
-        plusieurs threads accèdent à la base en parallèle).
+        """Réglages SQLite pour la concurrence, la latence ET l'intégrité (modèle
+        sync threadpoolé : plusieurs threads accèdent à la base en parallèle).
+          - foreign_keys=ON : intégrité référentielle (OFF par défaut en SQLite).
+            Base vérifiée orphan-free (PRAGMA foreign_key_check -> 0 ligne) avant
+            activation ; une insertion violant une FK remonte désormais en IntegrityError
+            au lieu d'être silencieusement stockée.
           - WAL : les lecteurs ne sont plus bloqués par un writer (moins de « locked »).
           - busy_timeout : attend au lieu d'échouer immédiatement en cas de verrou.
           - synchronous=NORMAL : durable en WAL, nettement plus rapide que FULL.
           - cache/temp_store : cache page en RAM + tables temporaires en mémoire.
-        journal_mode=WAL est persistant (posé une fois) ; les autres sont par-connexion.
-        NB : PRAGMA foreign_keys=ON (intégrité référentielle, OFF par défaut en SQLite)
-        n'est PAS activé ici : c'est une correction d'INTÉGRITÉ (pas de perf) qui doit
-        d'abord garantir la validité de toutes les FK (ex. profil_competences.skill_id) ;
-        à traiter dans un lot correctness dédié pour éviter toute régression."""
+        journal_mode=WAL est persistant (posé une fois) ; les autres sont par-connexion."""
         cur = dbapi_conn.cursor()
         try:
+            cur.execute("PRAGMA foreign_keys=ON")
             cur.execute("PRAGMA journal_mode=WAL")
             cur.execute("PRAGMA busy_timeout=5000")
             cur.execute("PRAGMA synchronous=NORMAL")
