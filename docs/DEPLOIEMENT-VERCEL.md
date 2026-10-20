@@ -28,7 +28,8 @@ n'apporte que la base de données ; il ne fait pas tourner le Python.
 En cross-origin (site public HTTPS → `localhost`), les cookies same-site ne sont
 pas transmis. L'auth passe donc par l'en-tête `Authorization: Bearer <token>` :
 - le `/auth/login` renvoie le jeton dans le corps (`token`), mémorisé côté front
-  (localStorage) et rejoué sur chaque requête ;
+  (sessionStorage — isolé par onglet, effacé à sa fermeture : surface XSS plus
+  courte que localStorage) et rejoué sur chaque requête ;
 - le backend accepte déjà le Bearer (`extract_token`) ;
 - le CSRF double-submit est **sauté** quand l'auth est Bearer (aucun cookie → aucun
   vecteur CSRF ; cf. `_check_csrf`).
