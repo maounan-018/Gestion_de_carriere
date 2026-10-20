@@ -10,8 +10,9 @@
  *  - CROSS-ORIGIN (build déployé, ex. front Vercel → backend FastAPI en localhost
  *    chez l'utilisateur : `VITE_API_BASE=http://localhost:5001`). Les cookies
  *    cross-site ne s'appliquent pas → auth par en-tête `Authorization: Bearer`
- *    (jeton mémorisé au login, persisté en localStorage). Le CSRF ne s'applique pas
- *    (le jeton Bearer n'est jamais envoyé automatiquement par le navigateur).
+ *    (jeton mémorisé au login, persisté en sessionStorage — par onglet, effacé à
+ *    sa fermeture : réduit la surface XSS vs localStorage). Le CSRF ne s'applique
+ *    pas (le jeton Bearer n'est jamais envoyé automatiquement par le navigateur).
  *
  * - Erreurs : lève `ApiError` (status + message issu de `detail` FastAPI).
  */
@@ -32,21 +33,36 @@ const AUTH_PATH = /^\/auth\//
 
 let csrfToken: string | null = null
 // Jeton de session pour l'auth Bearer (cross-origin uniquement). Persisté en
-// localStorage pour survivre au rechargement — il n'y a pas de cookie cross-site
-// à rejouer. En same-origin, il reste null (on s'appuie sur le cookie HttpOnly).
-let bearer: string | null = IS_CROSS_ORIGIN ? localStorage.getItem(TOKEN_KEY) : null
+// sessionStorage : isolé par onglet et effacé à sa fermeture → la fenêtre
+// d'exposition en cas d'XSS est bien plus courte qu'avec localStorage (qui
+// survit à la fermeture du navigateur et est partagé entre tous les onglets).
+// Migration douce : si un ancien token est présent en localStorage (déploiement
+// antérieur), on le récupère UNE fois puis on l'efface — pour ne pas déconnecter
+// les sessions existantes au moment du déploiement du correctif.
+function _initBearer(): string | null {
+  if (!IS_CROSS_ORIGIN) return null
+  const legacy = localStorage.getItem(TOKEN_KEY)
+  if (legacy) {
+    sessionStorage.setItem(TOKEN_KEY, legacy)
+    localStorage.removeItem(TOKEN_KEY)
+    return legacy
+  }
+  return sessionStorage.getItem(TOKEN_KEY)
+}
+let bearer: string | null = _initBearer()
 
 /** Mémorise le token CSRF renvoyé par /auth/login (et re-lu du cookie au reload). */
 export function setCsrf(token: string | null): void {
   csrfToken = token
 }
 
-/** Mémorise (ou efface) le jeton de session Bearer — cross-origin uniquement. */
+/** Mémorise (ou efface) le jeton de session Bearer — cross-origin uniquement.
+ *  Stocké en sessionStorage (par onglet, éphémère) et non en localStorage. */
 export function setToken(token: string | null): void {
   bearer = IS_CROSS_ORIGIN ? token : null
   if (!IS_CROSS_ORIGIN) return
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+  if (token) sessionStorage.setItem(TOKEN_KEY, token)
+  else sessionStorage.removeItem(TOKEN_KEY)
 }
 
 /** Jeton de session Bearer courant (null en same-origin). */
