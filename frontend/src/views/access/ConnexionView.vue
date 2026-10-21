@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Lock, Mail } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
-import { DEMO_CREDENTIALS } from '@/data/personas'
+import { DEMO_EMAILS, demoPasswordFor } from '@/data/personas'
 import type { Role } from '@/types/domain'
 import AuthCard from '@/components/access/AuthCard.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -18,14 +18,16 @@ const roles: { value: Role; label: string }[] = [
   { value: 'rh', label: 'HRBP' },
 ]
 const selectedRole = ref<Role>('collab')
-const email = ref(DEMO_CREDENTIALS.collab.email)
-const password = ref(DEMO_CREDENTIALS.collab.password)
+// Email pré-rempli (public) ; MDP uniquement si VITE_DEMO_PASSWORD est défini
+// (dev local). En prod/portfolio public, le champ reste vide → saisie manuelle.
+const email = ref(DEMO_EMAILS.collab)
+const password = ref(demoPasswordFor('collab'))
 const error = ref('')
 
 function onRole(r: Role) {
   selectedRole.value = r
-  email.value = DEMO_CREDENTIALS[r].email
-  password.value = DEMO_CREDENTIALS[r].password
+  email.value = DEMO_EMAILS[r]
+  password.value = demoPasswordFor(r)
 }
 
 async function submit() {

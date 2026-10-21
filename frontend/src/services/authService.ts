@@ -1,5 +1,5 @@
 import type { Role, User } from '@/types/domain'
-import { PERSONAS, DEMO_CREDENTIALS } from '@/data/personas'
+import { PERSONAS, DEMO_EMAILS } from '@/data/personas'
 import { apiFetch, setCsrf, setToken } from './http'
 
 /**
@@ -60,8 +60,8 @@ function mapUser(u: BackendUser): User {
 /** Résout le persona de démo à partir de l'e-mail (mode mock, sans backend). */
 function personaByEmail(email: string): User | null {
   const e = email.trim().toLowerCase()
-  const role = (Object.keys(DEMO_CREDENTIALS) as Role[]).find(
-    (r) => DEMO_CREDENTIALS[r].email.toLowerCase() === e,
+  const role = (Object.keys(DEMO_EMAILS) as Role[]).find(
+    (r) => DEMO_EMAILS[r].toLowerCase() === e,
   )
   return role ? PERSONAS[role] : null
 }

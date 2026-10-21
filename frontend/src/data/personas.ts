@@ -7,15 +7,28 @@ import type { Role, User } from '@/types/domain'
  */
 
 /**
- * Identifiants de connexion de démo — mappés sur les comptes SEEDÉS du backend
- * (`app/database/seed.py`, e-mails @bmci.local, mot de passe SEED_DEMO_PASSWORD).
- * ⚠ Démo/local uniquement. Le rôle réel est déterminé par le backend au login.
+ * Comptes de démo seedés par le backend (`app/database/seed.py`). Les emails sont
+ * publics (ce sont les comptes de démo synthétiques @bmci.local) ; le mot de passe
+ * est injecté UNIQUEMENT à partir de la variable Vite `VITE_DEMO_PASSWORD`.
+ *
+ * - En DEV local : poser `VITE_DEMO_PASSWORD=…` dans `frontend/.env.local` (gitignored).
+ *   Les écrans de démo (bouton « entrer en démo » / sélecteur Collab/Manager/HRBP)
+ *   pré-remplissent alors email + MDP comme avant.
+ * - En PROD / portfolio public (Vercel) : ne PAS définir la variable. Les écrans
+ *   pré-remplissent uniquement l'email, le MDP reste vide — l'utilisateur doit
+ *   le saisir manuellement. Objectif : ne jamais exposer de MDP dans le bundle JS.
  */
-export const DEMO_CREDENTIALS: Record<Role, { email: string; password: string }> = {
-  collab: { email: 'youssef.elamrani@bmci.local', password: 'REDACTED-SEE-ENV-LOCAL' },
-  manager: { email: 'karim.naji@bmci.local', password: 'REDACTED-SEE-ENV-LOCAL' },
-  rh: { email: 'nadia.alami@bmci.local', password: 'REDACTED-SEE-ENV-LOCAL' },
+export const DEMO_EMAILS: Record<Role, string> = {
+  collab: 'youssef.elamrani@bmci.local',
+  manager: 'karim.naji@bmci.local',
+  rh: 'nadia.alami@bmci.local',
 }
+
+/** MDP de démo pour `role`, lu depuis `VITE_DEMO_PASSWORD` (vide par défaut). */
+export function demoPasswordFor(_role: Role): string {
+  return (import.meta.env.VITE_DEMO_PASSWORD as string | undefined) ?? ''
+}
+
 export const PERSONAS: Record<Role, User> = {
   collab: {
     id: 'u-youssef',

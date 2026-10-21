@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Check, Sparkles } from '@lucide/vue'
 import { useSessionStore } from '@/stores/session'
-import { DEMO_CREDENTIALS } from '@/data/personas'
+import { DEMO_EMAILS, demoPasswordFor } from '@/data/personas'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const router = useRouter()
@@ -12,9 +12,10 @@ const error = ref('')
 
 async function enter() {
   // Un nouvel arrivant qui termine l'onboarding est un collaborateur (démo).
+  // Le MDP vient de VITE_DEMO_PASSWORD (absent en prod → échec contrôlé, cf. .env.example).
   error.value = ''
   try {
-    await session.login(DEMO_CREDENTIALS.collab.email, DEMO_CREDENTIALS.collab.password)
+    await session.login(DEMO_EMAILS.collab, demoPasswordFor('collab'))
     router.push({ name: 'collab.dashboard' })
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Connexion impossible.'
