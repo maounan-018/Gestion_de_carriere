@@ -78,8 +78,10 @@ jobs:
 
       - name: Tests
         # ALLOWED_ORIGINS requis au boot ; CORS strict refuse "*" (securite).
+        # Inclut :3000 car test_bearer_cross_origin verifie le preflight depuis
+        # cette origine (meme set que backend/.env en dev).
         env:
-          ALLOWED_ORIGINS: http://localhost:3001
+          ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001,http://localhost:5173
           AI_WARMUP_MODELS: ""
         run: pytest --tb=short -q
 
