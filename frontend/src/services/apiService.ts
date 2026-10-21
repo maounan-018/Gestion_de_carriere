@@ -4,7 +4,6 @@ import { NOTIFICATIONS } from '@/data/notifications'
 import { COLLAB_PROFILE } from '@/data/profile'
 import { SOUHAITS } from '@/data/souhaits'
 import { RECO } from '@/data/reco'
-import { FORMATIONS } from '@/data/formations'
 import { COLLEAGUES } from '@/data/colleagues'
 import { TEAM, VACANCIES, SOUHAITS_RECUS } from '@/data/team'
 import {
@@ -18,20 +17,20 @@ import type { RhOffer } from '@/data/rh'
 import type { RhPerson, CartoMatrix, RhKpi, RhAlert, HautPotentiel, VeilleType, FamilleTension, SyntheseRh, FicheListItem, FicheDetail, EntretienCas, SuccessionPlan } from '@/types/rh'
 import type {
   Offer, Candidature, NotificationItem, CollabProfile, ProfilEditable, MyCvStatus,
-  Souhait, RecoData, Formation, Colleague, Role, ChatMessage, MobiliteItem, Besoin, PeerReview,
+  Souhait, RecoData, Colleague, Role, ChatMessage, MobiliteItem, Besoin, PeerReview,
 } from '@/types/domain'
 import type { GabaritDoc, CartoDoc, FicheGeneree } from '@/types/referentiel'
 import { apiFetch, apiUpload, apiBlob, getCsrf, getToken, ApiError, API_BASE, IS_CROSS_ORIGIN } from './http'
 import { formatCoachReply } from './coachFormat'
 import { useSessionStore } from '@/stores/session'
 import {
-  mapNotification, mapFormation, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
+  mapNotification, mapSouhait, mapSouhaitRecu, mapKpi, mapKpiCard,
   mapHautPotentiel, mapVeille, mapAlerte, mapCollabProfile, mapProfil, mapTeamMember, mapColleague,
   mapOffre, mapCandidature, mapRhOffre, mapRhCandidate, mapVacancy, mapCartoMatrix, mapReco,
   mapMobilite, mapFamille, mapSyntheseRh, mapCandidatureActive,
   type MobiliteOut, type FamilleOut, type SyntheseRhOut,
   type CandidatOffreActiveOut, type CandidatureActive,
-  type NotificationOut, type FormationOut, type SouhaitOut, type SouhaitRecuOut,
+  type NotificationOut, type SouhaitOut, type SouhaitRecuOut,
   type KpiItemOut, type HautPotentielOut, type VeilleOut, type AlerteOut,
   type ProfilCarriereOut, type ProfilOut, type AnnuaireOut, type OffreCompatOut,
   type CandidatureMineOut, type RhOffreOut, type OffreCandidatOut, type VacancyOut,
@@ -424,14 +423,6 @@ export const apiService = {
     } catch {
       return null
     }
-  },
-  async getFormations(): Promise<Formation[]> {
-    if (MODE === 'mock') {
-      await delay()
-      return FORMATIONS
-    }
-    const rows = await apiFetch<FormationOut[]>('/formations')
-    return rows.map(mapFormation)
   },
   async getColleagues(): Promise<Colleague[]> {
     if (MODE === 'mock') {

@@ -7,7 +7,7 @@
  */
 
 import type {
-  IconKey, NotificationItem, Formation, Role, PillTone,
+  IconKey, NotificationItem, Role, PillTone,
   Souhait, SouhaitStatus, CollabProfile, ProgressionStation, SkillLevel, PeerReview, Colleague,
   Offer, OfferType, MetaItem, Candidature, CandidatureStatus,
   RecoData, RecoSkill, Passerelle, MobiliteItem,
@@ -25,18 +25,6 @@ export interface NotificationOut {
   to_route: string | null
   lu: boolean
   created_at: string
-}
-
-export interface FormationOut {
-  id: number
-  titre: string
-  provider: string | null
-  duree: string | null
-  niveau: string | null
-  domaine: string | null
-  tags: string[]
-  skill_cible: string | null
-  synthetique: boolean
 }
 
 /* -------------------------------------------------------------------- Utils */
@@ -70,7 +58,7 @@ const NOTIF_ICONS: Record<string, IconKey> = {
 const NOTIF_ROUTE: Record<Role, Record<string, string>> = {
   collab: {
     offres: 'collab.offres', souhaitSuivi: 'collab.souhaits', entretien: 'collab.entretien',
-    reco: 'collab.reco', formation: 'collab.formation', profil: 'collab.profil',
+    reco: 'collab.reco', profil: 'collab.profil',
     recherche: 'collab.recherche', coach: 'collab.coach', mesCandidatures: 'collab.mesCandidatures',
   },
   manager: {
@@ -98,25 +86,6 @@ export function mapNotification(n: NotificationOut, role: Role): NotificationIte
     time: relativeTime(n.created_at),
     unread: !n.lu,
     to: notifRoute(role, n.to_route),
-  }
-}
-
-export function mapFormation(f: FormationOut): Formation {
-  // Le backend n'a pas de suivi LMS par collaborateur → statut de DÉMONSTRATION,
-  // déterministe par id (variété réaliste : recommandée / en cours / terminée).
-  const mod = f.id % 5
-  const status: Formation['status'] = mod === 0 ? 'done' : mod === 2 ? 'in-progress' : 'recommended'
-  const progress = status === 'done' ? 100 : status === 'in-progress' ? 25 + ((f.id * 17) % 60) : 0
-  return {
-    id: String(f.id),
-    title: f.titre,
-    provider: f.provider ?? '',
-    duration: f.duree ?? '',
-    level: f.niveau ?? '',
-    status,
-    progress,
-    tags: f.tags ?? [],
-    reason: f.skill_cible ? `Compétence visée : ${f.skill_cible}` : undefined,
   }
 }
 

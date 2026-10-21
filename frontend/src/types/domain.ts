@@ -210,20 +210,6 @@ export interface MobiliteItem {
   partagees: number    // nb de compétences détenues partagées avec ce métier
 }
 
-/* ------------------------------------------------------------- Formations */
-export type FormationStatus = 'recommended' | 'in-progress' | 'done'
-export interface Formation {
-  id: string
-  title: string
-  provider: string
-  duration: string
-  level: string
-  status: FormationStatus
-  progress: number
-  tags: string[]
-  reason?: string
-}
-
 /* --------------------------------------------------------------- Collègues */
 export interface Colleague {
   id: string

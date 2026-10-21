@@ -19,8 +19,6 @@ function viewFor(name: string) {
       return () => import('@/views/collab/EntretienView.vue')
     case 'collab.offres':
       return () => import('@/views/collab/OffresView.vue')
-    case 'collab.formation':
-      return () => import('@/views/collab/FormationsView.vue')
     case 'collab.recherche':
       return () => import('@/views/collab/RechercheView.vue')
     case 'collab.coach':
@@ -125,12 +123,6 @@ const collabDetailRoutes: RouteRecordRaw[] = [
   },
   {
     // Sous-écrans reco PARTAGÉS avec le manager (vues collab réutilisées, role-aware).
-    path: 'manager/formation',
-    name: 'manager.formation',
-    component: () => import('@/views/collab/FormationsView.vue'),
-    meta: { roles: ['manager'], title: 'Formations' },
-  },
-  {
     path: 'manager/passerelles',
     name: 'manager.passerelles',
     component: () => import('@/views/collab/PasserellesView.vue'),
