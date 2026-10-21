@@ -449,7 +449,9 @@ export const apiService = {
     }
     // Équipe = profils dont le manager est l'utilisateur connecté (id backend).
     const meId = useSessionStore().user?.id
-    const rows = await apiFetch<ProfilOut[]>('/profils?limit=200')
+    // limit=500 (max backend) : la base compte > 300 profils, un plafond à 200
+    // tronquait l'équipe des managers dont les subordonnés ont des id > 200.
+    const rows = await apiFetch<ProfilOut[]>('/profils?limit=500')
     const mine = meId != null ? rows.filter((p) => String(p.manager_id) === String(meId)) : rows
     return mine.map(mapTeamMember)
   },
@@ -542,7 +544,10 @@ export const apiService = {
       await delay()
       return RH_PEOPLE
     }
-    const rows = await apiFetch<ProfilOut[]>('/profils?limit=200')
+    // limit=500 (max backend) : les vues RH (hauts potentiels, annuaire…) croisent
+    // ces profils par id. Un plafond à 200 laissait sans nom (`?`) tous les
+    // profils dont l'id dépassait — par ex. les hauts potentiels 203..321.
+    const rows = await apiFetch<ProfilOut[]>('/profils?limit=500')
     return rows.map(mapProfil)
   },
   async getRhPerson(id: string): Promise<RhPerson | undefined> {
