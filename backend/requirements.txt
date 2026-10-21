@@ -35,3 +35,6 @@ FlagEmbedding>=1.2
 # --- Tests (bonnes pratiques) ---
 pytest>=8.0
 httpx>=0.27   # requis par fastapi.testclient
+# pypdf : utilise UNIQUEMENT par test_cv_generation.py pour verifier le PDF
+# produit par cv_generation_service (fpdf2) -> lib legere, pas de dependance IA.
+pypdf>=5.0
