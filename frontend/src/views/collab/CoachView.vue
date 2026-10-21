@@ -35,6 +35,7 @@ const topics = [
         :suggestions="suggestions"
         placeholder="Posez votre question au Coach…"
         :on-stream="askCoach"
+        enable-docs
       />
       <p class="text-center text-[11px] text-ink-3">
         <Shield :size="12" class="inline" /> Échanges 100 % confidentiels · ni votre manager ni la HRBP n'y ont accès.

@@ -44,12 +44,22 @@ def _create_vec_table() -> None:
                     f"occupation_id INTEGER PRIMARY KEY REFERENCES occupations(id) ON DELETE CASCADE, "
                     f"embedding vector({dim}) NOT NULL)"
                 )
+                # Documents personnels du Coach (RAG par utilisateur) : embeddings par chunk.
+                conn.exec_driver_sql(
+                    f"CREATE TABLE IF NOT EXISTS vec_coach_docs ("
+                    f"chunk_id INTEGER PRIMARY KEY REFERENCES coach_document_chunks(id) ON DELETE CASCADE, "
+                    f"embedding vector({dim}) NOT NULL)"
+                )
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS ix_vec_skills_hnsw ON vec_skills "
                     "USING hnsw (embedding vector_cosine_ops)"
                 )
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS ix_vec_occupations_hnsw ON vec_occupations "
+                    "USING hnsw (embedding vector_cosine_ops)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_vec_coach_docs_hnsw ON vec_coach_docs "
                     "USING hnsw (embedding vector_cosine_ops)"
                 )
                 conn.commit()
@@ -65,8 +75,12 @@ def _create_vec_table() -> None:
                     f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_occupations USING vec0("
                     f"occupation_id INTEGER PRIMARY KEY, embedding FLOAT[{dim}])"
                 )
+                conn.exec_driver_sql(
+                    f"CREATE VIRTUAL TABLE IF NOT EXISTS vec_coach_docs USING vec0("
+                    f"chunk_id INTEGER PRIMARY KEY, embedding FLOAT[{dim}])"
+                )
                 conn.commit()
-            logger.info("Tables vectorielles vec_skills / vec_occupations prêtes (dim %d).", dim)
+            logger.info("Tables vectorielles prêtes (skills / occupations / coach_docs, dim %d).", dim)
     except Exception as e:  # noqa: BLE001
         logger.warning("tables vectorielles non créées (%s) — recherche vectorielle indisponible.", e)
 

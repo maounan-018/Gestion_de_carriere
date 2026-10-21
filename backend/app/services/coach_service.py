@@ -29,6 +29,7 @@ from app.core.config import settings
 from app.models.profil import Profil, ProfilCompetence
 from app.models.formation import Formation
 from app.services.ai_router import generate, chat_call, chat_stream, fence
+from app.services import coach_rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,19 @@ def _profil_contexte(db: Session, user_id: int) -> str:
     )
 
 
+def _rag_contexte(db: Session, user_id: int, message: str) -> str:
+    """Passages pertinents extraits des DOCUMENTS PERSONNELS de l'utilisateur
+    (RAG). Renvoie un bloc fencé prêt à concaténer au system prompt, ou "" si
+    aucun document ne matche la question (seuil de pertinence bas sélectif, pour
+    éviter d'injecter du bruit qui ferait divaguer le coach)."""
+    passages = coach_rag_service.retrieve(db, user_id, message, top_k=3, max_distance=28.0)
+    if not passages:
+        return ""
+    joined = "\n\n---\n\n".join(p["text"] for p in passages)
+    return ("\n\nEXTRAITS DE MES DOCUMENTS (contexte, fiables mais lacunaires) :\n"
+            + fence(joined, tag="documents_perso"))
+
+
 def _build_prompt(history: list, message: str) -> str:
     """Formate l'historique récent + la question en un prompt conversationnel."""
     lignes: list[str] = []
@@ -86,7 +100,8 @@ def _build_prompt(history: list, message: str) -> str:
 
 def chat(db: Session, user_id: int, message: str, history: list) -> dict:
     """Une réponse du coach, contextualisée sur le profil du compte connecté."""
-    system = _SYSTEM + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
+    system = (_SYSTEM + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
+              + _rag_contexte(db, user_id, message))
     prompt = _build_prompt(history, message)
     try:
         reply = (generate(_TASK, prompt, system=system) or "").strip()
@@ -552,7 +567,8 @@ def _agent_setup(db: Session, user_id: int, message: str, history: list) -> tupl
     cfg = settings.task_model(_AGENT_TASK)
     model = cfg.get("model", "qwen3:8b")
     num_ctx = int(cfg.get("num_ctx", 8192))
-    system = _SYSTEM_AGENT + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
+    system = (_SYSTEM_AGENT + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
+              + _rag_contexte(db, user_id, message))
     messages: list[dict] = [{"role": "system", "content": system}]
     for m in history[-_MAX_HISTORY:]:
         role = "user" if getattr(m, "role", "user") == "user" else "assistant"

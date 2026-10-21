@@ -22,6 +22,7 @@ from app.models.competence_evaluation import CompetenceEvaluation, EvaluationSou
 from app.models.evaluation_bilan import EvaluationBilan
 from app.models.recommandation import Recommandation
 from app.models.analyse_rh import AnalyseRh
+from app.models.coach_document import CoachDocument, CoachDocumentChunk
 
 __all__ = [
     "ReferentialSource", "SourceCode",
@@ -43,4 +44,5 @@ __all__ = [
     "EvaluationBilan",
     "Recommandation",
     "AnalyseRh",
+    "CoachDocument", "CoachDocumentChunk",
 ]

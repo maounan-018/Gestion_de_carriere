@@ -1241,4 +1241,31 @@ export const apiService = {
   cvUrl(profilId: number): string {
     return `${API_BASE}/profils/${profilId}/cv`
   },
+
+  // ---------------- Documents personnels du Coach (RAG, scopés par utilisateur) ---------------
+  /** Mes documents personnels disponibles pour le Coach (du plus récent au plus ancien). */
+  async listCoachDocuments(): Promise<CoachDocumentItem[]> {
+    if (MODE === 'mock') { await delay(80); return [] }
+    return apiFetch<CoachDocumentItem[]>('/coach/documents')
+  },
+  /** Téléverse un document (PDF/Word/Excel/texte). Le backend extrait + indexe
+   *  le texte, puis le Coach pourra s'appuyer dessus pour répondre. */
+  async uploadCoachDocument(file: File): Promise<CoachDocumentItem> {
+    const fd = new FormData()
+    fd.append('file', file)
+    return apiUpload<CoachDocumentItem>('/coach/documents', fd)
+  },
+  /** Supprime un de MES documents (404 si pas propriétaire — ne révèle rien). */
+  async deleteCoachDocument(id: number): Promise<void> {
+    await apiFetch(`/coach/documents/${id}`, { method: 'DELETE' })
+  },
+}
+
+/** Fiche d'un document téléversé par l'utilisateur pour son Coach. */
+export interface CoachDocumentItem {
+  id: number
+  filename: string
+  size_bytes: number
+  chunk_count: number
+  created_at: string | null
 }

@@ -33,6 +33,7 @@ const suggestions: ChatSuggestion[] = [
       :suggestions="suggestions"
       placeholder="Posez votre question au Coach…"
       :on-stream="askCoach"
+      enable-docs
     />
     <div class="space-y-4">
       <BaseCard>

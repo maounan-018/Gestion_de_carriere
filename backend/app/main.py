@@ -27,6 +27,7 @@ from app.controllers import (skill_extraction_controller, skill_matching_control
                              profil_controller, offre_controller, candidature_controller,
                              notification_controller, souhait_controller, formation_controller,
                              dashboard_controller, rh_controller, coach_controller,
+                             coach_rag_controller,
                              redaction_controller, normalisation_controller,
                              entretien_controller, besoin_controller)
 
@@ -87,6 +88,7 @@ app.include_router(formation_controller.router)
 app.include_router(dashboard_controller.router)
 app.include_router(rh_controller.router)
 app.include_router(coach_controller.router)
+app.include_router(coach_rag_controller.router)
 app.include_router(redaction_controller.router)
 app.include_router(normalisation_controller.router)
 app.include_router(entretien_controller.router)

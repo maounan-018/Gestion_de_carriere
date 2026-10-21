@@ -32,6 +32,7 @@ const suggestions: ChatSuggestion[] = [
       :suggestions="suggestions"
       placeholder="Posez votre question au Coach…"
       :on-stream="askCoach"
+      enable-docs
     />
     <BaseCard>
       <div class="mb-2 inline-flex items-center gap-1.5 rounded-full border border-green-line bg-green-ghost px-2.5 py-0.5 text-[11px] font-bold text-green-deep">

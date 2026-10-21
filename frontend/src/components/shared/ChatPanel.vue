@@ -2,6 +2,7 @@
 import { ref, watch, nextTick } from 'vue'
 import { Send, Sparkles } from '@lucide/vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import CoachDocsAttach from '@/components/shared/CoachDocsAttach.vue'
 import type { ChatMessage, ChatSuggestion } from '@/types/domain'
 import type { CoachStreamHandlers } from '@/services/apiService'
 import { formatCoachReply } from '@/services/coachFormat'
@@ -21,6 +22,10 @@ const props = defineProps<{
     history: ChatMessage[],
     handlers: CoachStreamHandlers,
   ) => Promise<void>
+  /** Active l'upload de documents personnels (RAG) : trombone + popover de gestion.
+   *  À passer uniquement sur les CoachView ; les autres chats (simulations
+   *  d'entretien par ex.) laissent la valeur par défaut `false`. */
+  enableDocs?: boolean
 }>()
 
 const list = ref<ChatMessage[]>([...props.messages])
@@ -162,6 +167,9 @@ async function send(text?: string) {
         class="w-full bg-transparent text-sm outline-none placeholder:text-ink-3 disabled:opacity-60"
         @keydown.enter="send()"
       />
+      <!-- Documents personnels (RAG) : opt-in via `enableDocs` pour n'activer que
+           sur les coachs, pas sur les simulations d'entretien. -->
+      <CoachDocsAttach v-if="enableDocs" />
       <BaseButton size="sm" :disabled="busy" @click="send()"><Send :size="14" /> Envoyer</BaseButton>
     </div>
   </div>
