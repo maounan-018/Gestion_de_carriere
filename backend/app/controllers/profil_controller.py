@@ -142,7 +142,11 @@ def lister_profils(
     departement_key: str | None = Query(None),
     synthetique: bool | None = Query(None, description="Filtrer personas de démo (true) ou réels (false)."),
     manager_id: int | None = Query(None, description="Équipe d'un manager (profils dont le compte a ce manager)."),
-    limit: int = Query(50, ge=1, le=200),
+    # Plafond étendu à 500 : les vues RH (hauts potentiels, annuaire, cartographie)
+    # croisent cette liste par profil_id ; la population synthétique dépasse 300,
+    # un ancien `le=200` renvoyait 422 et laissait certains profils orphelins
+    # (initiales « ? ») côté UI. 500 couvre largement la base de démo actuelle.
+    limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
