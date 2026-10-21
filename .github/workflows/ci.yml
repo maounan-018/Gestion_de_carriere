@@ -49,16 +49,22 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install deps
-        # On installe seulement ce qu'il faut pour les tests + lint. Les deps
-        # IA lourdes (FlagEmbedding, torch, rapidocr) ne sont pas requises :
-        # les tests monkeypatchent Ollama/reranker et neutralisent le RAG.
-        # ruff pinned a la MEME version que .pre-commit-config.yaml pour garantir
-        # que les regles appliquees en CI sont celles appliquees en local (sinon
-        # un commit valide par pre-commit peut casser la CI sur une regle plus
-        # recente activee par defaut dans une version ulterieure).
+        # On installe UNIQUEMENT ce qu'il faut pour les tests + lint. Les deps
+        # IA lourdes (FlagEmbedding -> torch + cuda-* ~3 Go ; rapidocr -> onnxruntime +
+        # opencv ; PyMuPDF ; sentence_transformers ; transformers) ne sont PAS
+        # requises pour la CI : les tests monkeypatchent reranker_service /
+        # embedding_service / Ollama et le RAG Coach n'est jamais appele reellement.
+        # Les inclure saturait /dev/sda du runner GitHub -> "No space left on device".
+        # ruff pinned a la MEME version que .pre-commit-config.yaml (0.6.9) pour
+        # garantir qu'un commit valide en local l'est aussi en CI (sinon un ruff
+        # plus recent en CI active des regles non attendues).
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt "ruff==0.6.9"
+          # Filtre : on retire les deps IA lourdes et leurs cousines (FlagEmbedding
+          # tire torch, qui tire les paquets nvidia-cuda-*). pip --no-cache-dir
+          # ajoute une marge d'espace disque.
+          grep -vE '^(FlagEmbedding|rapidocr-onnxruntime|PyMuPDF|python-docx)' requirements.txt > /tmp/req-ci.txt
+          pip install --no-cache-dir -r /tmp/req-ci.txt "ruff==0.6.9"
         continue-on-error: false
 
       - name: Lint (ruff check)
