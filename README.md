@@ -1,5 +1,7 @@
 # 🌿 BMCI — Gestion des Carrières
 
+[![CI](https://github.com/maounan-018/Gestion_de_carriere/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/maounan-018/Gestion_de_carriere/actions/workflows/ci.yml)
+
 > *(nom de code de la maquette : « La Courbe »)*
 
 Plateforme RH de **gestion de carrière et de mobilité interne** propulsée par une
