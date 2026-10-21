@@ -3,6 +3,9 @@
 
 fastapi>=0.115
 uvicorn[standard]>=0.30
+# Prod : gunicorn orchestre plusieurs UvicornWorker (multi-process, resilience).
+# Dev : uvicorn --reload en mono-process suffit (voir Lancer-BMCI.bat).
+gunicorn>=23.0
 SQLAlchemy>=2.0
 pydantic>=2.7
 requests>=2.31

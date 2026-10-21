@@ -1,0 +1,49 @@
+# =====================================================================
+# Backend — configuration des outils (ruff pour lint + format).
+# =====================================================================
+# L'app elle-meme reste install-able via requirements.txt (pas de packaging) :
+# ce fichier ne declare PAS de [project], il sert uniquement a configurer les
+# outils de dev (ruff, pytest). Executez :
+#   ruff check .            # lint
+#   ruff check --fix .      # lint + auto-fix
+#   ruff format .           # format (black-compatible)
+# =====================================================================
+
+[tool.ruff]
+line-length = 100          # un peu plus large que 88 (black) : code bancaire =
+                           # phrases francaises longues dans les docstrings/metier
+target-version = "py311"
+exclude = [
+    "venv", ".venv",
+    "__pycache__", ".pytest_cache",
+    "alembic/versions",    # migrations auto-generees : on ne reformate pas
+]
+
+[tool.ruff.lint]
+# Selection raisonnable : erreurs qui comptent, pas chiant.
+select = [
+    "E",    # pycodestyle (erreurs)
+    "F",    # pyflakes (imports morts, variables non utilisees)
+    "W",    # pycodestyle (warnings)
+    "I",    # isort (ordre des imports)
+    "B",    # bugbear (pieges courants : try/except trop larges, mutables defaut)
+    "UP",   # pyupgrade (syntaxe moderne : f-strings, type hints natifs)
+    "SIM",  # simplify (patterns verbeux)
+    "RUF",  # ruff-specific (bonnes pratiques diverses)
+]
+ignore = [
+    "E501",   # line too long : on bornera a 100 cols mais on ne bloque pas sur ca
+    "B008",   # Depends(get_db) au niveau param : pattern FastAPI standard
+    "UP007",  # Union au lieu de X | Y : certains schemas Pydantic preferent Union
+    "SIM108", # if-else -> ternary : parfois moins lisible
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["F401", "F811"]   # imports de fixtures/redefinitions pytest : normal
+"__init__.py" = ["F401"]        # re-exports de modules : normal
+
+[tool.pytest.ini_options]
+# Chemins (depuis backend/) : les tests sont sous app/tests/.
+testpaths = ["app/tests"]
+# Hermetique : la fixture conftest neutralise DATABASE_URL -> SQLite jetable.
+addopts = "--tb=short -q"

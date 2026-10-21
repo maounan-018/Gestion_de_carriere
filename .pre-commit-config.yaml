@@ -1,0 +1,64 @@
+# =====================================================================
+# pre-commit — garde-fou local avant chaque commit
+# =====================================================================
+# Installation (une fois) :
+#   pip install pre-commit && pre-commit install
+# Mise a jour des hooks :
+#   pre-commit autoupdate
+# Executer sur TOUT le code (hors commit, utile apres pull) :
+#   pre-commit run --all-files
+#
+# Objectif : attraper tot (en local) les regressions evidentes qui ne meritent
+# pas une PR : code non formate, imports morts, erreurs de syntaxe, secrets
+# accidentellement commits, YAML casse. CI/CD rejoue les memes checks pour
+# empecher un contournement.
+# =====================================================================
+
+repos:
+  # Hygiene minimale : fichiers non termines par newline, mix EOL, fichiers trop
+  # gros, YAML/JSON invalides, debug statements oublies.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: debug-statements             # python : print() / breakpoint() oublie
+      - id: detect-private-key
+
+  # --- Backend Python : ruff (lint + format, remplace flake8/black/isort). ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: ["--fix"]                   # auto-fix les regles simples
+        files: ^backend/
+      - id: ruff-format
+        name: ruff-format (black-compatible)
+        files: ^backend/
+
+  # --- Frontend TypeScript/Vue : vue-tsc en type-check (plus leger qu'ESLint). ---
+  # On evite ESLint pour l'instant (config lourde en vue3-ts) et on utilise le
+  # type-checker officiel Vue : il attrape 90% des regressions (imports casses,
+  # types incompatibles, props manquantes, variables non utilisees si strict).
+  # vue-tsc analyse tout le projet d'un coup, donc on ne pass pas pass_filenames.
+  - repo: local
+    hooks:
+      - id: vue-tsc-type-check
+        name: vue-tsc (type-check frontend)
+        entry: bash -c 'cd frontend && npx --no vue-tsc --noEmit'
+        language: system
+        files: ^frontend/src/.*\.(ts|vue)$
+        pass_filenames: false
+
+  # --- Secrets : scan basique (patterns de type password/token/api_key). ---
+  # Complementaire au scan CI (gitleaks) : rapide, local, attrape l'evidence.
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.21.1
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secrets)
