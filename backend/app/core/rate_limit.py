@@ -23,16 +23,16 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-import time
 import threading
+import time
 from collections import defaultdict, deque
 
-from fastapi import Depends, Request, HTTPException
+from fastapi import Depends, HTTPException, Request
 
+from app.auth.dependencies import client_ip, get_current_user
 from app.core.config import settings
-from app.auth.dependencies import get_current_user, client_ip
-from app.models.user import User
 from app.models.audit_log import AuditEventType
+from app.models.user import User
 from app.services import audit_service
 
 
@@ -46,8 +46,8 @@ class IARateLimiter:
         self.max_per_window = max_per_window
         self.window = window_seconds
         self.max_concurrent = max_concurrent
-        self._hits: dict[int, deque] = defaultdict(deque)   # horodatages récents / user
-        self._inflight: dict[int, int] = defaultdict(int)   # requêtes IA en vol / user
+        self._hits: dict[int, deque] = defaultdict(deque)  # horodatages récents / user
+        self._inflight: dict[int, int] = defaultdict(int)  # requêtes IA en vol / user
         self._lock = threading.Lock()
 
     def acquire(self, user_id: int) -> tuple[bool, int]:
@@ -57,13 +57,13 @@ class IARateLimiter:
         with self._lock:
             hits = self._hits[user_id]
             cutoff = now - self.window
-            while hits and hits[0] <= cutoff:      # purge la fenêtre expirée
+            while hits and hits[0] <= cutoff:  # purge la fenêtre expirée
                 hits.popleft()
             if self._inflight[user_id] >= self.max_concurrent:
-                return False, 1                    # déjà K requêtes en vol
+                return False, 1  # déjà K requêtes en vol
             if len(hits) >= self.max_per_window:
                 retry = max(1, int(self.window - (now - hits[0])) + 1)
-                return False, retry                # débit dépassé sur la fenêtre
+                return False, retry  # débit dépassé sur la fenêtre
             hits.append(now)
             self._inflight[user_id] += 1
             return True, 0
@@ -105,13 +105,20 @@ def ia_rate_limit(request: Request, user: User = Depends(get_current_user)):
         audit_service.log_event(
             AuditEventType.RATE_LIMITED,
             f"Débit IA dépassé sur {request.url.path}",
-            status="FAILED", user_id=user.id, username=user.email, role=user.role,
-            ip_address=client_ip(request), user_agent=request.headers.get("user-agent"),
-            endpoint=request.url.path, http_method=request.method)
+            status="FAILED",
+            user_id=user.id,
+            username=user.email,
+            role=user.role,
+            ip_address=client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+            endpoint=request.url.path,
+            http_method=request.method,
+        )
         raise HTTPException(
             status_code=429,
             detail="Trop de requêtes IA en peu de temps. Réessayez dans un instant.",
-            headers={"Retry-After": str(retry_after)})
+            headers={"Retry-After": str(retry_after)},
+        )
     try:
         yield
     finally:

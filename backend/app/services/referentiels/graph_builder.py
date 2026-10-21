@@ -15,11 +15,11 @@ EMPLACEMENT MVC
 import json
 import logging
 
-from sqlalchemy import select, func, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from app.models.skill import Skill
 from app.models.occupation import Occupation, OccupationSkill
+from app.models.skill import Skill
 from app.services.embedding_service import embed_batch
 
 logger = logging.getLogger(__name__)
@@ -44,14 +44,18 @@ def embed_missing_skills(db: Session, batch_size: int = 128) -> int:
     de commit DB ; l'embedding lui-même se fait par sous-lots de 64 (repli adaptatif)."""
     existing = {r[0] for r in db.execute(text("SELECT skill_id FROM vec_skills"))}
     todo = [s for s in db.scalars(select(Skill)).all() if s.id not in existing]
-    logger.info("Vectorisation : %d compétences à embedder (%d déjà faites).", len(todo), len(existing))
+    logger.info(
+        "Vectorisation : %d compétences à embedder (%d déjà faites).", len(todo), len(existing)
+    )
 
     ins = text("INSERT INTO vec_skills(skill_id, embedding) VALUES (:id, :emb)")
     n = 0
     for i in range(0, len(todo), batch_size):
-        chunk = todo[i:i + batch_size]
+        chunk = todo[i : i + batch_size]
         vectors = embed_batch([_skill_text(s) for s in chunk], batch_size=64)
-        db.execute(ins, [{"id": s.id, "emb": json.dumps(v)} for s, v in zip(chunk, vectors)])
+        db.execute(
+            ins, [{"id": s.id, "emb": json.dumps(v)} for s, v in zip(chunk, vectors, strict=False)]
+        )
         db.commit()
         n += len(chunk)
         logger.info("  … %d/%d vectorisées", n, len(todo))
@@ -81,9 +85,11 @@ def embed_missing_occupations(db: Session, batch_size: int = 128) -> int:
     ins = text("INSERT INTO vec_occupations(occupation_id, embedding) VALUES (:id, :emb)")
     n = 0
     for i in range(0, len(todo), batch_size):
-        chunk = todo[i:i + batch_size]
+        chunk = todo[i : i + batch_size]
         vectors = embed_batch([_occupation_text(o) for o in chunk], batch_size=64)
-        db.execute(ins, [{"id": o.id, "emb": json.dumps(v)} for o, v in zip(chunk, vectors)])
+        db.execute(
+            ins, [{"id": o.id, "emb": json.dumps(v)} for o, v in zip(chunk, vectors, strict=False)]
+        )
         db.commit()
         n += len(chunk)
         logger.info("  … %d/%d métiers vectorisés", n, len(todo))

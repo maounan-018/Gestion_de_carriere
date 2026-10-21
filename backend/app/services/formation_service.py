@@ -13,7 +13,7 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.formation import Formation
@@ -25,8 +25,14 @@ def _lower(col):
     return func.lower(func.coalesce(col, ""))
 
 
-def list_formations(db: Session, *, domaine: str | None = None, q: str | None = None,
-                    limit: int = 100, offset: int = 0) -> list[FormationOut]:
+def list_formations(
+    db: Session,
+    *,
+    domaine: str | None = None,
+    q: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[FormationOut]:
     """Catalogue filtrable par domaine et par texte (titre/compétence visée/tags)."""
     stmt = select(Formation).order_by(Formation.domaine, Formation.titre)
     if domaine is not None:
@@ -46,8 +52,11 @@ def create_formation(db: Session, data: dict) -> FormationOut:
     """Persiste une formation au catalogue (toujours SYNTHÉTIQUE). `data` = dict issu
     de `formation_generation_service.generer` (les tags sont stockés en CSV)."""
     f = Formation(
-        titre=data["titre"], provider=data.get("organisme"),
-        duree=data.get("duree"), niveau=data.get("niveau"), domaine=data.get("domaine"),
+        titre=data["titre"],
+        provider=data.get("organisme"),
+        duree=data.get("duree"),
+        niveau=data.get("niveau"),
+        domaine=data.get("domaine"),
         skill_cible=data.get("skill_cible"),
         tags=", ".join(data.get("tags") or []) or None,
         synthetique=True,

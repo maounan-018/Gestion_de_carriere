@@ -21,13 +21,12 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.services.ai_router import generate, fence
+from app.services.ai_router import fence, generate
 from app.services.skill_search_service import search_skills
 
 logger = logging.getLogger(__name__)
 
-_TASK = "extraction_competences"   # même modèle que l'extraction de poste (hermes3, JSON)
+_TASK = "extraction_competences"  # même modèle que l'extraction de poste (hermes3, JSON)
 
 _CV_SYSTEM = (
     "Tu es un extracteur d'information pour une plateforme de gestion des carrières "
@@ -40,10 +39,10 @@ _CV_SYSTEM = (
     "Réponds STRICTEMENT en JSON (aucun texte autour), au format exact :\n"
     '{"competences": [{"libelle": "…", "type": "savoir-faire"|"savoir"|"savoir-être", '
     '"niveau": 1|2|3|4|5|null}], "aspirations": "…"|null, "poste_vise": "…"|null}\n'
-    "Chaque \"libelle\" est une compétence courte et normalisée (2 à 6 mots), en français. "
-    "\"niveau\" = maîtrise estimée 1-5 SEULEMENT si le CV le suggère clairement, sinon null. "
-    "\"aspirations\" = 1 phrase résumant l'ambition/objectif de carrière SI exprimé, sinon null. "
-    "\"poste_vise\" = intitulé court du poste ciblé SI mentionné, sinon null."
+    'Chaque "libelle" est une compétence courte et normalisée (2 à 6 mots), en français. '
+    '"niveau" = maîtrise estimée 1-5 SEULEMENT si le CV le suggère clairement, sinon null. '
+    '"aspirations" = 1 phrase résumant l\'ambition/objectif de carrière SI exprimé, sinon null. '
+    '"poste_vise" = intitulé court du poste ciblé SI mentionné, sinon null.'
 )
 
 
@@ -57,15 +56,17 @@ _EVAL_SYSTEM = (
     "Réponds STRICTEMENT en JSON (aucun texte autour), au format exact :\n"
     '{"competences": [{"libelle": "…", "type": "savoir-faire"|"savoir"|"savoir-être", '
     '"niveau": 1|2|3|4|5|null}]}\n'
-    "Chaque \"libelle\" est une compétence courte et normalisée (2 à 6 mots), en français. "
-    "\"niveau\" = maîtrise démontrée 1-5 si l'évaluation le suggère, sinon null."
+    'Chaque "libelle" est une compétence courte et normalisée (2 à 6 mots), en français. '
+    '"niveau" = maîtrise démontrée 1-5 si l\'évaluation le suggère, sinon null.'
 )
 
 
 def _is_valid(result) -> bool:
-    return (isinstance(result, dict)
-            and isinstance(result.get("competences"), list)
-            and len(result["competences"]) > 0)
+    return (
+        isinstance(result, dict)
+        and isinstance(result.get("competences"), list)
+        and len(result["competences"]) > 0
+    )
 
 
 def _niveau(val) -> int | None:
@@ -84,22 +85,26 @@ def _ancrer(db: Session, competences: list, top_k: int) -> list[dict]:
             continue
         matches = search_skills(db, libelle, k=top_k)
         best = matches[0] if matches else None
-        out.append({
-            "libelle": libelle,
-            "categorie": c.get("type"),
-            "niveau": _niveau(c.get("niveau")),
-            "skill_id": best["skill_id"] if best else None,
-            "skill_label_fr": best["label_fr"] if best else None,
-        })
+        out.append(
+            {
+                "libelle": libelle,
+                "categorie": c.get("type"),
+                "niveau": _niveau(c.get("niveau")),
+                "skill_id": best["skill_id"] if best else None,
+                "skill_label_fr": best["label_fr"] if best else None,
+            }
+        )
     return out
 
 
 def _extraire(db: Session, texte: str, system: str, top_k: int) -> list[dict]:
     """Extrait des compétences DÉTENUES d'un document personnel (CV / évaluation) et
     les ancre au graphe. Liste vide si l'IA est indisponible/illisible."""
-    prompt = ("Texte à analyser :\n"
-              f"{fence(texte)}\n\n"
-              "Extrais les compétences détenues au format JSON demandé.")
+    prompt = (
+        "Texte à analyser :\n"
+        f"{fence(texte)}\n\n"
+        "Extrais les compétences détenues au format JSON demandé."
+    )
     result = generate(_TASK, prompt, system=system, is_valid=_is_valid)
     competences = result.get("competences", []) if isinstance(result, dict) else []
     return _ancrer(db, competences, top_k)
@@ -115,16 +120,22 @@ def extraire_cv(db: Session, texte: str, top_k: int = 1) -> list[dict]:
 def extraire_cv_complet(db: Session, texte: str, top_k: int = 1) -> dict:
     """Extraction CV enrichie : compétences ancrées + aspirations + poste visé (si le
     CV les exprime). Renvoie {competences: [...], aspirations: str|None, poste_vise: str|None}."""
-    prompt = ("Texte à analyser :\n"
-              f"{fence(texte)}\n\n"
-              "Extrais compétences, aspirations et poste visé au format JSON demandé.")
+    prompt = (
+        "Texte à analyser :\n"
+        f"{fence(texte)}\n\n"
+        "Extrais compétences, aspirations et poste visé au format JSON demandé."
+    )
     result = generate(_TASK, prompt, system=_CV_SYSTEM, is_valid=_is_valid)
     d = result if isinstance(result, dict) else {}
     comps = _ancrer(db, d.get("competences", []), top_k)
     aspirations = (d.get("aspirations") or "").strip() or None
     poste_vise = (d.get("poste_vise") or "").strip() or None
-    logger.info("Extraction CV complète : %d compétences, aspirations=%s, poste_vise=%s.",
-                len(comps), bool(aspirations), bool(poste_vise))
+    logger.info(
+        "Extraction CV complète : %d compétences, aspirations=%s, poste_vise=%s.",
+        len(comps),
+        bool(aspirations),
+        bool(poste_vise),
+    )
     return {"competences": comps, "aspirations": aspirations, "poste_vise": poste_vise}
 
 

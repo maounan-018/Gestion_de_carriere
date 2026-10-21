@@ -21,9 +21,11 @@ from pydantic import BaseModel, Field
 class RedactionRequest(BaseModel):
     texte: str = Field(..., min_length=1, max_length=8000, description="Texte source à traiter.")
     mode: Literal["resume", "reformulation"] = Field(
-        "resume", description="resume = synthèse concise ; reformulation = même sens, plus clair.")
+        "resume", description="resume = synthèse concise ; reformulation = même sens, plus clair."
+    )
     consignes: str | None = Field(
-        None, max_length=500, description="Consigne optionnelle (ton, longueur, angle).")
+        None, max_length=500, description="Consigne optionnelle (ton, longueur, angle)."
+    )
 
 
 class RedactionResponse(BaseModel):

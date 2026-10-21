@@ -20,23 +20,39 @@ from app.models.audit_log import AuditLog
 logger = logging.getLogger(__name__)
 
 
-def log_event(event_type: str, description: str, *, status: str = "SUCCESS",
-              user_id: int | None = None, username: str | None = None,
-              role: str | None = None, ip_address: str | None = None,
-              user_agent: str | None = None, endpoint: str | None = None,
-              http_method: str | None = None) -> None:
+def log_event(
+    event_type: str,
+    description: str,
+    *,
+    status: str = "SUCCESS",
+    user_id: int | None = None,
+    username: str | None = None,
+    role: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    endpoint: str | None = None,
+    http_method: str | None = None,
+) -> None:
     """Enregistre un évènement d'audit (best-effort — n'interrompt jamais l'appelant)."""
     try:
         db = SessionLocal()
         try:
-            db.add(AuditLog(
-                event_type=event_type, description=description[:2000], status=status,
-                user_id=user_id, username=username, role=role, ip_address=ip_address,
-                user_agent=(user_agent or "")[:300] or None, endpoint=endpoint,
-                http_method=http_method,
-            ))
+            db.add(
+                AuditLog(
+                    event_type=event_type,
+                    description=description[:2000],
+                    status=status,
+                    user_id=user_id,
+                    username=username,
+                    role=role,
+                    ip_address=ip_address,
+                    user_agent=(user_agent or "")[:300] or None,
+                    endpoint=endpoint,
+                    http_method=http_method,
+                )
+            )
             db.commit()
         finally:
             db.close()
-    except Exception as e:  # noqa: BLE001 — l'audit ne doit jamais faire échouer la requête
+    except Exception as e:
         logger.warning("Audit non enregistré (%s) : %s", event_type, e)

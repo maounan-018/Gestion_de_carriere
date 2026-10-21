@@ -25,8 +25,11 @@ def test_resume(monkeypatch):
 
 def test_reformulation(monkeypatch):
     cap = {}
-    monkeypatch.setattr(rs, "generate",
-                        lambda t, p, system="", is_valid=None: cap.update(system=system) or "Version reformulée.")
+    monkeypatch.setattr(
+        rs,
+        "generate",
+        lambda t, p, system="", is_valid=None: cap.update(system=system) or "Version reformulée.",
+    )
     out = rs.rediger("txt", mode="reformulation", consignes="ton formel")
     assert out["texte"] == "Version reformulée."
     assert out["mode"] == "reformulation"
@@ -41,6 +44,7 @@ def test_mode_invalide_retombe_sur_resume(monkeypatch):
 def test_repli_texte_source_si_indisponible(monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("ollama down")
+
     monkeypatch.setattr(rs, "generate", boom)
     out = rs.rediger("Texte original à préserver.")
     assert out["texte"] == "Texte original à préserver."  # repli : source inchangée

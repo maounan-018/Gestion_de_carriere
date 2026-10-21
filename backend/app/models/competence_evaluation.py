@@ -18,18 +18,18 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Integer, String, Text, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class EvaluationSource:
-    MANAGER = "manager"   # évaluation du manager (poids fort)
-    PEER = "peer"         # avis des pairs (savoir-être) — futur
-    JEU = "jeu"           # mini-jeux d'évaluation — futur
+    MANAGER = "manager"  # évaluation du manager (poids fort)
+    PEER = "peer"  # avis des pairs (savoir-être) — futur
+    JEU = "jeu"  # mini-jeux d'évaluation — futur
 
 
 class CompetenceEvaluation(Base):
@@ -37,19 +37,19 @@ class CompetenceEvaluation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profil_competence_id: Mapped[int] = mapped_column(
-        ForeignKey("profil_competences.id"), index=True)
+        ForeignKey("profil_competences.id"), index=True
+    )
     source: Mapped[str] = mapped_column(String(12), default=EvaluationSource.MANAGER)
-    score: Mapped[int] = mapped_column(Integer)                     # 1 à 10
+    score: Mapped[int] = mapped_column(Integer)  # 1 à 10
     evaluateur_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)
     # Contexte d'évaluation de MISSION : l'offre au titre de laquelle le manager a
     # évalué la compétence (attribution « évaluée par X dans le cadre de la mission Y »).
     offre_id: Mapped[int | None] = mapped_column(ForeignKey("offres.id"), default=None, index=True)
     commentaire: Mapped[str | None] = mapped_column(Text, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc))
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
     __table_args__ = (
         UniqueConstraint("profil_competence_id", "source", name="uq_comp_eval_source"),

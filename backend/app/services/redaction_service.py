@@ -17,11 +17,11 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-import re
 import logging
+import re
 
 from app.core.config import settings
-from app.services.ai_router import generate, fence
+from app.services.ai_router import fence, generate
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +57,14 @@ def rediger(texte: str, mode: str = "resume", consignes: str | None = None) -> d
     if not source:
         return {"texte": "", "mode": mode, "model": model}
 
-    consigne = f"\nConsigne supplémentaire (style/longueur) : {consignes.strip()}" if consignes else ""
+    consigne = (
+        f"\nConsigne supplémentaire (style/longueur) : {consignes.strip()}" if consignes else ""
+    )
     prompt = f"Texte :\n{fence(source)}{consigne}\n\nProduis le texte demandé, en français."
     try:
         out = (generate(_TASK, prompt, system=_SYSTEMS[mode]) or "").strip()
         out = _FENCE_TAGS.sub("", out).strip()  # retire d'éventuelles balises <donnee> ré-émises
-    except Exception as e:  # noqa: BLE001 — indisponibilité IA -> repli sur la source
+    except Exception as e:
         logger.warning("Rédaction indisponible (%s) — texte source renvoyé tel quel.", e)
         out = ""
     return {"texte": out or source, "mode": mode, "model": model}

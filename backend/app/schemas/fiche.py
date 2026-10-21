@@ -4,6 +4,7 @@ Exposition minimale des fiches générées : liste (pour le sélecteur de poste)
 détail (mission, activités, compétences attendues) affiché quand une fiche est
 choisie, avant d'en dériver une offre.
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict

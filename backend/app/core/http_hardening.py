@@ -95,8 +95,9 @@ class SecurityHeadersMiddleware:
                 except ValueError:
                     too_big = False
                 if too_big:
-                    resp = JSONResponse(status_code=413,
-                                        content={"detail": "Requête trop volumineuse."})
+                    resp = JSONResponse(
+                        status_code=413, content={"detail": "Requête trop volumineuse."}
+                    )
                     await resp(scope, receive, send_wrapper)
                     return
                 break

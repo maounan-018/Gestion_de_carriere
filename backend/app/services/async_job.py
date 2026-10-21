@@ -20,11 +20,12 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-import time
-import uuid
 import logging
 import threading
-from typing import Any, Callable
+import time
+import uuid
+from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -51,18 +52,24 @@ def submit(user_id: int, work: Callable[[Session], Any], *, label: str = "job") 
     now = time.time()
     with _lock:
         _prune(now)
-        _jobs[job_id] = {"status": "pending", "user_id": user_id,
-                         "result": None, "error": None, "created_at": now}
+        _jobs[job_id] = {
+            "status": "pending",
+            "user_id": user_id,
+            "result": None,
+            "error": None,
+            "created_at": now,
+        }
 
     def _run() -> None:
         from app.database.session import SessionLocal
+
         db = SessionLocal()
         try:
             res = work(db)
             with _lock:
                 if job_id in _jobs:
                     _jobs[job_id].update(status="done", result=res)
-        except Exception as e:  # noqa: BLE001 — remonté au client via le statut du job
+        except Exception as e:
             logger.warning("Job %s (%s) échoué : %s", job_id[:8], label, e)
             with _lock:
                 if job_id in _jobs:

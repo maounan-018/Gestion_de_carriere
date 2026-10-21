@@ -13,9 +13,9 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -26,11 +26,9 @@ class EvaluationBilan(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profil_id: Mapped[int] = mapped_column(ForeignKey("profils.id"), index=True)
-    evaluateur_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), default=None)
+    evaluateur_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)
     type: Mapped[str] = mapped_column(String(16), default="mission")  # mission | performance
-    note: Mapped[int | None] = mapped_column(Integer, default=None)   # appréciation globale 1-5
+    note: Mapped[int | None] = mapped_column(Integer, default=None)  # appréciation globale 1-5
     commentaire: Mapped[str | None] = mapped_column(Text, default=None)
     competences_detectees: Mapped[int] = mapped_column(Integer, default=0)  # trace extraction
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

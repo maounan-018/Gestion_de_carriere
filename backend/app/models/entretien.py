@@ -12,17 +12,17 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Text, DateTime, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class EntretienType:
-    ANNUEL = "annuel"   # entretien annuel, mené par le manager
-    RH = "rh"           # entretien de carrière, mené par la RH
+    ANNUEL = "annuel"  # entretien annuel, mené par le manager
+    RH = "rh"  # entretien de carrière, mené par la RH
 
 
 class EntretienStatut:
@@ -35,12 +35,15 @@ class Entretien(Base):
     __tablename__ = "entretiens"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    profil_id: Mapped[int] = mapped_column(ForeignKey("profils.id"), index=True)  # collaborateur concerné
+    profil_id: Mapped[int] = mapped_column(
+        ForeignKey("profils.id"), index=True
+    )  # collaborateur concerné
     type: Mapped[str] = mapped_column(String(12), default=EntretienType.ANNUEL, index=True)
     statut: Mapped[str] = mapped_column(String(12), default=EntretienStatut.PLANIFIE, index=True)
     date_prevue: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     date_realisee: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    conduit_par: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)  # manager / RH
+    conduit_par: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), default=None
+    )  # manager / RH
     notes: Mapped[str | None] = mapped_column(Text, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

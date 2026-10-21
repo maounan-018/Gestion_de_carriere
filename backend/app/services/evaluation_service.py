@@ -20,16 +20,16 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.profil import ProfilCompetence, CompetenceSource
-from app.models.offre import Offre
-from app.models.user import User
 from app.models.competence_evaluation import CompetenceEvaluation, EvaluationSource
 from app.models.evaluation_bilan import EvaluationBilan
+from app.models.offre import Offre
+from app.models.profil import CompetenceSource, ProfilCompetence
+from app.models.user import User
 
 # Poids par source (manager prépondérant). Renormalisés sur les sources présentes.
 WEIGHTS: dict[str, float] = {
@@ -52,16 +52,19 @@ def acquisition_map(db: Session, profil_id: int) -> dict[int, int | None]:
     """Pour chaque compétence détenue du profil : son % d'acquisition (ou None si
     « en attente d'évaluation »). Requêtes groupées (pas de N+1)."""
     pcs = db.execute(
-        select(ProfilCompetence.id, ProfilCompetence.niveau)
-        .where(ProfilCompetence.profil_id == profil_id)
+        select(ProfilCompetence.id, ProfilCompetence.niveau).where(
+            ProfilCompetence.profil_id == profil_id
+        )
     ).all()
     if not pcs:
         return {}
     pc_ids = [pid for (pid, _) in pcs]
     evals = db.execute(
-        select(CompetenceEvaluation.profil_competence_id,
-               CompetenceEvaluation.source, CompetenceEvaluation.score)
-        .where(CompetenceEvaluation.profil_competence_id.in_(pc_ids))
+        select(
+            CompetenceEvaluation.profil_competence_id,
+            CompetenceEvaluation.source,
+            CompetenceEvaluation.score,
+        ).where(CompetenceEvaluation.profil_competence_id.in_(pc_ids))
     ).all()
     by_pc: dict[int, dict[str, int]] = {}
     for pc_id, source, score in evals:
@@ -73,29 +76,41 @@ def acquisition_map(db: Session, profil_id: int) -> dict[int, int | None]:
         if scores:
             out[pc_id] = _blend(scores)
         elif niveau is not None:
-            out[pc_id] = max(0, min(100, niveau * 20))   # base pré-chargée (démo)
+            out[pc_id] = max(0, min(100, niveau * 20))  # base pré-chargée (démo)
         else:
-            out[pc_id] = None                             # en attente d'évaluation
+            out[pc_id] = None  # en attente d'évaluation
     return out
 
 
-def evaluer_competence(db: Session, profil_competence_id: int, *, score: int,
-                       evaluateur_id: int | None = None,
-                       source: str = EvaluationSource.MANAGER,
-                       commentaire: str | None = None) -> CompetenceEvaluation | None:
+def evaluer_competence(
+    db: Session,
+    profil_competence_id: int,
+    *,
+    score: int,
+    evaluateur_id: int | None = None,
+    source: str = EvaluationSource.MANAGER,
+    commentaire: str | None = None,
+) -> CompetenceEvaluation | None:
     """Enregistre (upsert) l'évaluation d'une compétence pour une source donnée.
     `score` borné 1-10. None si la compétence n'existe pas."""
     pc = db.get(ProfilCompetence, profil_competence_id)
     if pc is None:
         return None
     score = max(1, min(10, int(score)))
-    row = db.scalar(select(CompetenceEvaluation).where(
-        CompetenceEvaluation.profil_competence_id == profil_competence_id,
-        CompetenceEvaluation.source == source))
+    row = db.scalar(
+        select(CompetenceEvaluation).where(
+            CompetenceEvaluation.profil_competence_id == profil_competence_id,
+            CompetenceEvaluation.source == source,
+        )
+    )
     if row is None:
-        row = CompetenceEvaluation(profil_competence_id=profil_competence_id, source=source,
-                                   score=score, evaluateur_id=evaluateur_id,
-                                   commentaire=commentaire)
+        row = CompetenceEvaluation(
+            profil_competence_id=profil_competence_id,
+            source=source,
+            score=score,
+            evaluateur_id=evaluateur_id,
+            commentaire=commentaire,
+        )
         db.add(row)
     else:
         row.score = score
@@ -107,28 +122,33 @@ def evaluer_competence(db: Session, profil_competence_id: int, *, score: int,
     return row
 
 
-def _trouver_competence(db: Session, profil_id: int, libelle: str,
-                        skill_id: int | None) -> ProfilCompetence | None:
+def _trouver_competence(
+    db: Session, profil_id: int, libelle: str, skill_id: int | None
+) -> ProfilCompetence | None:
     """Compétence détenue du profil correspondant (par skill_id canonique, sinon
     par libellé insensible à la casse)."""
     if skill_id is not None:
-        pc = db.scalar(select(ProfilCompetence).where(
-            ProfilCompetence.profil_id == profil_id,
-            ProfilCompetence.skill_id == skill_id))
+        pc = db.scalar(
+            select(ProfilCompetence).where(
+                ProfilCompetence.profil_id == profil_id, ProfilCompetence.skill_id == skill_id
+            )
+        )
         if pc is not None:
             return pc
     lib = (libelle or "").strip().lower()
     if not lib:
         return None
-    for pc in db.scalars(select(ProfilCompetence).where(
-            ProfilCompetence.profil_id == profil_id)).all():
+    for pc in db.scalars(
+        select(ProfilCompetence).where(ProfilCompetence.profil_id == profil_id)
+    ).all():
         if (pc.skill_label_fr or pc.libelle or "").strip().lower() == lib:
             return pc
     return None
 
 
-def evaluer_mission(db: Session, *, profil_id: int, offre_id: int,
-                    evaluateur_id: int | None, items: list[dict]) -> dict:
+def evaluer_mission(
+    db: Session, *, profil_id: int, offre_id: int, evaluateur_id: int | None, items: list[dict]
+) -> dict:
     """Évaluation de MISSION : le manager note (1-10) les compétences UTILISÉES par
     un participant, au titre d'une offre/mission. Règles (retour tuteur) :
       - une compétence non utilisée n'est pas notée (absente des items) ;
@@ -148,21 +168,33 @@ def evaluer_mission(db: Session, *, profil_id: int, offre_id: int,
         pc = _trouver_competence(db, profil_id, libelle, skill_id)
         if pc is None:
             pc = ProfilCompetence(
-                profil_id=profil_id, libelle=libelle,
-                skill_id=skill_id, skill_label_fr=(libelle if skill_id else None),
+                profil_id=profil_id,
+                libelle=libelle,
+                skill_id=skill_id,
+                skill_label_fr=(libelle if skill_id else None),
                 categorie=it.get("categorie"),
                 source=CompetenceSource.EVAL_MISSION,
-                acquired_at=datetime.now(timezone.utc))
+                acquired_at=datetime.now(UTC),
+            )
             db.add(pc)
             db.flush()
             ajoutees += 1
-        row = db.scalar(select(CompetenceEvaluation).where(
-            CompetenceEvaluation.profil_competence_id == pc.id,
-            CompetenceEvaluation.source == EvaluationSource.MANAGER))
+        row = db.scalar(
+            select(CompetenceEvaluation).where(
+                CompetenceEvaluation.profil_competence_id == pc.id,
+                CompetenceEvaluation.source == EvaluationSource.MANAGER,
+            )
+        )
         if row is None:
-            db.add(CompetenceEvaluation(
-                profil_competence_id=pc.id, source=EvaluationSource.MANAGER,
-                score=score, evaluateur_id=evaluateur_id, offre_id=offre_id))
+            db.add(
+                CompetenceEvaluation(
+                    profil_competence_id=pc.id,
+                    source=EvaluationSource.MANAGER,
+                    score=score,
+                    evaluateur_id=evaluateur_id,
+                    offre_id=offre_id,
+                )
+            )
         else:
             row.score = score
             row.evaluateur_id = evaluateur_id
@@ -175,25 +207,39 @@ def evaluer_mission(db: Session, *, profil_id: int, offre_id: int,
 def attribution_map(db: Session, profil_id: int) -> dict[int, dict[str, str]]:
     """Pour les compétences évaluées par un manager AU TITRE D'UNE MISSION : renvoie
     {profil_competence_id: {evaluee_par, mission}} pour l'affichage de l'attribution."""
-    pc_ids = [r[0] for r in db.execute(
-        select(ProfilCompetence.id).where(ProfilCompetence.profil_id == profil_id)).all()]
+    pc_ids = [
+        r[0]
+        for r in db.execute(
+            select(ProfilCompetence.id).where(ProfilCompetence.profil_id == profil_id)
+        ).all()
+    ]
     if not pc_ids:
         return {}
     rows = db.execute(
-        select(CompetenceEvaluation.profil_competence_id,
-               CompetenceEvaluation.evaluateur_id, CompetenceEvaluation.offre_id)
-        .where(CompetenceEvaluation.profil_competence_id.in_(pc_ids),
-               CompetenceEvaluation.source == EvaluationSource.MANAGER,
-               CompetenceEvaluation.offre_id.is_not(None))
+        select(
+            CompetenceEvaluation.profil_competence_id,
+            CompetenceEvaluation.evaluateur_id,
+            CompetenceEvaluation.offre_id,
+        ).where(
+            CompetenceEvaluation.profil_competence_id.in_(pc_ids),
+            CompetenceEvaluation.source == EvaluationSource.MANAGER,
+            CompetenceEvaluation.offre_id.is_not(None),
+        )
     ).all()
     if not rows:
         return {}
     user_ids = {r[1] for r in rows if r[1]}
     offre_ids = {r[2] for r in rows if r[2]}
-    noms = {u.id: u.name for u in db.scalars(
-        select(User).where(User.id.in_(user_ids))).all()} if user_ids else {}
-    missions = {o.id: o.titre for o in db.scalars(
-        select(Offre).where(Offre.id.in_(offre_ids))).all()} if offre_ids else {}
+    noms = (
+        {u.id: u.name for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        if user_ids
+        else {}
+    )
+    missions = (
+        {o.id: o.titre for o in db.scalars(select(Offre).where(Offre.id.in_(offre_ids))).all()}
+        if offre_ids
+        else {}
+    )
     out: dict[int, dict[str, str]] = {}
     for pc_id, ev_id, off_id in rows:
         out[pc_id] = {
@@ -205,15 +251,26 @@ def attribution_map(db: Session, profil_id: int) -> dict[int, dict[str, str]]:
 
 # --- Bilans d'évaluation (journal → « Historique des évaluations ») -----------
 
-def creer_bilan(db: Session, profil_id: int, *, type: str = "mission",
-                note: int | None = None, commentaire: str | None = None,
-                competences_detectees: int = 0,
-                evaluateur_id: int | None = None) -> EvaluationBilan:
+
+def creer_bilan(
+    db: Session,
+    profil_id: int,
+    *,
+    type: str = "mission",
+    note: int | None = None,
+    commentaire: str | None = None,
+    competences_detectees: int = 0,
+    evaluateur_id: int | None = None,
+) -> EvaluationBilan:
     """Enregistre une nouvelle appréciation datée (une ligne d'historique)."""
     bilan = EvaluationBilan(
-        profil_id=profil_id, type=type, note=note,
-        commentaire=(commentaire or None), competences_detectees=competences_detectees,
-        evaluateur_id=evaluateur_id)
+        profil_id=profil_id,
+        type=type,
+        note=note,
+        commentaire=(commentaire or None),
+        competences_detectees=competences_detectees,
+        evaluateur_id=evaluateur_id,
+    )
     db.add(bilan)
     db.commit()
     db.refresh(bilan)
@@ -224,17 +281,27 @@ def list_bilans(db: Session, profil_id: int) -> list[dict]:
     """Historique des bilans d'un profil (plus récent d'abord), nom de l'évaluateur
     résolu. Forme prête à sérialiser en EvaluationBilanOut."""
     bilans = db.scalars(
-        select(EvaluationBilan).where(EvaluationBilan.profil_id == profil_id)
+        select(EvaluationBilan)
+        .where(EvaluationBilan.profil_id == profil_id)
         .order_by(EvaluationBilan.created_at.desc(), EvaluationBilan.id.desc())
     ).all()
     if not bilans:
         return []
     user_ids = {b.evaluateur_id for b in bilans if b.evaluateur_id}
-    noms = {u.id: u.name for u in db.scalars(
-        select(User).where(User.id.in_(user_ids))).all()} if user_ids else {}
-    return [{
-        "id": b.id, "type": b.type, "note": b.note, "commentaire": b.commentaire,
-        "competences_detectees": b.competences_detectees,
-        "evaluateur_nom": noms.get(b.evaluateur_id),
-        "created_at": b.created_at,
-    } for b in bilans]
+    noms = (
+        {u.id: u.name for u in db.scalars(select(User).where(User.id.in_(user_ids))).all()}
+        if user_ids
+        else {}
+    )
+    return [
+        {
+            "id": b.id,
+            "type": b.type,
+            "note": b.note,
+            "commentaire": b.commentaire,
+            "competences_detectees": b.competences_detectees,
+            "evaluateur_nom": noms.get(b.evaluateur_id),
+            "created_at": b.created_at,
+        }
+        for b in bilans
+    ]

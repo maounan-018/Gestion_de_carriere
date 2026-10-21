@@ -18,11 +18,11 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-import re
 import logging
+import re
 
 from app.core.config import settings
-from app.services.ai_router import generate, fence
+from app.services.ai_router import fence, generate
 
 logger = logging.getLogger(__name__)
 
@@ -36,16 +36,18 @@ _SYSTEM = (
     "d'orthographe, synonymes, mélange français/anglais) et donne pour chaque groupe "
     "une forme CANONIQUE française, courte (2 à 6 mots), à la casse propre. Ne fusionne "
     "que ce qui est réellement équivalent ; n'invente aucun libellé absent de la liste.\n"
-    'Réponds STRICTEMENT en JSON (aucun texte autour) : '
+    "Réponds STRICTEMENT en JSON (aucun texte autour) : "
     '{"groupes": [{"canonique": "…", "variantes": ["…", …]}]}. '
     "Chaque libellé d'entrée doit apparaître dans exactement un groupe."
 )
 
 
 def _is_valid(result) -> bool:
-    return (isinstance(result, dict)
-            and isinstance(result.get("groupes"), list)
-            and len(result["groupes"]) > 0)
+    return (
+        isinstance(result, dict)
+        and isinstance(result.get("groupes"), list)
+        and len(result["groupes"]) > 0
+    )
 
 
 def _key(s: str) -> str:
@@ -91,10 +93,12 @@ def normaliser(libelles: list[str]) -> dict:
     if not labels:
         return {"groupes": [], "model": model}
     data = "\n".join(f"- {l}" for l in labels)
-    prompt = f"Libellés à normaliser :\n{fence(data)}\n\nRegroupe-les et donne les formes canoniques."
+    prompt = (
+        f"Libellés à normaliser :\n{fence(data)}\n\nRegroupe-les et donne les formes canoniques."
+    )
     try:
         result = generate(_TASK, prompt, system=_SYSTEM, is_valid=_is_valid)
-    except Exception as e:  # noqa: BLE001 — indisponibilité IA -> repli identité
+    except Exception as e:
         logger.warning("Normalisation indisponible (%s) — repli identité.", e)
         result = None
     return {"groupes": _postprocess(result, labels), "model": model}

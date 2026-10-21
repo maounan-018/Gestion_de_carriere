@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """schemas/besoin.py — E/S du besoin de recrutement (manager → HRBP)."""
+
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -7,10 +8,12 @@ from pydantic import BaseModel, Field
 
 class BesoinCreate(BaseModel):
     """Le manager exprime un besoin sur un poste (fiche de référence + description)."""
+
     fiche_id: int | None = Field(None, description="Fiche de poste de référence (menu déroulant).")
     poste: str = Field(..., min_length=1, max_length=200)
-    description: str | None = Field(None, max_length=4000,
-                                    description="Contexte / justification du besoin.")
+    description: str | None = Field(
+        None, max_length=4000, description="Contexte / justification du besoin."
+    )
 
 
 class BesoinRefus(BaseModel):
@@ -23,6 +26,7 @@ class BesoinContact(BaseModel):
 
 class BesoinPublier(BaseModel):
     """Ajustements HRBP à la publication (sinon dérivés du besoin)."""
+
     titre: str | None = Field(None, max_length=200)
     description: str | None = Field(None, max_length=4000)
     localisation: str | None = Field(None, max_length=120)

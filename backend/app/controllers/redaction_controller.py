@@ -22,9 +22,12 @@ from app.services import redaction_service
 router = APIRouter(prefix="/api/redaction", tags=["Rédaction"])
 
 
-@router.post("", response_model=RedactionResponse,
-             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
-             summary="Résumer ou reformuler un texte (bilan, aspiration, note)")
+@router.post(
+    "",
+    response_model=RedactionResponse,
+    dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
+    summary="Résumer ou reformuler un texte (bilan, aspiration, note)",
+)
 def rediger(req: RedactionRequest) -> RedactionResponse:
     """⚠️ Utilise Ollama (mistral-nemo) : quelques secondes."""
     return RedactionResponse(**redaction_service.rediger(req.texte, req.mode, req.consignes))

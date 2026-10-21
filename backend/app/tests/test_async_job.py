@@ -30,7 +30,7 @@ def test_job_aboutit_avec_resultat():
 
 def test_job_reserve_au_proprietaire():
     job_id = async_job.submit(7, lambda db: 1, label="test")
-    assert async_job.get(job_id, 999) is None   # un autre user ne voit pas le job
+    assert async_job.get(job_id, 999) is None  # un autre user ne voit pas le job
     assert async_job.get(job_id, 7) is not None
     _wait(job_id, 7)
 

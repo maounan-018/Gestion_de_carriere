@@ -4,7 +4,7 @@ tests/test_front_endpoints.py — Endpoints alimentant le front (Batch 1) :
 notifications, souhaits (+ /recus), formations. Couvre auth, RBAC et ownership.
 """
 
-from app.tests.conftest import auth, anon, hdr
+from app.tests.conftest import anon, auth, hdr
 
 
 # ------------------------------------------------------------- Formations
@@ -53,8 +53,11 @@ def test_souhaits_collaborateur_crud(client):
     csrf = auth(client, "collab")
     assert len(client.get("/api/souhaits").json()) >= 2  # 2 semés
 
-    r = client.post("/api/souhaits", headers=hdr(csrf),
-                    json={"titre": "[TEST] Mobilité data", "kind": "carriere", "horizon": "1 an"})
+    r = client.post(
+        "/api/souhaits",
+        headers=hdr(csrf),
+        json={"titre": "[TEST] Mobilité data", "kind": "carriere", "horizon": "1 an"},
+    )
     assert r.status_code == 201
     sid = r.json()["id"]
     assert r.json()["statut"] == "brouillon" and r.json()["pushed"] is False
@@ -72,8 +75,11 @@ def test_souhaits_recus_interdit_au_collab(client):
 def test_souhaits_recus_manager_voit_son_equipe(client):
     # Youssef pousse un souhait…
     csrf = auth(client, "collab")
-    client.post("/api/souhaits", headers=hdr(csrf),
-                json={"titre": "[TEST] Poussé au manager", "pushed": True})
+    client.post(
+        "/api/souhaits",
+        headers=hdr(csrf),
+        json={"titre": "[TEST] Poussé au manager", "pushed": True},
+    )
     # …que son manager Karim doit voir, avec l'identité du membre.
     auth(client, "manager")
     r = client.get("/api/souhaits/recus")

@@ -27,11 +27,15 @@ SOURCES = ("cv", "evaluation_mission", "evaluation_performance", "declaratif", "
 
 class ProfilCompetenceIn(BaseModel):
     libelle: str = Field(..., min_length=1, max_length=300)
-    categorie: str | None = Field(None, max_length=24,
-                                  description="metier | comportementale | transversale | outil_technologie")
-    niveau: int | None = Field(None, ge=1, le=5, description="Niveau de maîtrise 1-5 (aligné SFIA).")
-    source: str = Field("declaratif",
-                        description="Provenance : " + " | ".join(SOURCES))
+    categorie: str | None = Field(
+        None,
+        max_length=24,
+        description="metier | comportementale | transversale | outil_technologie",
+    )
+    niveau: int | None = Field(
+        None, ge=1, le=5, description="Niveau de maîtrise 1-5 (aligné SFIA)."
+    )
+    source: str = Field("declaratif", description="Provenance : " + " | ".join(SOURCES))
 
 
 class ProfilCompetenceOut(ProfilCompetenceIn):
@@ -39,8 +43,8 @@ class ProfilCompetenceOut(ProfilCompetenceIn):
     id: int
     skill_id: int | None = None
     skill_label_fr: str | None = None
-    acquisition_pct: int | None = None   # % d'acquisition (évaluations + repli niveau)
-    evaluee: bool = False                 # False = en attente d'évaluation
+    acquisition_pct: int | None = None  # % d'acquisition (évaluations + repli niveau)
+    evaluee: bool = False  # False = en attente d'évaluation
     # Attribution d'une évaluation de MISSION (« évaluée par X dans le cadre de Y »).
     evaluee_par: str | None = None
     mission: str | None = None
@@ -48,12 +52,14 @@ class ProfilCompetenceOut(ProfilCompetenceIn):
 
 class CompetenceEvaluationIn(BaseModel):
     """Évaluation d'une compétence par le manager (ou RH) : score de maîtrise 1-10."""
+
     score: int = Field(..., ge=1, le=10, description="Niveau de maîtrise évalué (1 à 10).")
     commentaire: str | None = Field(None, max_length=2000)
 
 
 class EvaluationBilanCreate(BaseModel):
     """Bilan d'évaluation soumis (appréciation globale) → journal d'historique."""
+
     type: Literal["mission", "performance"] = "mission"
     note: int | None = Field(None, ge=1, le=5, description="Appréciation globale (étoiles 1-5).")
     commentaire: str | None = Field(None, max_length=4000)
@@ -62,6 +68,7 @@ class EvaluationBilanCreate(BaseModel):
 
 class EvaluationBilanOut(BaseModel):
     """Une ligne d'« Historique des évaluations » (bilan daté + évaluateur)."""
+
     model_config = ConfigDict(from_attributes=True)
     id: int
     type: str
@@ -74,20 +81,30 @@ class EvaluationBilanOut(BaseModel):
 
 class CvExtractionRequest(BaseModel):
     """Entrée de l'extraction CV → profil : le texte du CV/parcours à analyser."""
+
     texte: str = Field(..., min_length=10, description="Texte du CV / parcours à analyser.")
-    top_k: int = Field(1, ge=1, le=5,
-                       description="Compétences canoniques rapprochées par compétence extraite.")
-    remplacer: bool = Field(True, description="Remplacer les compétences déjà issues d'un CV "
-                                              "(source=cv) avant d'ajouter les nouvelles.")
+    top_k: int = Field(
+        1, ge=1, le=5, description="Compétences canoniques rapprochées par compétence extraite."
+    )
+    remplacer: bool = Field(
+        True,
+        description="Remplacer les compétences déjà issues d'un CV "
+        "(source=cv) avant d'ajouter les nouvelles.",
+    )
 
 
 class EvaluationExtractionRequest(BaseModel):
     """Entrée de l'extraction évaluation → profil (compétences DÉMONTRÉES)."""
+
     texte: str = Field(..., min_length=10, description="Compte-rendu d'évaluation à analyser.")
     type: Literal["mission", "performance"] = Field(
-        "mission", description="Nature de l'évaluation (source = evaluation_mission | evaluation_performance).")
+        "mission",
+        description="Nature de l'évaluation (source = evaluation_mission | evaluation_performance).",
+    )
     top_k: int = Field(1, ge=1, le=5)
-    remplacer: bool = Field(True, description="Remplacer les compétences déjà issues de ce type d'évaluation.")
+    remplacer: bool = Field(
+        True, description="Remplacer les compétences déjà issues de ce type d'évaluation."
+    )
 
 
 class ProfilCreate(BaseModel):
@@ -99,12 +116,15 @@ class ProfilCreate(BaseModel):
     aspirations: str | None = Field(None, description="Poste visé / souhaits d'évolution.")
     user_id: int | None = Field(None, description="Compte lié ; null = persona synthétique.")
     manager_id: int | None = None
-    synthetique: bool = Field(False, description="True = persona de démonstration (donnée fabriquée, à étiqueter).")
+    synthetique: bool = Field(
+        False, description="True = persona de démonstration (donnée fabriquée, à étiqueter)."
+    )
     competences: list[ProfilCompetenceIn] = Field(default_factory=list)
 
 
 class ProfilUpdate(BaseModel):
     """Mise à jour partielle : seuls les champs fournis (non-None) sont appliqués."""
+
     nom: str | None = Field(None, min_length=1, max_length=120)
     prenom: str | None = None
     poste_actuel: str | None = None
@@ -117,13 +137,19 @@ class ProfilSelfUpdate(BaseModel):
     """Édition par l'utilisateur de SON PROPRE profil (collaborateur, manager ou RH) :
     uniquement les champs auto-déclarés. PAS `departement_key` ni `manager_id`
     (données d'organisation, hors self-service)."""
-    aspirations: str | None = Field(None, description="Ambitions / souhaits d'évolution (texte libre).")
+
+    aspirations: str | None = Field(
+        None, description="Ambitions / souhaits d'évolution (texte libre)."
+    )
     poste_actuel: str | None = Field(None, max_length=200)
     bio: str | None = Field(None, description="Description / « à propos ».")
     poste_vise: str | None = Field(None, max_length=200, description="Poste ciblé.")
     horizon: str | None = Field(None, max_length=32, description="Horizon visé, ex : « 1 an ».")
-    type_evolution: str | None = Field(None, max_length=48,
-                                       description="management / expertise / mobilité géo / mission transverse.")
+    type_evolution: str | None = Field(
+        None,
+        max_length=48,
+        description="management / expertise / mobilité géo / mission transverse.",
+    )
     mobilite_geo: str | None = Field(None, max_length=200, description="Zones géographiques.")
     disponibilite: str | None = Field(None, max_length=64, description="Ex : « 6 à 12 mois ».")
 
@@ -156,11 +182,12 @@ class ProfilOut(BaseModel):
     score_eval: float | None = None
     anciennete_annees: int | None = None
     risque_depart: bool = False
-    potentiel: str | None = None   # 'top' | 'watch' | None
+    potentiel: str | None = None  # 'top' | 'watch' | None
 
 
 class ImportResult(BaseModel):
     """Bilan d'un import Excel de profils."""
+
     importes: int
     ignorees: int
     erreurs: list[str] = []
@@ -169,15 +196,17 @@ class ImportResult(BaseModel):
 class MobiliteItem(BaseModel):
     """Passerelle de mobilité : métier du référentiel proche du profil (partage de
     compétences détenues ancrées au graphe)."""
+
     occupation_id: int
     metier: str
-    source: str                # esco | onet | sfia
+    source: str  # esco | onet | sfia
     competences_partagees: int
 
 
 class AnnuaireEntry(BaseModel):
     """Vue ANNUAIRE (répertoire limité, sans champ sensible) : accessible à tout
     utilisateur authentifié, y compris COLLAB. Pas de user_id/matricule/manager_id."""
+
     id: int
     nom: str
     prenom: str | None
@@ -188,9 +217,10 @@ class AnnuaireEntry(BaseModel):
 
 class AncrageResult(BaseModel):
     """Résumé du backfill d'ancrage des compétences détenues au graphe."""
-    examinees: int        # compétences non ancrées examinées
-    ancrees: int          # nouvellement reliées à une compétence canonique
-    categorisees: int     # dont la famille (categorie) a aussi été déduite
+
+    examinees: int  # compétences non ancrées examinées
+    ancrees: int  # nouvellement reliées à une compétence canonique
+    categorisees: int  # dont la famille (categorie) a aussi été déduite
 
 
 # --- Faisabilité d'aspiration (inférence de trajectoire, Workstream D) ---------
@@ -204,7 +234,7 @@ class FaisabiliteAspirationOut(BaseModel):
     reachable: bool
     lineaire: bool
     ecart_niveau: int
-    verdict: str                       # accessible | ambitieuse | a_defricher
+    verdict: str  # accessible | ambitieuse | a_defricher
     nb_modeles: int
     intermediaires: list[str]
     exemples: list[TrajectoireExemple]

@@ -22,15 +22,39 @@ from collections import Counter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.profil import Profil
 from app.models.carriere import ProfilStation, StationEtat
+from app.models.profil import Profil
 
-_STOP = {"de", "du", "des", "la", "le", "les", "et", "en", "un", "une", "au", "aux",
-         "sur", "pour", "par", "avec",
-         # mots de NIVEAU (pas de domaine) : exclus du rapprochement pour matcher la
-         # FILIÈRE (risques, patrimoine, corporate…), pas le grade.
-         "directeur", "directrice", "rice", "responsable", "adjoint", "adjointe",
-         "senior", "junior", "chef", "cheffe"}
+_STOP = {
+    "de",
+    "du",
+    "des",
+    "la",
+    "le",
+    "les",
+    "et",
+    "en",
+    "un",
+    "une",
+    "au",
+    "aux",
+    "sur",
+    "pour",
+    "par",
+    "avec",
+    # mots de NIVEAU (pas de domaine) : exclus du rapprochement pour matcher la
+    # FILIÈRE (risques, patrimoine, corporate…), pas le grade.
+    "directeur",
+    "directrice",
+    "rice",
+    "responsable",
+    "adjoint",
+    "adjointe",
+    "senior",
+    "junior",
+    "chef",
+    "cheffe",
+}
 
 
 def _niveau(titre: str) -> int:
@@ -40,15 +64,28 @@ def _niveau(titre: str) -> int:
         return 3
     if t.startswith("responsable") or "responsable " in t:
         return 2
-    if any(k in t for k in ("senior", "expert", "spécialiste", "architecte",
-                            "lead", "chef de mission", "principal")):
+    if any(
+        k in t
+        for k in (
+            "senior",
+            "expert",
+            "spécialiste",
+            "architecte",
+            "lead",
+            "chef de mission",
+            "principal",
+        )
+    ):
         return 1
     return 0
 
 
 def _tokens(s: str) -> set[str]:
-    return {w for w in re.split(r"[^a-zàâäéèêëïîôöùûüç]+", (s or "").lower())
-            if len(w) > 2 and w not in _STOP}
+    return {
+        w
+        for w in re.split(r"[^a-zàâäéèêëïîôöùûüç]+", (s or "").lower())
+        if len(w) > 2 and w not in _STOP
+    }
 
 
 def _similar(a: str, b: str) -> float:
@@ -81,9 +118,11 @@ def analyser_aspiration(db: Session, profil_id: int) -> dict | None:
     ).all()
     # « Role models » : même FILIÈRE que l'aspiration ET au moins à son niveau
     # (personnes ayant réellement atteint un poste comparable).
-    modeles = [o for o in others
-               if _similar(aspiration, o.poste_actuel) >= 0.5
-               and _niveau(o.poste_actuel) >= asp_lvl]
+    modeles = [
+        o
+        for o in others
+        if _similar(aspiration, o.poste_actuel) >= 0.5 and _niveau(o.poste_actuel) >= asp_lvl
+    ]
     reachable = bool(modeles)
 
     depts = Counter(o.departement_key for o in modeles if o.departement_key)
@@ -93,9 +132,15 @@ def analyser_aspiration(db: Session, profil_id: int) -> dict | None:
     inter: Counter[str] = Counter()
     exemples: list[dict] = []
     for o in modeles[:20]:
-        passes = [s.titre for s in db.scalars(
-            select(ProfilStation).where(ProfilStation.profil_id == o.id)
-            .order_by(ProfilStation.ordre)).all() if s.etat == StationEtat.PASSE]
+        passes = [
+            s.titre
+            for s in db.scalars(
+                select(ProfilStation)
+                .where(ProfilStation.profil_id == o.id)
+                .order_by(ProfilStation.ordre)
+            ).all()
+            if s.etat == StationEtat.PASSE
+        ]
         for t in passes:
             if cur_lvl < _niveau(t) < asp_lvl:
                 inter[t] += 1
@@ -106,21 +151,32 @@ def analyser_aspiration(db: Session, profil_id: int) -> dict | None:
 
     if not reachable:
         verdict = "a_defricher"
-        explication = ("Aucun collaborateur n'occupe aujourd'hui un poste comparable dans les "
-                       "données : trajectoire pionnière, à construire avec votre HRBP.")
+        explication = (
+            "Aucun collaborateur n'occupe aujourd'hui un poste comparable dans les "
+            "données : trajectoire pionnière, à construire avec votre HRBP."
+        )
     elif ecart >= 2:
         verdict = "ambitieuse"
-        explication = (f"Aspiration ambitieuse : {ecart} niveaux au-dessus de votre poste actuel. "
-                       f"{len(modeles)} collaborateur(s) l'occupent aujourd'hui")
-        explication += (f", généralement après être passés par : {', '.join(intermediaires)}."
-                        if intermediaires else ".")
+        explication = (
+            f"Aspiration ambitieuse : {ecart} niveaux au-dessus de votre poste actuel. "
+            f"{len(modeles)} collaborateur(s) l'occupent aujourd'hui"
+        )
+        explication += (
+            f", généralement après être passés par : {', '.join(intermediaires)}."
+            if intermediaires
+            else "."
+        )
     else:
         verdict = "accessible"
-        explication = (f"Aspiration accessible : proche de votre niveau actuel. "
-                       f"{len(modeles)} collaborateur(s) y sont déjà parvenus.")
+        explication = (
+            f"Aspiration accessible : proche de votre niveau actuel. "
+            f"{len(modeles)} collaborateur(s) y sont déjà parvenus."
+        )
     if reachable and not lineaire:
-        explication += (" Trajectoire NON LINÉAIRE : elle implique une mobilité vers la filière "
-                        f"« {_humaniser(dom_dept)} ».")
+        explication += (
+            " Trajectoire NON LINÉAIRE : elle implique une mobilité vers la filière "
+            f"« {_humaniser(dom_dept)} »."
+        )
 
     return {
         "aspiration": aspiration,
@@ -128,7 +184,7 @@ def analyser_aspiration(db: Session, profil_id: int) -> dict | None:
         "reachable": reachable,
         "lineaire": lineaire,
         "ecart_niveau": ecart,
-        "verdict": verdict,             # accessible | ambitieuse | a_defricher
+        "verdict": verdict,  # accessible | ambitieuse | a_defricher
         "nb_modeles": len(modeles),
         "intermediaires": intermediaires,
         "exemples": exemples,

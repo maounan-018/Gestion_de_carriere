@@ -19,22 +19,29 @@ EMPLACEMENT MVC
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func, case, or_
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.fiche import FicheCompetence
-from app.models.fiche import Fiche
+from app.models.candidature import Candidature, CandidatureStatut
+from app.models.fiche import Fiche, FicheCompetence
 from app.models.offre import Offre, OffreCompetence, OffreStatut
 from app.models.profil import Profil
-from app.models.user import User
-from app.models.candidature import Candidature, CandidatureStatut
-from app.schemas.offre import (OffreCreate, OffreUpdate, OffreOut,
-                               OffreCompetenceIn, OffreCompetenceOut,
-                               OffreCompetenceUpdate, OffreCompatOut,
-                               OffreCandidatOut, RhOffreOut, CandidatOffreActiveOut,
-                               VacancyOut, VacancyRecoOut)
+from app.schemas.offre import (
+    CandidatOffreActiveOut,
+    OffreCandidatOut,
+    OffreCompatOut,
+    OffreCompetenceIn,
+    OffreCompetenceOut,
+    OffreCompetenceUpdate,
+    OffreCreate,
+    OffreOut,
+    OffreUpdate,
+    RhOffreOut,
+    VacancyOut,
+    VacancyRecoOut,
+)
 from app.services import candidature_service
 
 # Seuil de compatibilité (%) au-delà duquel un candidat est compté « compatible ».
@@ -48,9 +55,7 @@ _STATUTS_CLOTURE = {OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE
 def _to_out(db: Session, o: Offre) -> OffreOut:
     """Assemble un OffreOut : l'offre + ses attendus (requête explicite)."""
     comps = db.scalars(
-        select(OffreCompetence)
-        .where(OffreCompetence.offre_id == o.id)
-        .order_by(OffreCompetence.id)
+        select(OffreCompetence).where(OffreCompetence.offre_id == o.id).order_by(OffreCompetence.id)
     ).all()
     out = OffreOut.model_validate(o)
     out.competences = [OffreCompetenceOut.model_validate(c) for c in comps]
@@ -65,7 +70,7 @@ def _libelles(evaluation_json: str | None, cle: str) -> list[str]:
     try:
         data = json.loads(evaluation_json)
         return [x.get("competence") for x in data.get(cle, []) if x.get("competence")]
-    except Exception:  # noqa: BLE001 — snapshot corrompu : on renvoie une liste vide
+    except Exception:
         return []
 
 
@@ -80,9 +85,15 @@ def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
     ).all()
     return [
         OffreCandidatOut(
-            profil_id=p.id, candidature_id=c.id, nom=p.nom, prenom=p.prenom,
-            poste_actuel=p.poste_actuel, departement_key=p.departement_key,
-            score=c.score, statut=c.statut, cv_filename=p.cv_filename,
+            profil_id=p.id,
+            candidature_id=c.id,
+            nom=p.nom,
+            prenom=p.prenom,
+            poste_actuel=p.poste_actuel,
+            departement_key=p.departement_key,
+            score=c.score,
+            statut=c.statut,
+            cv_filename=p.cv_filename,
             couvertes=_libelles(c.evaluation_json, "couvertes"),
             ecarts=_libelles(c.evaluation_json, "ecarts"),
         )
@@ -90,8 +101,9 @@ def list_candidats_offre(db: Session, offre_id: int) -> list[OffreCandidatOut]:
     ]
 
 
-def rh_offres(db: Session, *, created_by: int | None = None,
-              ou_manager: int | None = None) -> list[RhOffreOut]:
+def rh_offres(
+    db: Session, *, created_by: int | None = None, ou_manager: int | None = None
+) -> list[RhOffreOut]:
     """Liste des offres avec statistiques de candidatures (total, compatibles
     au-dessus du seuil, candidat retenu). Si `created_by` est fourni, ne renvoie
     que les offres PUBLIÉES PAR cet utilisateur (écran « Mes offres publiées ») —
@@ -110,28 +122,39 @@ def rh_offres(db: Session, *, created_by: int | None = None,
     # d'une requête par offre (N+1). NULL score -> compté comme non compatible.
     stats: dict[int, tuple[int, int]] = {}
     for oid, total, compat in db.execute(
-            select(Candidature.offre_id, func.count(Candidature.id),
-                   func.sum(case((Candidature.score >= _SEUIL_COMPAT, 1), else_=0)))
-            .group_by(Candidature.offre_id)).all():
+        select(
+            Candidature.offre_id,
+            func.count(Candidature.id),
+            func.sum(case((Candidature.score >= _SEUIL_COMPAT, 1), else_=0)),
+        ).group_by(Candidature.offre_id)
+    ).all():
         stats[oid] = (total or 0, int(compat or 0))
 
     # Candidat retenu par offre en UNE requête (le 1er retenu rencontré par offre).
     retenus: dict[int, str] = {}
     for oid, nom, prenom in db.execute(
-            select(Candidature.offre_id, Profil.nom, Profil.prenom)
-            .join(Profil, Profil.id == Candidature.profil_id)
-            .where(Candidature.statut == CandidatureStatut.RETENUE)).all():
+        select(Candidature.offre_id, Profil.nom, Profil.prenom)
+        .join(Profil, Profil.id == Candidature.profil_id)
+        .where(Candidature.statut == CandidatureStatut.RETENUE)
+    ).all():
         retenus.setdefault(oid, f"{prenom or ''} {nom}".strip())
 
     out: list[RhOffreOut] = []
     for o in offres:
         total, compat = stats.get(o.id, (0, 0))
-        out.append(RhOffreOut(
-            id=o.id, titre=o.titre, type=o.type, departement_key=o.departement_key,
-            perimetre_bmci=o.perimetre_bmci, statut=o.statut,
-            candidats_total=total, candidats_compatibles=compat,
-            retenu_nom=retenus.get(o.id),
-        ))
+        out.append(
+            RhOffreOut(
+                id=o.id,
+                titre=o.titre,
+                type=o.type,
+                departement_key=o.departement_key,
+                perimetre_bmci=o.perimetre_bmci,
+                statut=o.statut,
+                candidats_total=total,
+                candidats_compatibles=compat,
+                retenu_nom=retenus.get(o.id),
+            )
+        )
     return out
 
 
@@ -148,9 +171,17 @@ def candidats_offres_actives(db: Session, user_id: int) -> list[CandidatOffreAct
     ).all()
     return [
         CandidatOffreActiveOut(
-            offre_id=o.id, offre_titre=o.titre, offre_type=o.type, offre_statut=o.statut,
-            profil_id=p.id, candidature_id=c.id, nom=p.nom, prenom=p.prenom,
-            poste_actuel=p.poste_actuel, score=c.score, statut=c.statut,
+            offre_id=o.id,
+            offre_titre=o.titre,
+            offre_type=o.type,
+            offre_statut=o.statut,
+            profil_id=p.id,
+            candidature_id=c.id,
+            nom=p.nom,
+            prenom=p.prenom,
+            poste_actuel=p.poste_actuel,
+            score=c.score,
+            statut=c.statut,
         )
         for c, p, o in rows
     ]
@@ -164,9 +195,7 @@ def vacancies_for_manager(db: Session, manager_user_id: int, *, top: int = 6) ->
     candidatures, et on classe par score décroissant."""
     # Rattachement par Profil.manager_id (les profils candidats n'ont pas de compte,
     # donc un join via User.manager_id les exclurait — cf. écran Équipe / getTeam).
-    team = db.scalars(
-        select(Profil).where(Profil.manager_id == manager_user_id)
-    ).all()
+    team = db.scalars(select(Profil).where(Profil.manager_id == manager_user_id)).all()
     offres = db.scalars(
         select(Offre).where(Offre.created_by == manager_user_id).order_by(Offre.id.desc())
     ).all()
@@ -176,26 +205,48 @@ def vacancies_for_manager(db: Session, manager_user_id: int, *, top: int = 6) ->
         recos: list[VacancyRecoOut] = []
         for p in team:
             ev = candidature_service.evaluer(db, o.id, p.id)
-            recos.append(VacancyRecoOut(
-                profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
-                score=ev.score,
-                matched=[c.competence for c in ev.couvertes],
-                gaps=[e.competence for e in ev.ecarts]))
+            recos.append(
+                VacancyRecoOut(
+                    profil_id=p.id,
+                    nom=p.nom,
+                    prenom=p.prenom,
+                    poste_actuel=p.poste_actuel,
+                    score=ev.score,
+                    matched=[c.competence for c in ev.couvertes],
+                    gaps=[e.competence for e in ev.ecarts],
+                )
+            )
         recos.sort(key=lambda r: r.score, reverse=True)
-        out.append(VacancyOut(
-            id=o.id, titre=o.titre, type=o.type, departement_key=o.departement_key,
-            perimetre_bmci=o.perimetre_bmci, description=o.description, statut=o.statut,
-            created_at=o.created_at, recos=recos[:top]))
+        out.append(
+            VacancyOut(
+                id=o.id,
+                titre=o.titre,
+                type=o.type,
+                departement_key=o.departement_key,
+                perimetre_bmci=o.perimetre_bmci,
+                description=o.description,
+                statut=o.statut,
+                created_at=o.created_at,
+                recos=recos[:top],
+            )
+        )
     return out
 
 
 def _add_competences(db: Session, offre_id: int, comps: list[OffreCompetenceIn]) -> None:
     for c in comps:
-        db.add(OffreCompetence(
-            offre_id=offre_id, libelle=c.libelle, categorie=c.categorie,
-            skill_id=c.skill_id, skill_label_fr=c.skill_label_fr,
-            importance=c.importance, niveau_requis=c.niveau_requis, source=c.source,
-        ))
+        db.add(
+            OffreCompetence(
+                offre_id=offre_id,
+                libelle=c.libelle,
+                categorie=c.categorie,
+                skill_id=c.skill_id,
+                skill_label_fr=c.skill_label_fr,
+                importance=c.importance,
+                niveau_requis=c.niveau_requis,
+                source=c.source,
+            )
+        )
 
 
 def _heriter_de_fiche(db: Session, offre_id: int, fiche_id: int) -> None:
@@ -207,12 +258,19 @@ def _heriter_de_fiche(db: Session, offre_id: int, fiche_id: int) -> None:
         .order_by(FicheCompetence.id)
     ).all()
     for fc in fcomps:
-        db.add(OffreCompetence(
-            offre_id=offre_id, libelle=fc.libelle, categorie=fc.categorie,
-            skill_id=fc.skill_id, skill_label_fr=fc.skill_label_fr,
-            rerank_score=fc.rerank_score,
-            importance="essentielle", niveau_requis=None, source="fiche",
-        ))
+        db.add(
+            OffreCompetence(
+                offre_id=offre_id,
+                libelle=fc.libelle,
+                categorie=fc.categorie,
+                skill_id=fc.skill_id,
+                skill_label_fr=fc.skill_label_fr,
+                rerank_score=fc.rerank_score,
+                importance="essentielle",
+                niveau_requis=None,
+                source="fiche",
+            )
+        )
 
 
 def create_offre(db: Session, data: OffreCreate) -> OffreOut:
@@ -223,12 +281,19 @@ def create_offre(db: Session, data: OffreCreate) -> OffreOut:
         raise ValueError(f"Fiche de référence {data.fiche_id} introuvable.")
 
     o = Offre(
-        fiche_id=data.fiche_id, type=data.type, titre=data.titre,
-        description=data.description, localisation=data.localisation, duree=data.duree,
+        fiche_id=data.fiche_id,
+        type=data.type,
+        titre=data.titre,
+        description=data.description,
+        localisation=data.localisation,
+        duree=data.duree,
         perimetre_bmci=data.perimetre_bmci,
-        departement_key=data.departement_key, statut=data.statut,
-        created_by=data.created_by, manager_id=data.manager_id,
-        date_ouverture=data.date_ouverture, date_cloture=data.date_cloture,
+        departement_key=data.departement_key,
+        statut=data.statut,
+        created_by=data.created_by,
+        manager_id=data.manager_id,
+        date_ouverture=data.date_ouverture,
+        date_cloture=data.date_cloture,
         synthetique=data.synthetique,
     )
     # Dates cohérentes avec le statut initial.
@@ -261,8 +326,10 @@ def list_compatibles(db: Session, profil_id: int | None) -> list[OffreCompatOut]
     # regroupées par offre puis tronquées à 8 pour l'affichage.
     comps_par_offre: dict[int, list[OffreCompetence]] = {}
     for c in db.scalars(
-            select(OffreCompetence).where(OffreCompetence.offre_id.in_([o.id for o in offres]))
-            .order_by(OffreCompetence.offre_id, OffreCompetence.id)).all():
+        select(OffreCompetence)
+        .where(OffreCompetence.offre_id.in_([o.id for o in offres]))
+        .order_by(OffreCompetence.offre_id, OffreCompetence.id)
+    ).all():
         comps_par_offre.setdefault(c.offre_id, []).append(c)
 
     out: list[OffreCompatOut] = []
@@ -272,12 +339,21 @@ def list_compatibles(db: Session, profil_id: int | None) -> list[OffreCompatOut]
         if profil_id is not None:
             ev = candidature_service.evaluer(db, o.id, profil_id)
             score, couv, ecr = ev.score, len(ev.couvertes), len(ev.ecarts)
-        out.append(OffreCompatOut(
-            id=o.id, type=o.type, titre=o.titre, description=o.description,
-            perimetre_bmci=o.perimetre_bmci, departement_key=o.departement_key,
-            statut=o.statut, competences=[c.skill_label_fr or c.libelle for c in comps],
-            score_compat=score, couvertes=couv or 0, ecarts=ecr or 0,
-        ))
+        out.append(
+            OffreCompatOut(
+                id=o.id,
+                type=o.type,
+                titre=o.titre,
+                description=o.description,
+                perimetre_bmci=o.perimetre_bmci,
+                departement_key=o.departement_key,
+                statut=o.statut,
+                competences=[c.skill_label_fr or c.libelle for c in comps],
+                score_compat=score,
+                couvertes=couv or 0,
+                ecarts=ecr or 0,
+            )
+        )
     out.sort(key=lambda x: x.score_compat if x.score_compat is not None else -1, reverse=True)
     return out
 
@@ -289,10 +365,17 @@ def list_compatibles_for_user(db: Session, user_id: int) -> list[OffreCompatOut]
     return list_compatibles(db, p.id if p else None)
 
 
-def list_offres(db: Session, *, statut: str | None = None, type: str | None = None,
-                departement_key: str | None = None, fiche_id: int | None = None,
-                synthetique: bool | None = None, limit: int = 50,
-                offset: int = 0) -> list[OffreOut]:
+def list_offres(
+    db: Session,
+    *,
+    statut: str | None = None,
+    type: str | None = None,
+    departement_key: str | None = None,
+    fiche_id: int | None = None,
+    synthetique: bool | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[OffreOut]:
     """Liste paginée, filtrable (statut, type, département, fiche, nature)."""
     stmt = select(Offre).order_by(Offre.id.desc())
     if statut is not None:
@@ -312,9 +395,9 @@ def list_offres(db: Session, *, statut: str | None = None, type: str | None = No
 def _appliquer_dates_statut(o: Offre, statut: str | None) -> None:
     """Pose date_ouverture/date_cloture selon le statut, sans écraser l'existant."""
     if statut in _STATUTS_OUVERTURE and o.date_ouverture is None:
-        o.date_ouverture = datetime.now(timezone.utc)
+        o.date_ouverture = datetime.now(UTC)
     if statut in _STATUTS_CLOTURE and o.date_cloture is None:
-        o.date_cloture = datetime.now(timezone.utc)
+        o.date_cloture = datetime.now(UTC)
 
 
 def update_offre(db: Session, offre_id: int, data: OffreUpdate) -> OffreOut | None:
@@ -333,8 +416,7 @@ def update_offre(db: Session, offre_id: int, data: OffreUpdate) -> OffreOut | No
     return _to_out(db, o)
 
 
-def add_competences(db: Session, offre_id: int,
-                    comps: list[OffreCompetenceIn]) -> OffreOut | None:
+def add_competences(db: Session, offre_id: int, comps: list[OffreCompetenceIn]) -> OffreOut | None:
     """Ajoute des attendus à une offre existante. None si introuvable."""
     o = db.get(Offre, offre_id)
     if not o:
@@ -344,8 +426,9 @@ def add_competences(db: Session, offre_id: int,
     return _to_out(db, o)
 
 
-def update_competence(db: Session, offre_id: int, comp_id: int,
-                      data: OffreCompetenceUpdate) -> OffreOut | None:
+def update_competence(
+    db: Session, offre_id: int, comp_id: int, data: OffreCompetenceUpdate
+) -> OffreOut | None:
     """Override un attendu au niveau de l'offre (importance, niveau, libellé…).
     None si l'offre ou l'attendu (rattaché à cette offre) est introuvable."""
     o = db.get(Offre, offre_id)
@@ -379,13 +462,10 @@ def mission_participants(db: Session, offre_id: int) -> list[dict]:
     rows = db.execute(
         select(Profil.id, Profil.prenom, Profil.nom, Profil.poste_actuel)
         .join(Candidature, Candidature.profil_id == Profil.id)
-        .where(Candidature.offre_id == offre_id,
-               Candidature.statut == CandidatureStatut.RETENUE)
+        .where(Candidature.offre_id == offre_id, Candidature.statut == CandidatureStatut.RETENUE)
         .order_by(Profil.nom)
     ).all()
     return [
-        {"profil_id": pid,
-         "nom": f"{(prenom or '').strip()} {nom}".strip(),
-         "poste_actuel": poste}
+        {"profil_id": pid, "nom": f"{(prenom or '').strip()} {nom}".strip(), "poste_actuel": poste}
         for (pid, prenom, nom, poste) in rows
     ]

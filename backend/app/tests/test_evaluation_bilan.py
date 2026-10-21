@@ -7,7 +7,7 @@ datée est journalisée et RESSORT dans `ProfilOut.evaluations` (le plus récent
 d'abord). Ownership : RH/ADMIN ou le manager du profil.
 """
 
-from app.tests.conftest import auth, anon, hdr
+from app.tests.conftest import anon, auth, hdr
 
 
 def _un_profil(client) -> int:
@@ -20,10 +20,16 @@ def _un_profil(client) -> int:
 def test_bilan_apparait_dans_historique(client):
     pid = _un_profil(client)
     csrf = auth(client, "rh")
-    r = client.post(f"/api/profils/{pid}/evaluations", headers=hdr(csrf),
-                    json={"type": "mission", "note": 4,
-                          "commentaire": "Bon trimestre, à confirmer sur le pilotage.",
-                          "competences_detectees": 2})
+    r = client.post(
+        f"/api/profils/{pid}/evaluations",
+        headers=hdr(csrf),
+        json={
+            "type": "mission",
+            "note": 4,
+            "commentaire": "Bon trimestre, à confirmer sur le pilotage.",
+            "competences_detectees": 2,
+        },
+    )
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["note"] == 4 and body["competences_detectees"] == 2
@@ -38,8 +44,11 @@ def test_bilans_journalises_recent_dabord(client):
     pid = _un_profil(client)
     csrf = auth(client, "rh")
     for note in (2, 5):
-        client.post(f"/api/profils/{pid}/evaluations", headers=hdr(csrf),
-                    json={"type": "mission", "note": note, "commentaire": f"note {note}"})
+        client.post(
+            f"/api/profils/{pid}/evaluations",
+            headers=hdr(csrf),
+            json={"type": "mission", "note": note, "commentaire": f"note {note}"},
+        )
     evals = client.get(f"/api/profils/{pid}").json()["evaluations"]
     # Journal (pas upsert) : au moins deux lignes, la plus récente en tête.
     assert len(evals) >= 2
@@ -48,17 +57,23 @@ def test_bilans_journalises_recent_dabord(client):
 
 def test_bilan_exige_role_hierarchique(client):
     pid = _un_profil(client)
-    csrf = auth(client, "collab")   # un collaborateur ne juge pas autrui
-    r = client.post(f"/api/profils/{pid}/evaluations", headers=hdr(csrf),
-                    json={"type": "mission", "note": 3})
+    csrf = auth(client, "collab")  # un collaborateur ne juge pas autrui
+    r = client.post(
+        f"/api/profils/{pid}/evaluations", headers=hdr(csrf), json={"type": "mission", "note": 3}
+    )
     assert r.status_code in (403, 404)
     anon(client)
-    assert client.post(f"/api/profils/{pid}/evaluations",
-                       json={"type": "mission", "note": 3}).status_code in (401, 403)
+    assert client.post(
+        f"/api/profils/{pid}/evaluations", json={"type": "mission", "note": 3}
+    ).status_code in (401, 403)
 
 
 def test_note_hors_bornes_rejetee(client):
     pid = _un_profil(client)
     csrf = auth(client, "rh")
-    assert client.post(f"/api/profils/{pid}/evaluations", headers=hdr(csrf),
-                       json={"note": 6}).status_code == 422
+    assert (
+        client.post(
+            f"/api/profils/{pid}/evaluations", headers=hdr(csrf), json={"note": 6}
+        ).status_code
+        == 422
+    )

@@ -21,26 +21,26 @@ EMPLACEMENT MVC
     Couche "services" : logique d'ingestion, sans route HTTP.
 """
 
-import os
 import csv
 import logging
-from datetime import datetime, timezone
+import os
+from datetime import UTC, datetime
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core import attributions
+from app.core.config import settings
+from app.models.occupation import Occupation, OccupationSkill, SkillRequirement
 from app.models.referential import ReferentialSource, SourceCode
 from app.models.skill import Skill, SkillType
-from app.models.occupation import Occupation, OccupationSkill, SkillRequirement
-from app.models.skill_mapping import SkillMapping, MappingMethod
+from app.models.skill_mapping import MappingMethod, SkillMapping
 
 logger = logging.getLogger(__name__)
 
 ONET_VERSION = "30.3"
-IMPORTANCE_MIN = 3.0        # seuil de rattachement métier↔compétence (IM 1..5)
-ESSENTIAL_MIN = 3.67       # au-delà : compétence "essentielle" au métier
+IMPORTANCE_MIN = 3.0  # seuil de rattachement métier↔compétence (IM 1..5)
+ESSENTIAL_MIN = 3.67  # au-delà : compétence "essentielle" au métier
 
 # Fichiers de notation (occupation × élément) à parcourir pour les liens.
 _RATING_FILES = ["Essential Skills.txt", "Transferable Skills.txt", "Knowledge.txt"]
@@ -58,7 +58,7 @@ def _data_dir() -> str:
 
 def _read_tsv(path: str):
     """Itère les lignes d'un fichier O*NET tab-séparé en dictionnaires {colonne: valeur}."""
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)
         for row in reader:
             yield row
@@ -68,7 +68,7 @@ def _is_leaf_skill(element_id: str) -> str | None:
     """Renvoie le type de compétence si l'Element ID est une FEUILLE nommée
     (ex. 2.A.1.a), sinon None (catégories 2.A, 2.A.1 exclues)."""
     parts = element_id.split(".")
-    if len(parts) < 4:            # feuilles seulement (catégories = 2 ou 3 segments)
+    if len(parts) < 4:  # feuilles seulement (catégories = 2 ou 3 segments)
         return None
     if element_id.startswith(("2.A", "2.B")):
         return SkillType.SKILL if element_id.startswith("2.A") else SkillType.TRANSVERSAL
@@ -97,8 +97,10 @@ def load_onet(db: Session) -> dict:
         name = (row.get("Element Name") or "").strip()
         desc = (row.get("Description") or "").strip() or None
         skill = Skill(
-            label_fr=name, label_en=name,        # FR provisoire = EN (traduction ultérieure)
-            description_fr=desc, description_en=desc,
+            label_fr=name,
+            label_en=name,  # FR provisoire = EN (traduction ultérieure)
+            description_fr=desc,
+            description_en=desc,
             skill_type=stype,
         )
         db.add(skill)
@@ -108,9 +110,17 @@ def load_onet(db: Session) -> dict:
 
     # Crosswalk : chaque compétence O*NET tracée (source=ONET, external_id=Element ID).
     for eid, skill in element_to_skill.items():
-        db.add(SkillMapping(skill_id=skill.id, source=SourceCode.ONET,
-                            external_id=eid, external_label=skill.label_en,
-                            confidence=1.0, method=MappingMethod.EXACT, validated=True))
+        db.add(
+            SkillMapping(
+                skill_id=skill.id,
+                source=SourceCode.ONET,
+                external_id=eid,
+                external_label=skill.label_en,
+                confidence=1.0,
+                method=MappingMethod.EXACT,
+                validated=True,
+            )
+        )
 
     # 2) Occupations (métiers).
     soc_to_occ: dict[str, Occupation] = {}
@@ -119,10 +129,13 @@ def load_onet(db: Session) -> dict:
         if not soc:
             continue
         occ = Occupation(
-            label_fr=(row.get("Title") or "").strip(), label_en=(row.get("Title") or "").strip(),
+            label_fr=(row.get("Title") or "").strip(),
+            label_en=(row.get("Title") or "").strip(),
             description_fr=(row.get("Description") or "").strip() or None,
             description_en=(row.get("Description") or "").strip() or None,
-            source=SourceCode.ONET, code=soc, source_uri=None,
+            source=SourceCode.ONET,
+            code=soc,
+            source_uri=None,
         )
         db.add(occ)
         soc_to_occ[soc] = occ
@@ -153,20 +166,32 @@ def load_onet(db: Session) -> dict:
             if key in seen:
                 continue
             seen.add(key)
-            db.add(OccupationSkill(
-                occupation_id=occ.id, skill_id=skill.id,
-                requirement=SkillRequirement.ESSENTIAL if value >= ESSENTIAL_MIN else SkillRequirement.OPTIONAL,
-            ))
+            db.add(
+                OccupationSkill(
+                    occupation_id=occ.id,
+                    skill_id=skill.id,
+                    requirement=SkillRequirement.ESSENTIAL
+                    if value >= ESSENTIAL_MIN
+                    else SkillRequirement.OPTIONAL,
+                )
+            )
             n_links += 1
     logger.info("  %d liens métier↔compétence créés", n_links)
 
     # 4) Enregistre la source (journal d'ingestion).
-    db.add(ReferentialSource(
-        code=SourceCode.ONET, name="O*NET (U.S. DOL/ETA)", version=ONET_VERSION,
-        languages="en", license="CC-BY-4.0", attribution=attributions.ONET,
-        imported_at=datetime.now(timezone.utc),
-        n_skills=len(element_to_skill), n_occupations=len(soc_to_occ),
-    ))
+    db.add(
+        ReferentialSource(
+            code=SourceCode.ONET,
+            name="O*NET (U.S. DOL/ETA)",
+            version=ONET_VERSION,
+            languages="en",
+            license="CC-BY-4.0",
+            attribution=attributions.ONET,
+            imported_at=datetime.now(UTC),
+            n_skills=len(element_to_skill),
+            n_occupations=len(soc_to_occ),
+        )
+    )
     db.commit()
 
     counts = {"skills": len(element_to_skill), "occupations": len(soc_to_occ), "links": n_links}

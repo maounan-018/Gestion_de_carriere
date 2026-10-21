@@ -5,9 +5,9 @@ Vérifie sans Ollama (recommander monkeypatché) que l'appel répété à profil
 inchangé est servi par le cache, et que la signature dépend des entrées.
 """
 
-from app.services import recommendation_service as rs
-from app.models.user import User, Role
 from app.models.profil import Profil
+from app.models.user import Role, User
+from app.services import recommendation_service as rs
 
 
 def test_reco_cache_evite_le_recalcul(db, monkeypatch):
@@ -15,23 +15,33 @@ def test_reco_cache_evite_le_recalcul(db, monkeypatch):
     u = User(email="cache@bmci.local", name="Cache Test", role=Role.COLLAB)
     db.add(u)
     db.flush()
-    db.add(Profil(user_id=u.id, nom="Test", aspirations="Devenir manager des risques", synthetique=True))
+    db.add(
+        Profil(
+            user_id=u.id, nom="Test", aspirations="Devenir manager des risques", synthetique=True
+        )
+    )
     db.commit()
 
     calls = {"n": 0}
 
     def fake_recommander(_db, labels, poste, **kw):
         calls["n"] += 1
-        return {"poste_vise": poste, "score_actuel": 42, "plan_developpement": "plan", "labels": labels}
+        return {
+            "poste_vise": poste,
+            "score_actuel": 42,
+            "plan_developpement": "plan",
+            "labels": labels,
+        }
 
     monkeypatch.setattr(rs, "recommander", fake_recommander)
     # Normalisation d'entrée mockée (passthrough) : pas d'appel Ollama en test.
-    monkeypatch.setattr(rs, "normaliser_cible",
-                        lambda t: {"intitule": t, "confiance": "clair", "model": "test"})
+    monkeypatch.setattr(
+        rs, "normaliser_cible", lambda t: {"intitule": t, "confiance": "clair", "model": "test"}
+    )
 
     r1 = rs.recommander_pour_user(db, u.id)
     r2 = rs.recommander_pour_user(db, u.id)
-    assert calls["n"] == 1          # 2e appel servi par le cache (pas de recalcul)
+    assert calls["n"] == 1  # 2e appel servi par le cache (pas de recalcul)
     assert r1 == r2
     rs.clear_reco_cache()
 

@@ -24,8 +24,9 @@ from __future__ import annotations
 from app.core.config import settings
 
 
-def knn_sql(select_cols: str, vec_table: str, vec_alias: str, join: str,
-            *, extra_where: str = "") -> str:
+def knn_sql(
+    select_cols: str, vec_table: str, vec_alias: str, join: str, *, extra_where: str = ""
+) -> str:
     """Construit la requête KNN pour le dialecte courant.
 
     - select_cols : colonnes projetées (SANS la distance, ajoutée ici sous l'alias
@@ -42,14 +43,18 @@ def knn_sql(select_cols: str, vec_table: str, vec_alias: str, join: str,
         where = f"WHERE {vec_alias}.embedding MATCH :q AND k = :k"
         if extra_where:
             where += f" AND {extra_where}"
-        return (f"SELECT {select_cols}, {vec_alias}.distance "
-                f"FROM {vec_table} {vec_alias} JOIN {join} "
-                f"{where} ORDER BY {vec_alias}.distance")
+        return (
+            f"SELECT {select_cols}, {vec_alias}.distance "
+            f"FROM {vec_table} {vec_alias} JOIN {join} "
+            f"{where} ORDER BY {vec_alias}.distance"
+        )
     # PostgreSQL / pgvector
     where = f"WHERE {extra_where}" if extra_where else ""
-    return (f"SELECT {select_cols}, ({vec_alias}.embedding <=> CAST(:q AS vector)) AS distance "
-            f"FROM {vec_table} {vec_alias} JOIN {join} "
-            f"{where} ORDER BY distance LIMIT :k")
+    return (
+        f"SELECT {select_cols}, ({vec_alias}.embedding <=> CAST(:q AS vector)) AS distance "
+        f"FROM {vec_table} {vec_alias} JOIN {join} "
+        f"{where} ORDER BY distance LIMIT :k"
+    )
 
 
 def bool_true(column: str) -> str:

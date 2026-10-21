@@ -9,16 +9,18 @@ from app.tests.conftest import auth
 
 
 def test_synthese_agrege_effectifs_et_pipeline(db):
-    from app.services import dashboard_service as ds
-    from app.models.profil import Profil
-    from app.models.offre import Offre
     from app.models.candidature import Candidature, CandidatureStatut
+    from app.models.offre import Offre
+    from app.models.profil import Profil
+    from app.services import dashboard_service as ds
 
-    db.add_all([
-        Profil(nom="A", departement_key="risques"),
-        Profil(nom="B", departement_key="risques"),
-        Profil(nom="C", departement_key="retail_banking"),
-    ])
+    db.add_all(
+        [
+            Profil(nom="A", departement_key="risques"),
+            Profil(nom="B", departement_key="risques"),
+            Profil(nom="C", departement_key="retail_banking"),
+        ]
+    )
     o = Offre(titre="O")
     p = Profil(nom="X", departement_key="risques")
     db.add_all([o, p])
@@ -29,7 +31,7 @@ def test_synthese_agrege_effectifs_et_pipeline(db):
     s = ds.synthese(db)
     assert s["effectif"] == 4
     poles = {x["pole"]: x["effectif"] for x in s["par_pole"]}
-    assert poles.get("Risques") == 3                         # 3 profils dans « risques » (humanisé)
+    assert poles.get("Risques") == 3  # 3 profils dans « risques » (humanisé)
     statuts = {x["statut"]: x["nombre"] for x in s["candidatures_par_statut"]}
     assert statuts.get("retenue") == 1
     assert isinstance(s["familles_en_tension"], int)

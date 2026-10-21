@@ -13,10 +13,10 @@ EMPLACEMENT MVC
 
 import logging
 
+import app.models  # noqa: F401 — enregistre toutes les tables sur Base.metadata
+from app.core.config import settings
 from app.database.base import Base
 from app.database.session import engine
-from app.core.config import settings
-import app.models  # noqa: F401 — enregistre toutes les tables sur Base.metadata
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +80,13 @@ def _create_vec_table() -> None:
                     f"chunk_id INTEGER PRIMARY KEY, embedding FLOAT[{dim}])"
                 )
                 conn.commit()
-            logger.info("Tables vectorielles prêtes (skills / occupations / coach_docs, dim %d).", dim)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("tables vectorielles non créées (%s) — recherche vectorielle indisponible.", e)
+            logger.info(
+                "Tables vectorielles prêtes (skills / occupations / coach_docs, dim %d).", dim
+            )
+    except Exception as e:
+        logger.warning(
+            "tables vectorielles non créées (%s) — recherche vectorielle indisponible.", e
+        )
 
 
 def init_db() -> None:

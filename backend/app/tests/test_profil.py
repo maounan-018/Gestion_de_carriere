@@ -11,12 +11,20 @@ from app.services import profil_service
 
 
 def test_create_and_get(db):
-    out = profil_service.create_profil(db, ProfilCreate(
-        nom="El Amrani", prenom="Aya", poste_actuel="Chargée d'Affaires Senior",
-        departement_key="risques", aspirations="Manager d'équipe Risques",
-        synthetique=True,
-        competences=[ProfilCompetenceIn(libelle="Analyse crédit", niveau=4, source="declaratif")],
-    ))
+    out = profil_service.create_profil(
+        db,
+        ProfilCreate(
+            nom="El Amrani",
+            prenom="Aya",
+            poste_actuel="Chargée d'Affaires Senior",
+            departement_key="risques",
+            aspirations="Manager d'équipe Risques",
+            synthetique=True,
+            competences=[
+                ProfilCompetenceIn(libelle="Analyse crédit", niveau=4, source="declaratif")
+            ],
+        ),
+    )
     assert out.id > 0
     assert out.synthetique is True
     assert out.aspirations.startswith("Manager")
@@ -35,8 +43,11 @@ def test_get_missing_returns_none(db):
 
 def test_update_partial_aspirations(db):
     out = profil_service.create_profil(db, ProfilCreate(nom="Naji", poste_actuel="Analyste"))
-    upd = profil_service.update_profil(db, out.id, ProfilUpdate(
-        aspirations="Directeur Exécutif Risques", poste_actuel="Directeur de Pôle"))
+    upd = profil_service.update_profil(
+        db,
+        out.id,
+        ProfilUpdate(aspirations="Directeur Exécutif Risques", poste_actuel="Directeur de Pôle"),
+    )
     assert upd is not None
     assert upd.aspirations == "Directeur Exécutif Risques"
     assert upd.poste_actuel == "Directeur de Pôle"
@@ -48,10 +59,12 @@ def test_update_missing_returns_none(db):
 
 
 def test_add_competences_and_list_filter(db):
-    out = profil_service.create_profil(db, ProfilCreate(
-        nom="Idrissi", departement_key="risques", synthetique=True))
-    profil_service.add_competences(db, out.id, [
-        ProfilCompetenceIn(libelle="Modélisation", niveau=5, source="cv")])
+    out = profil_service.create_profil(
+        db, ProfilCreate(nom="Idrissi", departement_key="risques", synthetique=True)
+    )
+    profil_service.add_competences(
+        db, out.id, [ProfilCompetenceIn(libelle="Modélisation", niveau=5, source="cv")]
+    )
 
     got = profil_service.get_profil(db, out.id)
     assert len(got.competences) == 1

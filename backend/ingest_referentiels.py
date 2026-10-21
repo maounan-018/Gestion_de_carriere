@@ -10,25 +10,25 @@ Enchaîne : création du schéma → chargement des référentiels disponibles
 Idempotent : relançable sans dupliquer.
 """
 
-import sys
 import logging
+import sys
 
 from app.database.init_db import init_db
 from app.database.session import SessionLocal
-from app.services.referentiels import esco_loader, onet_loader, sfia_loader, graph_builder
+from app.services.referentiels import esco_loader, graph_builder, onet_loader, sfia_loader
 
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    skip_embed = "--skip-embed" in sys.argv     # charge sans vectoriser (validation rapide)
+    skip_embed = "--skip-embed" in sys.argv  # charge sans vectoriser (validation rapide)
     init_db()
 
     db = SessionLocal()
     try:
         # --- Référentiels (idempotents) ---
-        esco_loader.load_esco(db)   # pivot multilingue FR/EN
-        onet_loader.load_onet(db)   # richesse métier (EN, FR à traduire)
-        sfia_loader.load_sfia(db)   # IT/digital, niveaux de responsabilité 1..7 (FR+EN)
+        esco_loader.load_esco(db)  # pivot multilingue FR/EN
+        onet_loader.load_onet(db)  # richesse métier (EN, FR à traduire)
+        sfia_loader.load_sfia(db)  # IT/digital, niveaux de responsabilité 1..7 (FR+EN)
 
         # --- Vectorisation (embeddings -> vec_skills) — longue sur ESCO (~14k) ---
         if skip_embed:

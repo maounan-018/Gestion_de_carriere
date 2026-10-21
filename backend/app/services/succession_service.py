@@ -28,10 +28,10 @@ from app.models.profil import Profil, ProfilCompetence
 logger = logging.getLogger(__name__)
 
 # --- Paramètres du calcul de succession ---
-_NIVEAU_CLE = 2      # poste « clé » = encadrement (Responsable/Directeur…)
-_SEUIL_SUCC = 40     # adéquation minimale (%) pour être un successeur viable
-_SEUIL_PRET = 70     # ≥ : prêt maintenant
-_SEUIL_MOYEN = 55    # ≥ : prêt à 12-24 mois ; sinon à développer
+_NIVEAU_CLE = 2  # poste « clé » = encadrement (Responsable/Directeur…)
+_SEUIL_SUCC = 40  # adéquation minimale (%) pour être un successeur viable
+_SEUIL_PRET = 70  # ≥ : prêt maintenant
+_SEUIL_MOYEN = 55  # ≥ : prêt à 12-24 mois ; sinon à développer
 
 _MOTS_NIVEAU = (
     (3, ("directeur", "directrice", "chief", "dga", "dg ", "head of")),
@@ -68,8 +68,10 @@ def _competences_par_profil(db: Session, profil_ids: list[int]) -> dict[int, dic
     if not profil_ids:
         return comps
     for pid, lib, niv in db.execute(
-            select(ProfilCompetence.profil_id, ProfilCompetence.libelle, ProfilCompetence.niveau)
-            .where(ProfilCompetence.profil_id.in_(profil_ids))).all():
+        select(ProfilCompetence.profil_id, ProfilCompetence.libelle, ProfilCompetence.niveau).where(
+            ProfilCompetence.profil_id.in_(profil_ids)
+        )
+    ).all():
         key = (lib or "").strip().lower()
         if not key:
             continue
@@ -87,9 +89,11 @@ def plan_succession(db: Session, departement_key: str) -> dict:
     d'ENCADREMENT du pôle, on classe les successeurs internes par adéquation de
     compétences (recouvrement pondéré par niveau au poste du titulaire) et on en
     déduit la préparation, les écarts à combler et les postes clés À RISQUE."""
-    profils = list(db.scalars(
-        select(Profil).where(Profil.departement_key == departement_key)
-        .order_by(Profil.nom)).all())
+    profils = list(
+        db.scalars(
+            select(Profil).where(Profil.departement_key == departement_key).order_by(Profil.nom)
+        ).all()
+    )
     effectif = len(profils)
     comps = _competences_par_profil(db, [p.id for p in profils])
     label = {}
@@ -122,24 +126,46 @@ def plan_succession(db: Session, departement_key: str) -> dict:
         for score, c, ecarts in cands:
             if score < _SEUIL_SUCC or len(successeurs) >= 3:
                 break
-            successeurs.append({"nom": _nom(c), "poste": c.poste_actuel, "score": score,
-                                "readiness": _readiness(score), "ecarts": ecarts})
-        roles.append({"poste": h.poste_actuel or "Poste d'encadrement", "titulaire": _nom(h),
-                      "successeurs": successeurs, "risque": not successeurs})
+            successeurs.append(
+                {
+                    "nom": _nom(c),
+                    "poste": c.poste_actuel,
+                    "score": score,
+                    "readiness": _readiness(score),
+                    "ecarts": ecarts,
+                }
+            )
+        roles.append(
+            {
+                "poste": h.poste_actuel or "Poste d'encadrement",
+                "titulaire": _nom(h),
+                "successeurs": successeurs,
+                "risque": not successeurs,
+            }
+        )
 
     # Postes À RISQUE d'abord (attention RH), puis par relève décroissante.
     roles.sort(key=lambda r: (not r["risque"], -len(r["successeurs"])))
     a_risque = sum(1 for r in roles if r["risque"])
     couverts = len(roles) - a_risque
     if roles:
-        synthese = (f"{len(roles)} poste(s) d'encadrement analysé(s) : {couverts} avec une relève "
-                    f"interne identifiée, {a_risque} à risque (aucun successeur suffisamment prêt).")
+        synthese = (
+            f"{len(roles)} poste(s) d'encadrement analysé(s) : {couverts} avec une relève "
+            f"interne identifiée, {a_risque} à risque (aucun successeur suffisamment prêt)."
+        )
     else:
         synthese = "Aucun poste d'encadrement identifié dans ce pôle."
-    return {"departement_key": departement_key, "effectif": effectif,
-            "postes_cles": len(roles), "couverts": couverts, "a_risque": a_risque,
-            "roles": roles, "synthese": synthese, "plan": synthese,
-            "model": "calcul déterministe"}
+    return {
+        "departement_key": departement_key,
+        "effectif": effectif,
+        "postes_cles": len(roles),
+        "couverts": couverts,
+        "a_risque": a_risque,
+        "roles": roles,
+        "synthese": synthese,
+        "plan": synthese,
+        "model": "calcul déterministe",
+    }
 
 
 # --- Version ASYNCHRONE : qwen3.6 (~4 min) ne doit pas tenir une requête HTTP ni
@@ -147,11 +173,14 @@ def plan_succession(db: Session, departement_key: str) -> dict:
 def launch_succession_job(user_id: int, departement_key: str) -> str:
     """Lance le plan de succession en tâche de fond ; renvoie un job_id à interroger."""
     from app.services import async_job
+
     return async_job.submit(
-        user_id, lambda db: plan_succession(db, departement_key), label="succession")
+        user_id, lambda db: plan_succession(db, departement_key), label="succession"
+    )
 
 
 def get_succession_job(job_id: str, user_id: int) -> dict | None:
     """État du job de succession (réservé à son propriétaire). None si inconnu/autre user."""
     from app.services import async_job
+
     return async_job.get(job_id, user_id)

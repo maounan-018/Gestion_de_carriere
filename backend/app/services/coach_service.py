@@ -18,25 +18,25 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-import re
 import json
 import logging
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.profil import Profil, ProfilCompetence
 from app.models.formation import Formation
-from app.services.ai_router import generate, chat_call, chat_stream, fence
+from app.models.profil import Profil, ProfilCompetence
 from app.services import coach_rag_service
+from app.services.ai_router import chat_call, chat_stream, fence, generate
 
 logger = logging.getLogger(__name__)
 
-_TASK = "coach"        # mono-coup -> routing.yaml (mistral-nemo : meilleur FR)
+_TASK = "coach"  # mono-coup -> routing.yaml (mistral-nemo : meilleur FR)
 _AGENT_TASK = "agent"  # agentique -> routing.yaml (qwen3:8b : bon tool-calling, mono-modèle)
-_MAX_HISTORY = 8       # tours conservés (borne le contexte pour la latence)
-_MAX_STEPS = 4         # itérations d'agent max (appel outil -> observation -> …)
+_MAX_HISTORY = 8  # tours conservés (borne le contexte pour la latence)
+_MAX_STEPS = 4  # itérations d'agent max (appel outil -> observation -> …)
 
 _SYSTEM = (
     "Tu es le Coach Carrière personnel d'un collaborateur de la BMCI (groupe BNP "
@@ -57,12 +57,15 @@ def _profil_contexte(db: Session, user_id: int) -> str:
     if p is None:
         return "Aucun profil de carrière n'est encore rattaché à ce compte."
     comps = db.scalars(
-        select(ProfilCompetence).where(ProfilCompetence.profil_id == p.id)
-        .order_by(ProfilCompetence.niveau.desc().nulls_last()).limit(20)
+        select(ProfilCompetence)
+        .where(ProfilCompetence.profil_id == p.id)
+        .order_by(ProfilCompetence.niveau.desc().nulls_last())
+        .limit(20)
     ).all()
-    skills = ", ".join(
-        f"{c.libelle} (niv. {c.niveau}/5)" if c.niveau else c.libelle for c in comps
-    ) or "non renseignées"
+    skills = (
+        ", ".join(f"{c.libelle} (niv. {c.niveau}/5)" if c.niveau else c.libelle for c in comps)
+        or "non renseignées"
+    )
     return (
         f"Nom : {(p.prenom or '').strip()} {p.nom}".strip() + "\n"
         f"Poste actuel : {p.poste_actuel or 'non renseigné'}\n"
@@ -81,8 +84,9 @@ def _rag_contexte(db: Session, user_id: int, message: str) -> str:
     if not passages:
         return ""
     joined = "\n\n---\n\n".join(p["text"] for p in passages)
-    return ("\n\nEXTRAITS DE MES DOCUMENTS (contexte, fiables mais lacunaires) :\n"
-            + fence(joined, tag="documents_perso"))
+    return "\n\nEXTRAITS DE MES DOCUMENTS (contexte, fiables mais lacunaires) :\n" + fence(
+        joined, tag="documents_perso"
+    )
 
 
 def _build_prompt(history: list, message: str) -> str:
@@ -100,17 +104,23 @@ def _build_prompt(history: list, message: str) -> str:
 
 def chat(db: Session, user_id: int, message: str, history: list) -> dict:
     """Une réponse du coach, contextualisée sur le profil du compte connecté."""
-    system = (_SYSTEM + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
-              + _rag_contexte(db, user_id, message))
+    system = (
+        _SYSTEM
+        + "\n\nPROFIL DU COLLABORATEUR :\n"
+        + fence(_profil_contexte(db, user_id))
+        + _rag_contexte(db, user_id, message)
+    )
     prompt = _build_prompt(history, message)
     try:
         reply = (generate(_TASK, prompt, system=system) or "").strip()
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Coach indisponible : %s", e)
         reply = ""
     if not reply:
-        reply = ("Je ne peux pas répondre à l'instant (service IA momentanément "
-                 "indisponible). Réessayez dans un instant.")
+        reply = (
+            "Je ne peux pas répondre à l'instant (service IA momentanément "
+            "indisponible). Réessayez dans un instant."
+        )
     return {"reply": reply, "model": settings.task_model(_TASK).get("model", "?")}
 
 
@@ -118,11 +128,13 @@ def chat(db: Session, user_id: int, message: str, history: list) -> dict:
 # Le coach interroge lui-même les VRAIES données via des outils déterministes et
 # rapides (pas de LLM imbriqué) : offres compatibles + catalogue de formations.
 
+
 def _tool_offres_compatibles(db: Session, user_id: int, args: dict) -> str:
     """Offres internes compatibles avec le profil, PAGINÉES et filtrables (fondé sur
     l'évaluateur déterministe, pas d'Ollama). Renvoie une page + de quoi demander la
     SUITE (`offset_suivant`, `reste`) pour que le coach ne répète pas les mêmes offres."""
     from app.services import offre_service
+
     a = args if isinstance(args, dict) else {}
     try:
         offset = max(0, int(a.get("offset") or 0))
@@ -132,18 +144,30 @@ def _tool_offres_compatibles(db: Session, user_id: int, args: dict) -> str:
     filtre = (a.get("filtre") or "").strip().lower()
     toutes = offre_service.list_compatibles_for_user(db, user_id)
     if filtre:
-        toutes = [o for o in toutes
-                  if filtre in (o.titre or "").lower() or filtre in (o.type or "").lower()]
-    page = toutes[offset:offset + limit]
-    return json.dumps({
-        "offres": [
-            {"titre": o.titre, "type": o.type, "compatibilite_pct": o.score_compat,
-             "competences_couvertes": o.couvertes, "a_developper": o.ecarts}
-            for o in page],
-        "total": len(toutes),
-        "reste": max(0, len(toutes) - (offset + len(page))),
-        "offset_suivant": offset + len(page),
-    }, ensure_ascii=False)
+        toutes = [
+            o
+            for o in toutes
+            if filtre in (o.titre or "").lower() or filtre in (o.type or "").lower()
+        ]
+    page = toutes[offset : offset + limit]
+    return json.dumps(
+        {
+            "offres": [
+                {
+                    "titre": o.titre,
+                    "type": o.type,
+                    "compatibilite_pct": o.score_compat,
+                    "competences_couvertes": o.couvertes,
+                    "a_developper": o.ecarts,
+                }
+                for o in page
+            ],
+            "total": len(toutes),
+            "reste": max(0, len(toutes) - (offset + len(page))),
+            "offset_suivant": offset + len(page),
+        },
+        ensure_ascii=False,
+    )
 
 
 def _tool_formations(db: Session, _user_id: int, args: dict) -> str:
@@ -152,13 +176,25 @@ def _tool_formations(db: Session, _user_id: int, args: dict) -> str:
     stmt = select(Formation)
     if mot:
         like = f"%{mot}%"
-        stmt = stmt.where(Formation.titre.ilike(like) | Formation.skill_cible.ilike(like)
-                          | Formation.domaine.ilike(like))
+        stmt = stmt.where(
+            Formation.titre.ilike(like)
+            | Formation.skill_cible.ilike(like)
+            | Formation.domaine.ilike(like)
+        )
     rows = db.scalars(stmt.limit(8)).all()
-    return json.dumps([
-        {"titre": f.titre, "organisme": f.provider, "competence_visee": f.skill_cible,
-         "niveau": f.niveau, "duree": f.duree}
-        for f in rows], ensure_ascii=False)
+    return json.dumps(
+        [
+            {
+                "titre": f.titre,
+                "organisme": f.provider,
+                "competence_visee": f.skill_cible,
+                "niveau": f.niveau,
+                "duree": f.duree,
+            }
+            for f in rows
+        ],
+        ensure_ascii=False,
+    )
 
 
 def _tool_passerelles_mobilite(db: Session, user_id: int, args: dict) -> str:
@@ -166,6 +202,7 @@ def _tool_passerelles_mobilite(db: Session, user_id: int, args: dict) -> str:
     DÉTENUES du collaborateur via le graphe (déterministe, pas d'Ollama). Paginé pour
     pouvoir en proposer d'AUTRES à la demande (`offset_suivant`, `reste`)."""
     from app.services import profil_service
+
     p = db.scalar(select(Profil).where(Profil.user_id == user_id))
     if p is None:
         return json.dumps({"info": "Aucun profil rattaché à ce compte."}, ensure_ascii=False)
@@ -177,83 +214,164 @@ def _tool_passerelles_mobilite(db: Session, user_id: int, args: dict) -> str:
         offset, limit = 0, 5
     toutes = profil_service.passerelles_mobilite(db, p.id, k=offset + limit + 5) or []
     if not toutes:
-        return json.dumps({"info": "Aucune passerelle : compétences détenues trop peu "
-                           "ancrées au référentiel."}, ensure_ascii=False)
-    page = toutes[offset:offset + limit]
-    return json.dumps({
-        "passerelles": [
-            {"metier": m["metier"], "source": m["source"],
-             "competences_partagees": m["competences_partagees"]}
-            for m in page],
-        "reste": max(0, len(toutes) - (offset + len(page))),
-        "offset_suivant": offset + len(page),
-    }, ensure_ascii=False)
+        return json.dumps(
+            {
+                "info": "Aucune passerelle : compétences détenues trop peu "
+                "ancrées au référentiel."
+            },
+            ensure_ascii=False,
+        )
+    page = toutes[offset : offset + limit]
+    return json.dumps(
+        {
+            "passerelles": [
+                {
+                    "metier": m["metier"],
+                    "source": m["source"],
+                    "competences_partagees": m["competences_partagees"],
+                }
+                for m in page
+            ],
+            "reste": max(0, len(toutes) - (offset + len(page))),
+            "offset_suivant": offset + len(page),
+        },
+        ensure_ascii=False,
+    )
 
 
 def _tool_definir_competence(db: Session, _user_id: int, args: dict) -> str:
     """Définition + type d'une compétence depuis le graphe (ESCO/O*NET/SFIA)."""
     from app.services import skill_search_service
+
     terme = (args.get("competence") or "").strip() if isinstance(args, dict) else ""
     if not terme:
         return json.dumps({"info": "Préciser la compétence à définir."}, ensure_ascii=False)
     matches = skill_search_service.search_skills(db, terme, k=1)
     if not matches:
-        return json.dumps({"info": f"Compétence « {terme} » introuvable au référentiel."},
-                          ensure_ascii=False)
+        return json.dumps(
+            {"info": f"Compétence « {terme} » introuvable au référentiel."}, ensure_ascii=False
+        )
     m = matches[0]
-    return json.dumps({
-        "competence": m.get("label_fr"), "type": m.get("skill_type"),
-        "definition": (m.get("description_fr") or "")[:400] or None},
-        ensure_ascii=False)
+    return json.dumps(
+        {
+            "competence": m.get("label_fr"),
+            "type": m.get("skill_type"),
+            "definition": (m.get("description_fr") or "")[:400] or None,
+        },
+        ensure_ascii=False,
+    )
 
 
 _TOOLS = [
-    {"type": "function", "function": {
-        "name": "chercher_offres_compatibles",
-        "description": ("Renvoie une PAGE d'offres internes compatibles avec le profil du "
-                        "collaborateur connecté (titre, type, % de compatibilité, compétences "
-                        "couvertes / à développer), + `total`, `reste` et `offset_suivant`. "
-                        "Utilise-le pour recommander des opportunités CONCRÈTES. Si le "
-                        "collaborateur demande D'AUTRES offres, rappelle l'outil avec "
-                        "`offset` = l'`offset_suivant` renvoyé au tour précédent (NE répète "
-                        "JAMAIS les mêmes offres). `filtre` restreint par titre/type."),
-        "parameters": {"type": "object", "properties": {
-            "offset": {"type": "integer", "description": "index de départ (0 par défaut ; pour « plus d'offres », reprends offset_suivant)"},
-            "limit": {"type": "integer", "description": "nombre d'offres par page (défaut 5, max 10)"},
-            "filtre": {"type": "string", "description": "filtre optionnel sur le titre/type (ex. « mission », « conseiller »)"}},
-            "required": []}}},
-    {"type": "function", "function": {
-        "name": "lister_formations",
-        "description": ("Renvoie des formations du catalogue interne (titre, organisme, "
-                        "compétence visée, niveau), filtrables par mot-clé. Utilise-le pour "
-                        "proposer des formations RÉELLES adaptées à un écart de compétence."),
-        "parameters": {"type": "object", "properties": {
-            "mot_cle": {"type": "string", "description": "filtre optionnel (compétence, thème)"}},
-            "required": []}}},
-    {"type": "function", "function": {
-        "name": "passerelles_mobilite",
-        "description": ("Renvoie une PAGE de métiers de MOBILITÉ INTERNE proches du profil du "
-                        "collaborateur connecté (fondés sur ses compétences détenues et le "
-                        "graphe ESCO/O*NET), + `reste` et `offset_suivant`. Utilise-le pour "
-                        "suggérer des TRAJECTOIRES concrètes. Pour en proposer D'AUTRES, "
-                        "rappelle avec `offset` = `offset_suivant` (ne répète pas)."),
-        "parameters": {"type": "object", "properties": {
-            "offset": {"type": "integer", "description": "index de départ (0 par défaut ; pour « plus », reprends offset_suivant)"},
-            "limit": {"type": "integer", "description": "nombre de métiers par page (défaut 5, max 10)"}},
-            "required": []}}},
-    {"type": "function", "function": {
-        "name": "definir_competence",
-        "description": ("Renvoie la définition et le type d'une compétence depuis le "
-                        "référentiel (ESCO/O*NET/SFIA). Utilise-le pour EXPLIQUER précisément "
-                        "une compétence ou clarifier son périmètre."),
-        "parameters": {"type": "object", "properties": {
-            "competence": {"type": "string", "description": "libellé de la compétence à définir"}},
-            "required": ["competence"]}}},
+    {
+        "type": "function",
+        "function": {
+            "name": "chercher_offres_compatibles",
+            "description": (
+                "Renvoie une PAGE d'offres internes compatibles avec le profil du "
+                "collaborateur connecté (titre, type, % de compatibilité, compétences "
+                "couvertes / à développer), + `total`, `reste` et `offset_suivant`. "
+                "Utilise-le pour recommander des opportunités CONCRÈTES. Si le "
+                "collaborateur demande D'AUTRES offres, rappelle l'outil avec "
+                "`offset` = l'`offset_suivant` renvoyé au tour précédent (NE répète "
+                "JAMAIS les mêmes offres). `filtre` restreint par titre/type."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "offset": {
+                        "type": "integer",
+                        "description": "index de départ (0 par défaut ; pour « plus d'offres », reprends offset_suivant)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "nombre d'offres par page (défaut 5, max 10)",
+                    },
+                    "filtre": {
+                        "type": "string",
+                        "description": "filtre optionnel sur le titre/type (ex. « mission », « conseiller »)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lister_formations",
+            "description": (
+                "Renvoie des formations du catalogue interne (titre, organisme, "
+                "compétence visée, niveau), filtrables par mot-clé. Utilise-le pour "
+                "proposer des formations RÉELLES adaptées à un écart de compétence."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mot_cle": {
+                        "type": "string",
+                        "description": "filtre optionnel (compétence, thème)",
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "passerelles_mobilite",
+            "description": (
+                "Renvoie une PAGE de métiers de MOBILITÉ INTERNE proches du profil du "
+                "collaborateur connecté (fondés sur ses compétences détenues et le "
+                "graphe ESCO/O*NET), + `reste` et `offset_suivant`. Utilise-le pour "
+                "suggérer des TRAJECTOIRES concrètes. Pour en proposer D'AUTRES, "
+                "rappelle avec `offset` = `offset_suivant` (ne répète pas)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "offset": {
+                        "type": "integer",
+                        "description": "index de départ (0 par défaut ; pour « plus », reprends offset_suivant)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "nombre de métiers par page (défaut 5, max 10)",
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "definir_competence",
+            "description": (
+                "Renvoie la définition et le type d'une compétence depuis le "
+                "référentiel (ESCO/O*NET/SFIA). Utilise-le pour EXPLIQUER précisément "
+                "une compétence ou clarifier son périmètre."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "competence": {
+                        "type": "string",
+                        "description": "libellé de la compétence à définir",
+                    }
+                },
+                "required": ["competence"],
+            },
+        },
+    },
 ]
-_DISPATCH = {"chercher_offres_compatibles": _tool_offres_compatibles,
-             "lister_formations": _tool_formations,
-             "passerelles_mobilite": _tool_passerelles_mobilite,
-             "definir_competence": _tool_definir_competence}
+_DISPATCH = {
+    "chercher_offres_compatibles": _tool_offres_compatibles,
+    "lister_formations": _tool_formations,
+    "passerelles_mobilite": _tool_passerelles_mobilite,
+    "definir_competence": _tool_definir_competence,
+}
 
 _SYSTEM_AGENT = (
     _SYSTEM + "\n\n"
@@ -277,16 +395,31 @@ _SYSTEM_AGENT = (
 _SUIVANT = "[[SUIVANT]]"
 _ENTRETIEN_PLAN = [
     {"label": "Introduction", "kind": "intro", "points": ""},
-    {"label": "Objectifs & missions", "kind": "q",
-     "points": "les objectifs fixés en début d'année, les missions confiées et leur niveau d'atteinte, avec le contexte"},
-    {"label": "Réussites", "kind": "q",
-     "points": "deux à trois réussites marquantes, chacune avec la situation, l'action menée et le résultat concret (chiffré si possible)"},
-    {"label": "Échecs & difficultés", "kind": "q",
-     "points": "les difficultés ou échecs de l'année, leurs causes, la façon dont ils ont été gérés et les enseignements tirés"},
-    {"label": "Compétences", "kind": "q",
-     "points": "les compétences techniques développées cette année, celles à renforcer, et les savoir-être (compétences comportementales)"},
-    {"label": "Aspirations & perspectives", "kind": "q",
-     "points": "les souhaits d'évolution ou de mobilité, les postes ou missions visés, et les formations qui aideraient"},
+    {
+        "label": "Objectifs & missions",
+        "kind": "q",
+        "points": "les objectifs fixés en début d'année, les missions confiées et leur niveau d'atteinte, avec le contexte",
+    },
+    {
+        "label": "Réussites",
+        "kind": "q",
+        "points": "deux à trois réussites marquantes, chacune avec la situation, l'action menée et le résultat concret (chiffré si possible)",
+    },
+    {
+        "label": "Échecs & difficultés",
+        "kind": "q",
+        "points": "les difficultés ou échecs de l'année, leurs causes, la façon dont ils ont été gérés et les enseignements tirés",
+    },
+    {
+        "label": "Compétences",
+        "kind": "q",
+        "points": "les compétences techniques développées cette année, celles à renforcer, et les savoir-être (compétences comportementales)",
+    },
+    {
+        "label": "Aspirations & perspectives",
+        "kind": "q",
+        "points": "les souhaits d'évolution ou de mobilité, les postes ou missions visés, et les formations qui aideraient",
+    },
     {"label": "Conseils de l'agent", "kind": "conseils", "points": ""},
     {"label": "Synthèse finale", "kind": "synthese", "points": ""},
 ]
@@ -305,10 +438,14 @@ def _entretien_methode(sujet: str) -> str:
         "de suivi courte et ciblée pour compléter (sans aucune balise).\n"
         "- Quand, ET SEULEMENT quand, la section a été faite le tour, N'ANNONCE JAMAIS le changement "
         "(jamais de « passons à la section suivante », « nous allons maintenant aborder », « parlons "
-        "de »…). Commence alors ta réponse DIRECTEMENT par la balise " + _SUIVANT + ", puis enchaîne "
+        "de »…). Commence alors ta réponse DIRECTEMENT par la balise "
+        + _SUIVANT
+        + ", puis enchaîne "
         "par une transition NATURELLE qui relie ce qui vient d'être dit au thème suivant, et pose sa "
         "première question ouverte — le tout en un seul message fluide.\n"
-        "- Une seule balise " + _SUIVANT + " par réponse, uniquement en tout début, jamais au milieu, "
+        "- Une seule balise "
+        + _SUIVANT
+        + " par réponse, uniquement en tout début, jamais au milieu, "
         "jamais deux sections d'un coup.\n"
         "- Section « Conseils de l'agent » : au lieu d'une question, donne deux ou trois conseils "
         "personnalisés et concrets pour réussir l'entretien, fondés sur l'échange, puis demande s'il "
@@ -358,8 +495,9 @@ def _roleplay_system(sujet) -> str:
     )
 
 
-def _entretien_messages(system: str, history: list, user_turn: str,
-                        keep: int | None = _MAX_HISTORY) -> list[dict]:
+def _entretien_messages(
+    system: str, history: list, user_turn: str, keep: int | None = _MAX_HISTORY
+) -> list[dict]:
     msgs: list[dict] = [{"role": "system", "content": system}]
     # `keep=None` → TOUT l'historique (indispensable pour la SYNTHÈSE, qui doit être
     # ancrée dans l'ENSEMBLE de l'entretien, pas seulement ses derniers échanges).
@@ -373,8 +511,14 @@ def _entretien_messages(system: str, history: list, user_turn: str,
     return msgs
 
 
-def _entretien_stream(system: str, history: list, user_turn: str, *,
-                      keep: int | None = _MAX_HISTORY, num_ctx: int | None = None):
+def _entretien_stream(
+    system: str,
+    history: list,
+    user_turn: str,
+    *,
+    keep: int | None = _MAX_HISTORY,
+    num_ctx: int | None = None,
+):
     """Streame une réponse d'entretien (tâche `coach` = mistral-nemo, SANS outils).
     `keep=None` inclut tout l'historique (synthèse) ; `num_ctx` peut être élargi."""
     cfg = settings.task_model(_TASK)
@@ -384,15 +528,18 @@ def _entretien_stream(system: str, history: list, user_turn: str, *,
     try:
         got = False
         for ev in chat_stream(model, messages, tools=None, num_ctx=num_ctx):
-            if "delta" in ev and ev["delta"]:
+            if ev.get("delta"):
                 got = True
                 yield {"type": "token", "text": ev["delta"]}
         if got:
             yield {"type": "done", "model": model, "outils": []}
             return
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Entretien IA indisponible (%s) — repli.", e)
-    yield {"type": "token", "text": "Je n'ai pas pu répondre à l'instant. Réessayez dans un moment."}
+    yield {
+        "type": "token",
+        "text": "Je n'ai pas pu répondre à l'instant. Réessayez dans un moment.",
+    }
     yield {"type": "done", "model": "?", "outils": []}
 
 
@@ -429,8 +576,11 @@ def _sujet_contexte(sujet) -> str:
 def _synthese_system(equipe: bool, contexte: str) -> str:
     """System prompt DÉDIÉ à la (re)génération de la synthèse — découplé du flux de
     sections (pas de balise, pas de question) pour un résultat fiable et aéré."""
-    src = ("ce que le manager a dit de son collaborateur"
-           if equipe else "ce que le collaborateur a dit")
+    src = (
+        "ce que le manager a dit de son collaborateur"
+        if equipe
+        else "ce que le collaborateur a dit"
+    )
     return (
         "Tu es un coach RH bienveillant. Rédige la SYNTHÈSE finale (en français) de cette "
         f"préparation d'entretien annuel, en te fondant EXCLUSIVEMENT sur {src} dans "
@@ -444,7 +594,9 @@ def _synthese_system(equipe: bool, contexte: str) -> str:
     )
 
 
-def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False, turns: int = 0) -> str:
+def _entretien_tour(
+    idx, ouverture: bool, message: str, *, equipe: bool = False, turns: int = 0
+) -> str:
     """Consigne d'un tour d'entretien (copilote self OU copilote d'équipe). L'IA décide
     d'avancer (balise _SUIVANT) UNE FOIS la section faite le tour ; un plancher
     d'échanges (`turns`) empêche une avance prématurée."""
@@ -466,31 +618,47 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
     if ouverture:
         # Régénération de la synthèse À LA DEMANDE (bouton) : on est déjà sur la dernière section.
         if cur["kind"] == "synthese":
-            return ("Mets à jour la synthèse finale de la préparation en tenant compte de TOUT l'échange, "
-                    "y compris les tout derniers messages. " + _SYNTHESE_STRUCT + " N'utilise aucune balise.")
+            return (
+                "Mets à jour la synthèse finale de la préparation en tenant compte de TOUT l'échange, "
+                "y compris les tout derniers messages. "
+                + _SYNTHESE_STRUCT
+                + " N'utilise aucune balise."
+            )
         if equipe:
-            return ("Ouvre la préparation : salue le manager, présente-toi en une phrase comme son copilote "
-                    "pour préparer l'entretien annuel de son collaborateur, dis en une phrase que vous allez "
-                    "le préparer ensemble section par section, et demande-lui simplement s'il est prêt. Ne "
-                    "traite encore aucun contenu et n'utilise aucune balise.")
-        return ("Ouvre l'entretien : souhaite la bienvenue au collaborateur, présente-toi en une phrase comme "
-                "son copilote de préparation de l'entretien annuel, explique en une phrase que vous allez le "
-                "préparer ensemble section par section, et demande-lui simplement s'il est prêt. Ne traite "
-                "encore aucun contenu et n'utilise aucune balise.")
-    reponse = f"Message de {'le manager' if equipe else 'le collaborateur'} : « {message.strip()} »."
+            return (
+                "Ouvre la préparation : salue le manager, présente-toi en une phrase comme son copilote "
+                "pour préparer l'entretien annuel de son collaborateur, dis en une phrase que vous allez "
+                "le préparer ensemble section par section, et demande-lui simplement s'il est prêt. Ne "
+                "traite encore aucun contenu et n'utilise aucune balise."
+            )
+        return (
+            "Ouvre l'entretien : souhaite la bienvenue au collaborateur, présente-toi en une phrase comme "
+            "son copilote de préparation de l'entretien annuel, explique en une phrase que vous allez le "
+            "préparer ensemble section par section, et demande-lui simplement s'il est prêt. Ne traite "
+            "encore aucun contenu et n'utilise aucune balise."
+        )
+    reponse = (
+        f"Message de {'le manager' if equipe else 'le collaborateur'} : « {message.strip()} »."
+    )
 
     def next_body() -> str:
         """Ce qu'il faut faire APRÈS la balise, selon la section suivante."""
         if nxt is None:
             return "conclure chaleureusement, sans rien ajouter d'autre"
         if nxt["kind"] == "conseils":
-            return ("donner deux ou trois conseils personnalisés et concrets pour réussir l'entretien, "
-                    "fondés sur l'échange, puis demander s'il reste un point à ajuster")
+            return (
+                "donner deux ou trois conseils personnalisés et concrets pour réussir l'entretien, "
+                "fondés sur l'échange, puis demander s'il reste un point à ajuster"
+            )
         if nxt["kind"] == "synthese":
-            return ("dire en une phrase que vous avez fait le tour de la préparation et que tu établis "
-                    "maintenant sa synthèse (sans rédiger la synthèse toi-même ici)")
-        return (f"relier naturellement ce qui vient d'être dit au thème « {nxt['label']} » et poser sa "
-                f"première question ouverte portant sur {nxt['points']}")
+            return (
+                "dire en une phrase que vous avez fait le tour de la préparation et que tu établis "
+                "maintenant sa synthèse (sans rédiger la synthèse toi-même ici)"
+            )
+        return (
+            f"relier naturellement ce qui vient d'être dit au thème « {nxt['label']} » et poser sa "
+            f"première question ouverte portant sur {nxt['points']}"
+        )
 
     if cur["kind"] == "intro":
         first = _ENTRETIEN_PLAN[1]
@@ -503,28 +671,41 @@ def _entretien_tour(idx, ouverture: bool, message: str, *, equipe: bool = False,
             f"- S'il n'est PAS prêt, hésite, dit « non », pose une question ou demande un moment : "
             f"réponds avec bienveillance (rassure-le, ou réponds à sa question), NE mets SURTOUT PAS "
             f"la balise {_SUIVANT}, ne démarre PAS la première section, et propose gentiment de "
-            f"commencer quand il se sentira prêt.")
+            f"commencer quand il se sentira prêt."
+        )
 
     if cur["kind"] == "q":
-        base = (f"Section en cours : « {cur['label']} ». Points à faire aborder : {cur['points']}.\n{reponse}\n"
-                f"Rebondis en une phrase sur {dire}.")
+        base = (
+            f"Section en cours : « {cur['label']} ». Points à faire aborder : {cur['points']}.\n{reponse}\n"
+            f"Rebondis en une phrase sur {dire}."
+        )
         if turns < _MIN_ECHANGES_SECTION:
-            return (base + " Cette section n'a pas encore été faite le tour : pose UNE question de suivi "
-                    "courte et ciblée pour approfondir un point encore peu abordé. N'écris SURTOUT PAS la "
-                    "balise " + _SUIVANT + ".")
-        return (base + f" Choisis UN seul cas. Cas 1 — il reste un point important à approfondir dans CETTE "
-                f"section : pose UNE question de suivi, SANS aucune balise. Cas 2 — la section a vraiment été "
-                f"faite le tour : écris {_SUIVANT} en tout début, puis {next_body()}. La balise {_SUIVANT} "
-                "signale un VRAI changement de thème ; ne la mets JAMAIS devant une question de suivi qui "
-                "reste sur le thème actuel.")
+            return (
+                base
+                + " Cette section n'a pas encore été faite le tour : pose UNE question de suivi "
+                "courte et ciblée pour approfondir un point encore peu abordé. N'écris SURTOUT PAS la "
+                "balise " + _SUIVANT + "."
+            )
+        return (
+            base
+            + f" Choisis UN seul cas. Cas 1 — il reste un point important à approfondir dans CETTE "
+            f"section : pose UNE question de suivi, SANS aucune balise. Cas 2 — la section a vraiment été "
+            f"faite le tour : écris {_SUIVANT} en tout début, puis {next_body()}. La balise {_SUIVANT} "
+            "signale un VRAI changement de thème ; ne la mets JAMAIS devant une question de suivi qui "
+            "reste sur le thème actuel."
+        )
 
     if cur["kind"] == "conseils":
-        return (f"Section en cours : « Conseils de l'agent ». {reponse}\nRéponds brièvement à sa remarque, "
-                f"puis écris {_SUIVANT} en tête et {next_body()}.")
+        return (
+            f"Section en cours : « Conseils de l'agent ». {reponse}\nRéponds brièvement à sa remarque, "
+            f"puis écris {_SUIVANT} en tête et {next_body()}."
+        )
 
     # Synthèse (terminal)
-    return (f"{reponse}\nRéponds brièvement et chaleureusement, sans aucune balise : l'entretien est déjà "
-            "synthétisé.")
+    return (
+        f"{reponse}\nRéponds brièvement et chaleureusement, sans aucune balise : l'entretien est déjà "
+        "synthétisé."
+    )
 
 
 def _roleplay_turn(ouverture: bool, message: str) -> str:
@@ -561,14 +742,20 @@ def _clean(text: str | None) -> str:
     return re.sub(r"<think>.*?</think>", "", text or "", flags=re.IGNORECASE | re.DOTALL).strip()
 
 
-def _agent_setup(db: Session, user_id: int, message: str, history: list) -> tuple[str, int, list[dict]]:
+def _agent_setup(
+    db: Session, user_id: int, message: str, history: list
+) -> tuple[str, int, list[dict]]:
     """Prépare (modèle, num_ctx, messages) pour l'agent : système + profil fencé,
     historique récent, question courante. Mutualisé mono-coup ↔ streaming."""
     cfg = settings.task_model(_AGENT_TASK)
     model = cfg.get("model", "qwen3:8b")
     num_ctx = int(cfg.get("num_ctx", 8192))
-    system = (_SYSTEM_AGENT + "\n\nPROFIL DU COLLABORATEUR :\n" + fence(_profil_contexte(db, user_id))
-              + _rag_contexte(db, user_id, message))
+    system = (
+        _SYSTEM_AGENT
+        + "\n\nPROFIL DU COLLABORATEUR :\n"
+        + fence(_profil_contexte(db, user_id))
+        + _rag_contexte(db, user_id, message)
+    )
     messages: list[dict] = [{"role": "system", "content": system}]
     for m in history[-_MAX_HISTORY:]:
         role = "user" if getattr(m, "role", "user") == "user" else "assistant"
@@ -588,8 +775,11 @@ def _run_tool(db: Session, user_id: int, tc: dict) -> tuple[str, str]:
         except json.JSONDecodeError:
             args = {}
     handler = _DISPATCH.get(name)
-    result = handler(db, user_id, args) if handler else json.dumps(
-        {"erreur": f"outil inconnu: {name}"}, ensure_ascii=False)
+    result = (
+        handler(db, user_id, args)
+        if handler
+        else json.dumps({"erreur": f"outil inconnu: {name}"}, ensure_ascii=False)
+    )
     return name, result
 
 
@@ -608,8 +798,9 @@ def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
                 if reply:
                     return {"reply": reply, "model": model, "outils": outils}
                 break  # réponse vide -> on force un dernier tour sans outils
-            messages.append({"role": "assistant", "content": msg.get("content") or "",
-                             "tool_calls": calls})
+            messages.append(
+                {"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls}
+            )
             for tc in calls:
                 name, result = _run_tool(db, user_id, tc)
                 outils.append(name)
@@ -619,17 +810,27 @@ def chat_agent(db: Session, user_id: int, message: str, history: list) -> dict:
         reply = _clean(final.get("content"))
         if reply:
             return {"reply": reply, "model": model, "outils": outils}
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Coach agentique indisponible (%s) — repli mono-coup.", e)
 
     # Repli robuste : le MVP mono-coup (contexte statique, sans outils).
     return chat(db, user_id, message, history)
 
 
-def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
-                      mode: str = "carriere", section: str | None = None,
-                      section_index: int | None = None, section_turns: int = 0,
-                      focus: str | None = None, ouverture: bool = False, sujet=None):
+def chat_agent_stream(
+    db: Session,
+    user_id: int,
+    message: str,
+    history: list,
+    *,
+    mode: str = "carriere",
+    section: str | None = None,
+    section_index: int | None = None,
+    section_turns: int = 0,
+    focus: str | None = None,
+    ouverture: bool = False,
+    sujet=None,
+):
     """Coach AGENTIQUE en STREAMING : générateur d'ÉVÉNEMENTS (pour du SSE).
 
     Émet des dicts :
@@ -646,32 +847,50 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
     # --- (Re)génération de la SYNTHÈSE finale : parcours DÉDIÉ, découplé du flux de
     #     sections (prompt focalisé, sans balise ni question) → résultat fiable et aéré.
     #     Déclenché par le front à l'arrivée sur la synthèse ET par le bouton « Régénérer ».
-    if (mode in ("entretien_copilote", "entretien_copilote_equipe")
-            and ouverture and section_index == _LAST_IDX):
+    if (
+        mode in ("entretien_copilote", "entretien_copilote_equipe")
+        and ouverture
+        and section_index == _LAST_IDX
+    ):
         equipe = mode == "entretien_copilote_equipe"
-        ctx = _sujet_contexte(sujet) if (equipe and sujet is not None) else _profil_contexte(db, user_id)
-        turn = ("Rédige la synthèse finale de cette préparation d'entretien annuel, fondée sur les "
-                "échanges ci-dessus. " + _SYNTHESE_STRUCT)
+        ctx = (
+            _sujet_contexte(sujet)
+            if (equipe and sujet is not None)
+            else _profil_contexte(db, user_id)
+        )
+        turn = (
+            "Rédige la synthèse finale de cette préparation d'entretien annuel, fondée sur les "
+            "échanges ci-dessus. " + _SYNTHESE_STRUCT
+        )
         # Synthèse : TOUT l'historique (keep=None) + contexte élargi → ancrée dans
         # l'ENSEMBLE de l'entretien, pas seulement ses derniers échanges.
-        yield from _entretien_stream(_synthese_system(equipe, ctx), history, turn,
-                                     keep=None, num_ctx=8192)
+        yield from _entretien_stream(
+            _synthese_system(equipe, ctx), history, turn, keep=None, num_ctx=8192
+        )
         return
 
     # --- Modes ENTRETIEN : rôle natif (system prompt dédié), sans outils ---
     if mode == "entretien_copilote":
-        system = (_ENTRETIEN_COPILOTE_SYSTEM + "\n\nPROFIL DU COLLABORATEUR :\n"
-                  + fence(_profil_contexte(db, user_id)))
-        yield from _entretien_stream(system, history,
-                                     _entretien_tour(section_index, ouverture, message, turns=section_turns))
+        system = (
+            _ENTRETIEN_COPILOTE_SYSTEM
+            + "\n\nPROFIL DU COLLABORATEUR :\n"
+            + fence(_profil_contexte(db, user_id))
+        )
+        yield from _entretien_stream(
+            system, history, _entretien_tour(section_index, ouverture, message, turns=section_turns)
+        )
         return
     if mode == "entretien_roleplay" and sujet is not None:
-        yield from _entretien_stream(_roleplay_system(sujet), history, _roleplay_turn(ouverture, message))
+        yield from _entretien_stream(
+            _roleplay_system(sujet), history, _roleplay_turn(ouverture, message)
+        )
         return
     if mode == "entretien_copilote_equipe" and sujet is not None:
         yield from _entretien_stream(
-            _copilote_equipe_system(sujet), history,
-            _entretien_tour(section_index, ouverture, message, equipe=True, turns=section_turns))
+            _copilote_equipe_system(sujet),
+            history,
+            _entretien_tour(section_index, ouverture, message, equipe=True, turns=section_turns),
+        )
         return
 
     # --- Mode carrière (agentique, avec outils) — inchangé ---
@@ -693,8 +912,9 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
             # Tour d'outil : d'éventuels fragments déjà émis sont annulés côté client.
             if any(t.strip() for t in turn_text):
                 yield {"type": "reset"}
-            messages.append({"role": "assistant", "content": "".join(turn_text),
-                             "tool_calls": tool_calls})
+            messages.append(
+                {"role": "assistant", "content": "".join(turn_text), "tool_calls": tool_calls}
+            )
             for tc in tool_calls:
                 name, result = _run_tool(db, user_id, tc)
                 outils.append(name)
@@ -706,7 +926,7 @@ def chat_agent_stream(db: Session, user_id: int, message: str, history: list, *,
                 yield {"type": "token", "text": ev["delta"]}
         yield {"type": "done", "model": model, "outils": outils}
         return
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Coach agentique (stream) indisponible (%s) — repli mono-coup.", e)
 
     # Repli robuste : réponse mono-coup, émise en un seul bloc (pas de streaming réel).

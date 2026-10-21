@@ -23,7 +23,7 @@ EMPLACEMENT MVC
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -32,8 +32,12 @@ from sqlalchemy.orm import Session
 from app.models.candidature import Candidature, CandidatureStatut
 from app.models.offre import Offre, OffreCompetence
 from app.models.profil import Profil, ProfilCompetence
-from app.schemas.candidature import (CandidatureCreate, CandidatureOut, EvaluationOut,
-                                     CandidatureMineOut)
+from app.schemas.candidature import (
+    CandidatureCreate,
+    CandidatureMineOut,
+    CandidatureOut,
+    EvaluationOut,
+)
 from app.services import notification_events
 
 _METHODE = "entites_v1"  # appariement déterministe skill_id/libellé (cf. docstring)
@@ -57,7 +61,9 @@ def _index_detenues(detenues: list[ProfilCompetence]) -> tuple[dict, dict]:
     def _garder(bucket: dict, key, comp: ProfilCompetence):
         cur = bucket.get(key)
         niveau = comp.niveau
-        if cur is None or (niveau is not None and (cur["niveau"] is None or niveau > cur["niveau"])):
+        if cur is None or (
+            niveau is not None and (cur["niveau"] is None or niveau > cur["niveau"])
+        ):
             bucket[key] = {"libelle": comp.libelle, "niveau": niveau}
 
     for c in detenues:
@@ -74,13 +80,14 @@ def _index_detenues(detenues: list[ProfilCompetence]) -> tuple[dict, dict]:
 # client » (profil) couvre « relation client » (offre) sans libellé identique.
 # Dégradation silencieuse : si le service d'embeddings est indisponible (ex. tests
 # hors Ollama), on retombe sur l'appariement exact — le contrat de score est stable.
-_SEUIL_SEM = 0.62          # seuil de similarité cosinus pour une couverture
+_SEUIL_SEM = 0.62  # seuil de similarité cosinus pour une couverture
 _emb_cache: dict[str, list[float]] = {}
 
 
 def _cos(a: list[float], b: list[float]) -> float:
     import math
-    s = sum(x * y for x, y in zip(a, b))
+
+    s = sum(x * y for x, y in zip(a, b, strict=False))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(y * y for y in b))
     return s / (na * nb) if na and nb else 0.0
@@ -94,7 +101,8 @@ def _emb_map(labels: list[str]) -> dict[str, list[float]]:
     if missing:
         try:
             from app.services import embedding_service
-            for lab, vec in zip(missing, embedding_service.embed_batch(missing)):
+
+            for lab, vec in zip(missing, embedding_service.embed_batch(missing), strict=False):
                 if vec:
                     _emb_cache[lab] = vec
         except Exception:
@@ -102,7 +110,9 @@ def _emb_map(labels: list[str]) -> dict[str, list[float]]:
     return {lab: _emb_cache[lab] for lab in labs if lab in _emb_cache}
 
 
-def _couverture_semantique(att: OffreCompetence, emb_map: dict, det_emb: list[tuple]) -> dict | None:
+def _couverture_semantique(
+    att: OffreCompetence, emb_map: dict, det_emb: list[tuple]
+) -> dict | None:
     """Meilleure compétence détenue sémantiquement proche de l'attendu (cosinus ≥
     seuil), ou None. `det_emb` = [(vecteur, {libelle, niveau})]."""
     a = emb_map.get(_norm(att.libelle)) or emb_map.get(_norm(att.skill_label_fr))
@@ -131,7 +141,8 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
     """Évalue un profil contre les attendus d'une offre (score + snapshot).
     Score = 100 × Σ poids(couvertes) / Σ poids(attendus). Aucun attendu → 100."""
     attendus = db.scalars(
-        select(OffreCompetence).where(OffreCompetence.offre_id == offre_id)
+        select(OffreCompetence)
+        .where(OffreCompetence.offre_id == offre_id)
         .order_by(OffreCompetence.id)
     ).all()
     detenues = db.scalars(
@@ -151,8 +162,12 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
     for att in attendus:
         poids = _poids(att.importance)
         total += poids
-        base = {"competence": att.libelle, "importance": att.importance,
-                "niveau_requis": att.niveau_requis, "skill_id": att.skill_id}
+        base = {
+            "competence": att.libelle,
+            "importance": att.importance,
+            "niveau_requis": att.niveau_requis,
+            "skill_id": att.skill_id,
+        }
         cov = _trouver_couverture(att, by_skill, by_label)
         semantique = False
         if cov is None:
@@ -160,20 +175,40 @@ def evaluer(db: Session, offre_id: int, profil_id: int) -> EvaluationOut:
             semantique = cov is not None
         if cov is None:
             ecarts.append({**base, "statut": "manquante"})
-        elif (att.niveau_requis is not None and cov["niveau"] is not None
-              and cov["niveau"] < att.niveau_requis):
+        elif (
+            att.niveau_requis is not None
+            and cov["niveau"] is not None
+            and cov["niveau"] < att.niveau_requis
+        ):
             # Compétence présente mais niveau insuffisant -> écart (non acquis).
-            ecarts.append({**base, "statut": "niveau_insuffisant",
-                           "couverte_par": cov["libelle"], "niveau_detenu": cov["niveau"]})
+            ecarts.append(
+                {
+                    **base,
+                    "statut": "niveau_insuffisant",
+                    "couverte_par": cov["libelle"],
+                    "niveau_detenu": cov["niveau"],
+                }
+            )
         else:
             acquis += poids
-            couvertes.append({**base, "statut": "couverte",
-                              "couverte_par": cov["libelle"], "niveau_detenu": cov["niveau"],
-                              **({"match": "semantique"} if semantique else {})})
+            couvertes.append(
+                {
+                    **base,
+                    "statut": "couverte",
+                    "couverte_par": cov["libelle"],
+                    "niveau_detenu": cov["niveau"],
+                    **({"match": "semantique"} if semantique else {}),
+                }
+            )
 
     score = round(100 * acquis / total) if total else 100
-    return EvaluationOut(score=score, methode=_METHODE, attendus_total=len(attendus),
-                         couvertes=couvertes, ecarts=ecarts)
+    return EvaluationOut(
+        score=score,
+        methode=_METHODE,
+        attendus_total=len(attendus),
+        couvertes=couvertes,
+        ecarts=ecarts,
+    )
 
 
 def _to_out(c: Candidature) -> CandidatureOut:
@@ -181,7 +216,7 @@ def _to_out(c: Candidature) -> CandidatureOut:
     if c.evaluation_json:
         try:
             out.evaluation = EvaluationOut.model_validate(json.loads(c.evaluation_json))
-        except Exception:  # noqa: BLE001 — snapshot illisible : on renvoie la candidature sans détail
+        except Exception:
             out.evaluation = None
     return out
 
@@ -196,8 +231,10 @@ def create_candidature(db: Session, data: CandidatureCreate) -> CandidatureOut:
 
     evaluation = evaluer(db, data.offre_id, data.profil_id)
     c = Candidature(
-        offre_id=data.offre_id, profil_id=data.profil_id,
-        statut=CandidatureStatut.DEPOSEE, score=evaluation.score,
+        offre_id=data.offre_id,
+        profil_id=data.profil_id,
+        statut=CandidatureStatut.DEPOSEE,
+        score=evaluation.score,
         evaluation_json=evaluation.model_dump_json(),
         motivation=data.motivation,
     )
@@ -216,13 +253,20 @@ def get_candidature(db: Session, candidature_id: int) -> CandidatureOut | None:
     return _to_out(c) if c else None
 
 
-def list_candidatures(db: Session, *, offre_id: int | None = None,
-                      profil_id: int | None = None, statut: str | None = None,
-                      limit: int = 50, offset: int = 0) -> list[CandidatureOut]:
+def list_candidatures(
+    db: Session,
+    *,
+    offre_id: int | None = None,
+    profil_id: int | None = None,
+    statut: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[CandidatureOut]:
     """Liste paginée. Filtrable par offre (candidats d'une offre), par profil
     (candidatures d'un collaborateur) et par statut."""
-    stmt = select(Candidature).order_by(Candidature.score.desc().nulls_last(),
-                                        Candidature.id.desc())
+    stmt = select(Candidature).order_by(
+        Candidature.score.desc().nulls_last(), Candidature.id.desc()
+    )
     if offre_id is not None:
         stmt = stmt.where(Candidature.offre_id == offre_id)
     if profil_id is not None:
@@ -233,8 +277,9 @@ def list_candidatures(db: Session, *, offre_id: int | None = None,
     return [_to_out(c) for c in db.scalars(stmt).all()]
 
 
-def decide_candidature(db: Session, candidature_id: int, statut: str,
-                       decided_by: int | None) -> CandidatureOut | None:
+def decide_candidature(
+    db: Session, candidature_id: int, statut: str, decided_by: int | None
+) -> CandidatureOut | None:
     """Porte la décision humaine (retenue / rejetee / en_evaluation). None si
     introuvable. Rappel métier : RETENUE est licite même si score < 100 %."""
     c = db.get(Candidature, candidature_id)
@@ -242,7 +287,7 @@ def decide_candidature(db: Session, candidature_id: int, statut: str,
         return None
     c.statut = statut
     c.decided_by = decided_by
-    c.decided_at = datetime.now(timezone.utc)
+    c.decided_at = datetime.now(UTC)
     notification_events.on_candidature_decidee(db, c)  # notifie le candidat (atomique)
     db.commit()
     db.refresh(c)
@@ -270,7 +315,7 @@ def reevaluer_candidature(db: Session, candidature_id: int) -> CandidatureOut | 
     evaluation = evaluer(db, c.offre_id, c.profil_id)
     c.score = evaluation.score
     c.evaluation_json = evaluation.model_dump_json()
-    c.reevaluated_at = datetime.now(timezone.utc)  # trace QUAND le score a été recalculé
+    c.reevaluated_at = datetime.now(UTC)  # trace QUAND le score a été recalculé
     db.commit()
     db.refresh(c)
     return _to_out(c)
@@ -286,8 +331,14 @@ def list_mine(db: Session, profil_id: int) -> list[CandidatureMineOut]:
         .order_by(Candidature.created_at.desc())
     ).all()
     return [
-        CandidatureMineOut(id=c.id, statut=c.statut, score=c.score,
-                           created_at=c.created_at, offre_titre=titre, offre_type=typ)
+        CandidatureMineOut(
+            id=c.id,
+            statut=c.statut,
+            score=c.score,
+            created_at=c.created_at,
+            offre_titre=titre,
+            offre_type=typ,
+        )
         for (c, titre, typ) in rows
     ]
 

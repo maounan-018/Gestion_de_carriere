@@ -18,8 +18,9 @@ ORIGIN = "http://localhost:3000"  # présent dans ALLOWED_ORIGINS des tests
 
 def _login(client) -> dict:
     client.cookies.clear()
-    r = client.post("/api/auth/login",
-                    json={"email": ACCOUNTS["manager"], "password": DEMO_PASSWORD})
+    r = client.post(
+        "/api/auth/login", json={"email": ACCOUNTS["manager"], "password": DEMO_PASSWORD}
+    )
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -57,19 +58,25 @@ def test_cookie_sans_csrf_reste_refuse(client):
 def test_preflight_private_network_access(client):
     """Préflight avec Access-Control-Request-Private-Network: true => le backend
     répond Access-Control-Allow-Private-Network: true (site public -> localhost)."""
-    r = client.options("/api/auth/login", headers={
-        "Origin": ORIGIN,
-        "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Private-Network": "true",
-    })
+    r = client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": ORIGIN,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Private-Network": "true",
+        },
+    )
     assert r.headers.get("access-control-allow-origin") == ORIGIN
     assert r.headers.get("access-control-allow-private-network") == "true"
 
 
 def test_preflight_sans_pna_nomet_pas_len_tete(client):
     """Sans l'en-tête de requête PNA, l'en-tête d'autorisation n'est PAS posé."""
-    r = client.options("/api/auth/login", headers={
-        "Origin": ORIGIN,
-        "Access-Control-Request-Method": "POST",
-    })
+    r = client.options(
+        "/api/auth/login",
+        headers={
+            "Origin": ORIGIN,
+            "Access-Control-Request-Method": "POST",
+        },
+    )
     assert "access-control-allow-private-network" not in r.headers

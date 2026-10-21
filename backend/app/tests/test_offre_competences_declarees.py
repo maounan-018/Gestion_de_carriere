@@ -6,11 +6,17 @@ from app.tests.conftest import auth, hdr
 
 def test_mission_stocke_les_competences_declarees(client, monkeypatch):
     from app.core.config import settings
-    monkeypatch.setattr(settings, "MANAGER_PEUT_PUBLIER", True)  # exerce le chemin publication manager
+
+    monkeypatch.setattr(
+        settings, "MANAGER_PEUT_PUBLIER", True
+    )  # exerce le chemin publication manager
     csrf = auth(client, "manager")
     body = {
-        "titre": "[T] Mission risques", "type": "mission", "statut": "brouillon",
-        "fiche_id": None, "heriter_competences": False,
+        "titre": "[T] Mission risques",
+        "type": "mission",
+        "statut": "brouillon",
+        "fiche_id": None,
+        "heriter_competences": False,
         "competences": [
             {"libelle": "gestion des risques", "skill_id": None, "importance": "essentielle"},
             {"libelle": "communication", "skill_id": None, "importance": "souhaitee"},

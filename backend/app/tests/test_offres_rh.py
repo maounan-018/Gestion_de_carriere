@@ -4,7 +4,7 @@ tests/test_offres_rh.py — Offres côté RH : liste avec stats + candidats (rev
 Couvre le RBAC (RH/ADMIN, MANAGER pour les candidats ; collab interdit).
 """
 
-from app.tests.conftest import auth, anon
+from app.tests.conftest import anon, auth
 
 
 def test_rh_liste_offres(client):

@@ -20,8 +20,9 @@ def _wait_done(job_id: str, user_id: int, tries: int = 80) -> dict | None:
 
 
 def test_job_lance_et_se_termine(monkeypatch):
-    monkeypatch.setattr(rs, "recommander_pour_user",
-                        lambda _db, _uid: {"poste_vise": "Manager", "score_actuel": 50})
+    monkeypatch.setattr(
+        rs, "recommander_pour_user", lambda _db, _uid: {"poste_vise": "Manager", "score_actuel": 50}
+    )
     job_id = rs.launch_reco_job(user_id=77)
     assert isinstance(job_id, str) and job_id
     # Immédiatement après le lancement, le job existe (pending ou déjà done).
@@ -34,13 +35,14 @@ def test_job_lance_et_se_termine(monkeypatch):
 def test_job_ownership(monkeypatch):
     monkeypatch.setattr(rs, "recommander_pour_user", lambda _db, _uid: {"ok": True})
     job_id = rs.launch_reco_job(user_id=5)
-    assert rs.get_reco_job(job_id, 6) is None          # autre utilisateur -> aucun accès
-    assert rs.get_reco_job("inexistant", 5) is None    # job inconnu
+    assert rs.get_reco_job(job_id, 6) is None  # autre utilisateur -> aucun accès
+    assert rs.get_reco_job("inexistant", 5) is None  # job inconnu
 
 
 def test_job_capte_les_erreurs(monkeypatch):
     def boom(_db, _uid):
         raise RuntimeError("Ollama indisponible")
+
     monkeypatch.setattr(rs, "recommander_pour_user", boom)
     j = _wait_done(rs.launch_reco_job(user_id=9), 9)
     assert j and j["status"] == "error" and "Ollama" in (j["error"] or "")

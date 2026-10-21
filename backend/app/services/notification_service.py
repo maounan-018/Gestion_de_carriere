@@ -20,8 +20,9 @@ from app.models.notification import Notification
 from app.schemas.notification import NotificationOut
 
 
-def list_notifications(db: Session, user_id: int, *, only_unread: bool = False,
-                       limit: int = 50, offset: int = 0) -> list[NotificationOut]:
+def list_notifications(
+    db: Session, user_id: int, *, only_unread: bool = False, limit: int = 50, offset: int = 0
+) -> list[NotificationOut]:
     """Notifications de l'utilisateur, plus récentes d'abord."""
     stmt = select(Notification).where(Notification.user_id == user_id)
     if only_unread:
@@ -32,9 +33,13 @@ def list_notifications(db: Session, user_id: int, *, only_unread: bool = False,
 
 
 def count_unread(db: Session, user_id: int) -> int:
-    return len(db.scalars(
-        select(Notification.id).where(Notification.user_id == user_id,
-                                      Notification.lu.is_(False))).all())
+    return len(
+        db.scalars(
+            select(Notification.id).where(
+                Notification.user_id == user_id, Notification.lu.is_(False)
+            )
+        ).all()
+    )
 
 
 def mark_read(db: Session, notification_id: int, user_id: int) -> NotificationOut | None:
@@ -52,15 +57,24 @@ def mark_read(db: Session, notification_id: int, user_id: int) -> NotificationOu
 def mark_all_read(db: Session, user_id: int) -> int:
     """Marque toutes les notifications de l'utilisateur comme lues. Renvoie le nb touché."""
     res = db.execute(
-        update(Notification).where(Notification.user_id == user_id,
-                                   Notification.lu.is_(False)).values(lu=True))
+        update(Notification)
+        .where(Notification.user_id == user_id, Notification.lu.is_(False))
+        .values(lu=True)
+    )
     db.commit()
     return res.rowcount or 0
 
 
-def create_notification(db: Session, *, user_id: int, titre: str, type: str = "info",
-                        texte: str | None = None, to_route: str | None = None,
-                        commit: bool = True) -> Notification:
+def create_notification(
+    db: Session,
+    *,
+    user_id: int,
+    titre: str,
+    type: str = "info",
+    texte: str | None = None,
+    to_route: str | None = None,
+    commit: bool = True,
+) -> Notification:
     """Crée une notification (usage seed / évènements métier)."""
     n = Notification(user_id=user_id, type=type, titre=titre, texte=texte, to_route=to_route)
     db.add(n)
@@ -70,32 +84,49 @@ def create_notification(db: Session, *, user_id: int, titre: str, type: str = "i
     return n
 
 
-def communiquer_aux_rh(db: Session, *, from_name: str, sujet: str, message: str,
-                       to_route: str = "rh.notifications") -> int:
+def communiquer_aux_rh(
+    db: Session, *, from_name: str, sujet: str, message: str, to_route: str = "rh.notifications"
+) -> int:
     """Crée une notification pour CHAQUE utilisateur RH/ADMIN (message d'un manager).
     `to_route` = écran ciblé au clic (défaut : les notifications). Renvoie le nombre
     de destinataires. Une seule transaction."""
-    from app.models.user import User, Role
+    from app.models.user import Role, User
+
     rh = db.scalars(select(User).where(User.role.in_([Role.RH, Role.ADMIN]))).all()
     titre = (sujet.strip() or f"Message de {from_name}")[:200]
     texte = f"De {from_name} (manager) : {message.strip()}"[:1000]
     for u in rh:
-        create_notification(db, user_id=u.id, titre=titre, type="info",
-                            texte=texte, to_route=to_route, commit=False)
+        create_notification(
+            db, user_id=u.id, titre=titre, type="info", texte=texte, to_route=to_route, commit=False
+        )
     db.commit()
     return len(rh)
 
 
-def message_a_profil(db: Session, *, profil_id: int, from_name: str, sujet: str,
-                     message: str, to_route: str | None = None) -> bool:
+def message_a_profil(
+    db: Session,
+    *,
+    profil_id: int,
+    from_name: str,
+    sujet: str,
+    message: str,
+    to_route: str | None = None,
+) -> bool:
     """Notifie le collaborateur d'un profil (RH/manager → collaborateur). Renvoie
     True si une notification a été créée, False si le profil n'a pas de compte
     utilisateur actif (persona synthétique)."""
     from app.models.profil import Profil
+
     profil = db.get(Profil, profil_id)
     if profil is None or profil.user_id is None:
         return False
     titre = (f"{sujet.strip()} — {from_name}" if sujet.strip() else f"Message de {from_name}")[:200]
-    create_notification(db, user_id=profil.user_id, titre=titre, type="info",
-                        texte=message.strip()[:1000], to_route=to_route)
+    create_notification(
+        db,
+        user_id=profil.user_id,
+        titre=titre,
+        type="info",
+        texte=message.strip()[:1000],
+        to_route=to_route,
+    )
     return True

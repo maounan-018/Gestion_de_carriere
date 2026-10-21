@@ -23,8 +23,8 @@ EMPLACEMENT MVC
     Couche "services" : orchestration (gabarit + IA + graphe), sans route HTTP.
 """
 
-import re
 import logging
+import re
 
 from sqlalchemy.orm import Session
 
@@ -59,14 +59,15 @@ def _parse_languages(value: str) -> list[dict]:
     return out
 
 
-def _anchor(db: Session, libelle: str, categorie: str | None, section: str,
-            implicite: bool, top_k: int) -> dict:
+def _anchor(
+    db: Session, libelle: str, categorie: str | None, section: str, implicite: bool, top_k: int
+) -> dict:
     """Rapproche une compétence (nommée ou extraite) des compétences canoniques du graphe."""
     return {
         "libelle": libelle,
-        "categorie": categorie,          # catégorie DÉCLARÉE par la fiche (signal fort)
+        "categorie": categorie,  # catégorie DÉCLARÉE par la fiche (signal fort)
         "source_section": section,
-        "implicite": implicite,          # True = déduite d'un texte libre (mission/activités)
+        "implicite": implicite,  # True = déduite d'un texte libre (mission/activités)
         "matches": search_skills(db, libelle, k=top_k),
     }
 
@@ -98,14 +99,28 @@ def extract_from_fiche(db: Session, sections: dict, top_k: int = 1) -> dict:
         elif kind == "freetext":
             res = skill_extraction_service.extract_skills(db, value, top_k=top_k)
             for s in res.get("skills", []):
-                competences.append({
-                    "libelle": s["raw"], "categorie": sec.get("categorie"),
-                    "source_section": key, "implicite": True, "matches": s["matches"],
-                })
+                competences.append(
+                    {
+                        "libelle": s["raw"],
+                        "categorie": sec.get("categorie"),
+                        "source_section": key,
+                        "implicite": True,
+                        "matches": s["matches"],
+                    }
+                )
 
-    logger.info("Fiche : %d compétences (%d rubriques traitées), %d langue(s).",
-                len(competences), len([s for s in fiche_config_service.get_sections()
-                                       if (sections.get(s["key"]) or "").strip()]), len(langues))
+    logger.info(
+        "Fiche : %d compétences (%d rubriques traitées), %d langue(s).",
+        len(competences),
+        len(
+            [
+                s
+                for s in fiche_config_service.get_sections()
+                if (sections.get(s["key"]) or "").strip()
+            ]
+        ),
+        len(langues),
+    )
     return {
         "poste": poste,
         "competences": competences,

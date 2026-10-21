@@ -39,13 +39,15 @@ class FormationOut(BaseModel):
 
 
 class FormationGenerationRequest(BaseModel):
-    competence: str = Field(..., min_length=2,
-                            description="Compétence à développer (cible de la formation).")
+    competence: str = Field(
+        ..., min_length=2, description="Compétence à développer (cible de la formation)."
+    )
     persister: bool = Field(False, description="Ajouter la formation générée au catalogue.")
 
 
 class FormationGeneree(BaseModel):
     """Formation SYNTHÉTIQUE générée (proposition pédagogique). `id` présent si persistée."""
+
     titre: str
     organisme: str | None = None
     duree: str | None = None

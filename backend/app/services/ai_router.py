@@ -23,9 +23,9 @@ EMPLACEMENT MVC
     Couche "services" : logique IA, sans route HTTP.
 """
 
-import re
 import json
 import logging
+import re
 import threading
 
 import requests
@@ -42,6 +42,7 @@ _GPU_LOCK = threading.Semaphore(1)
 
 
 # ============================ JSON tolérant ============================
+
 
 def extract_json_from_text(text: str) -> dict:
     """Extrait un objet JSON d'une réponse potentiellement bruitée (fences markdown,
@@ -67,14 +68,14 @@ def extract_json_from_text(text: str) -> dict:
     first, last = text.find("{"), text.rfind("}")
     if first != -1 and last > first:
         try:
-            return json.loads(text[first:last + 1])
+            return json.loads(text[first : last + 1])
         except json.JSONDecodeError:
             pass
 
     cleaned = text.replace("\n", " ").replace("\r", "")
     first, last = cleaned.find("{"), cleaned.rfind("}")
     if first != -1 and last > first:
-        return json.loads(cleaned[first:last + 1])
+        return json.loads(cleaned[first : last + 1])
 
     raise json.JSONDecodeError("Aucun JSON valide trouvé", text, 0)
 
@@ -90,8 +91,16 @@ def fence(data: str, tag: str = "donnee") -> str:
 
 # ============================ Appel Ollama ============================
 
-def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
-                   temperature: float, as_json: bool, think: bool | None = None) -> str:
+
+def _post_generate(
+    model: str,
+    prompt: str,
+    system: str,
+    num_ctx: int,
+    temperature: float,
+    as_json: bool,
+    think: bool | None = None,
+) -> str:
     """Un appel HTTP à /api/generate ; renvoie le texte brut de 'response'.
     Les erreurs d'infrastructure (Ollama éteint/timeout) lèvent une HTTPException
     et ne sont pas réessayées (inutile).
@@ -104,24 +113,26 @@ def _post_generate(model: str, prompt: str, system: str, num_ctx: int,
         "system": system or "",
         "prompt": f"/no_think\n{prompt}",
         "stream": False,
-        "keep_alive": settings.OLLAMA_KEEP_ALIVE,   # garde le modèle en VRAM (anti cold-start)
+        "keep_alive": settings.OLLAMA_KEEP_ALIVE,  # garde le modèle en VRAM (anti cold-start)
         "options": {
             "temperature": temperature,
-            "num_ctx": num_ctx,          # borné : évite le débordement CPU (128K par défaut)
+            "num_ctx": num_ctx,  # borné : évite le débordement CPU (128K par défaut)
             "seed": settings.AI_SEED,
         },
     }
     if think is not None:
-        payload["think"] = think        # interrupteur fiable du raisonnement (qwen3…)
+        payload["think"] = think  # interrupteur fiable du raisonnement (qwen3…)
     if as_json:
         payload["format"] = "json"
     try:
-        with _GPU_LOCK:   # une génération LLM à la fois (VRAM 8 Go)
+        with _GPU_LOCK:  # une génération LLM à la fois (VRAM 8 Go)
             r = requests.post(settings.OLLAMA_GENERATE_URL, json=payload, timeout=300)
         r.raise_for_status()
         return r.json().get("response", "")
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve').")
+        raise HTTPException(
+            status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve')."
+        )
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="Le modèle met trop de temps à répondre.")
     except HTTPException:
@@ -145,7 +156,7 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
     as_json = cfg.get("format") == "json"
     num_ctx = int(cfg.get("num_ctx", 4096))
     temperature = float(cfg.get("temperature", 0))
-    think = cfg.get("think")   # None si absent ; False pour couper le thinking (qwen3…)
+    think = cfg.get("think")  # None si absent ; False pour couper le thinking (qwen3…)
     models = [cfg["model"]] + ([cfg["fallback"]] if cfg.get("fallback") else [])
     attempts = max(1, settings.AI_MAX_ATTEMPTS)
 
@@ -159,8 +170,12 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
                 # Erreur d'infra (503/504/500 d'Ollama) : inutile de réessayer CE
                 # modèle -> on bascule sur le suivant (fallback défini dans routing.yaml).
                 last_error = e
-                logger.warning("[%s] modèle %s indisponible (%s) — bascule vers le suivant.",
-                               task, model, e.detail)
+                logger.warning(
+                    "[%s] modèle %s indisponible (%s) — bascule vers le suivant.",
+                    task,
+                    model,
+                    e.detail,
+                )
                 break
             logger.debug("[%s/%s] essai %d : %s…", task, model, attempt, text[:200])
 
@@ -183,14 +198,22 @@ def generate(task: str, prompt: str, system: str = "", is_valid=None):
         return last_parsed
     if last_error is not None:
         raise last_error
-    raise HTTPException(status_code=500,
-                        detail=f"Réponse IA {'invalide' if as_json else 'vide'} pour la tâche '{task}'.")
+    raise HTTPException(
+        status_code=500,
+        detail=f"Réponse IA {'invalide' if as_json else 'vide'} pour la tâche '{task}'.",
+    )
 
 
 # ============================ Chat + outils (agent) ============================
 
-def chat_call(model: str, messages: list[dict], tools: list | None = None,
-              num_ctx: int = 8192, temperature: float = 0) -> dict:
+
+def chat_call(
+    model: str,
+    messages: list[dict],
+    tools: list | None = None,
+    num_ctx: int = 8192,
+    temperature: float = 0,
+) -> dict:
     """Un appel HTTP à /api/chat (multi-tours + tool-calling). Renvoie le dict
     `message` d'Ollama, qui peut contenir `content` et/ou `tool_calls`. Même
     sérialisation GPU et gestion d'erreur d'infra que `generate`."""
@@ -198,19 +221,21 @@ def chat_call(model: str, messages: list[dict], tools: list | None = None,
         "model": model,
         "messages": messages,
         "stream": False,
-        "think": False,                              # coupe le raisonnement des modèles 'thinking'
+        "think": False,  # coupe le raisonnement des modèles 'thinking'
         "keep_alive": settings.OLLAMA_KEEP_ALIVE,
         "options": {"temperature": temperature, "num_ctx": num_ctx, "seed": settings.AI_SEED},
     }
     if tools:
         payload["tools"] = tools
     try:
-        with _GPU_LOCK:   # une génération LLM à la fois (VRAM 8 Go)
+        with _GPU_LOCK:  # une génération LLM à la fois (VRAM 8 Go)
             r = requests.post(settings.OLLAMA_CHAT_URL, json=payload, timeout=300)
         r.raise_for_status()
         return r.json().get("message", {}) or {}
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve').")
+        raise HTTPException(
+            status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve')."
+        )
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="Le modèle met trop de temps à répondre.")
     except HTTPException:
@@ -220,8 +245,13 @@ def chat_call(model: str, messages: list[dict], tools: list | None = None,
         raise HTTPException(status_code=500, detail="Erreur interne lors de l'appel au modèle.")
 
 
-def chat_stream(model: str, messages: list[dict], tools: list | None = None,
-                num_ctx: int = 8192, temperature: float = 0):
+def chat_stream(
+    model: str,
+    messages: list[dict],
+    tools: list | None = None,
+    num_ctx: int = 8192,
+    temperature: float = 0,
+):
     """Variante STREAMING de `chat_call` : générateur qui `yield` au fil de l'eau.
 
     - `{"delta": "<fragment de texte>"}` pour chaque morceau de contenu ;
@@ -241,9 +271,10 @@ def chat_stream(model: str, messages: list[dict], tools: list | None = None,
     if tools:
         payload["tools"] = tools
     try:
-        with _GPU_LOCK:   # sérialise le GPU pour toute la durée du stream
-            with requests.post(settings.OLLAMA_CHAT_URL, json=payload,
-                               stream=True, timeout=300) as r:
+        with _GPU_LOCK:  # sérialise le GPU pour toute la durée du stream
+            with requests.post(
+                settings.OLLAMA_CHAT_URL, json=payload, stream=True, timeout=300
+            ) as r:
                 r.raise_for_status()
                 tool_calls: list = []
                 for line in r.iter_lines():
@@ -263,7 +294,9 @@ def chat_stream(model: str, messages: list[dict], tools: list | None = None,
                         yield {"tool_calls": tool_calls, "done": True}
                         return
     except requests.exceptions.ConnectionError:
-        raise HTTPException(status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve').")
+        raise HTTPException(
+            status_code=503, detail="Ollama n'est pas démarré (lancez 'ollama serve')."
+        )
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="Le modèle met trop de temps à répondre.")
     except HTTPException:
@@ -275,6 +308,7 @@ def chat_stream(model: str, messages: list[dict], tools: list | None = None,
 
 # ============================ Préchauffage ============================
 
+
 def warmup(models: list[str] | None = None) -> None:
     """Précharge des modèles en VRAM (prompt minimal) pour éviter le cold-start du
     PREMIER vrai appel (chargement du modèle = le gros du délai). Best-effort :
@@ -283,11 +317,17 @@ def warmup(models: list[str] | None = None) -> None:
     for model in mods:
         try:
             with _GPU_LOCK:
-                requests.post(settings.OLLAMA_GENERATE_URL, json={
-                    "model": model, "prompt": "ok", "stream": False,
-                    "keep_alive": settings.OLLAMA_KEEP_ALIVE,
-                    "options": {"num_ctx": 512, "num_predict": 1},
-                }, timeout=180)
+                requests.post(
+                    settings.OLLAMA_GENERATE_URL,
+                    json={
+                        "model": model,
+                        "prompt": "ok",
+                        "stream": False,
+                        "keep_alive": settings.OLLAMA_KEEP_ALIVE,
+                        "options": {"num_ctx": 512, "num_predict": 1},
+                    },
+                    timeout=180,
+                )
             logger.info("Modèle préchauffé : %s", model)
-        except Exception as e:  # noqa: BLE001 — le préchauffage ne doit jamais bloquer le boot
+        except Exception as e:
             logger.warning("Préchauffage %s ignoré (%s).", model, e)

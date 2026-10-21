@@ -23,16 +23,16 @@ EMPLACEMENT MVC
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import verify_password, generate_token, hash_token
-from app.models.user import User, UserSession, UserType
+from app.core.security import generate_token, hash_token, verify_password
+from app.models.audit_log import AuditEventType, AuditLog
 from app.models.profil import Profil
-from app.models.audit_log import AuditLog, AuditEventType
+from app.models.user import User, UserSession, UserType
 from app.services import audit_service
 
 logger = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 class AuthError(Exception):
     """Erreur d'authentification métier (code : 'invalid' | 'locked' | 'inactive')."""
+
     def __init__(self, code: str, message: str):
         super().__init__(message)
         self.code = code
@@ -48,57 +49,85 @@ class AuthError(Exception):
 
 def _recent_failures(db: Session, email: str) -> int:
     """Nombre d'échecs de connexion récents (fenêtre de verrouillage) pour cet e-mail."""
-    since = datetime.now(timezone.utc) - timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
-    return db.scalar(
-        select(func.count()).select_from(AuditLog).where(
-            AuditLog.event_type == AuditEventType.LOGIN_FAILED,
-            AuditLog.username == email,
-            AuditLog.created_at >= since,
+    since = datetime.now(UTC) - timedelta(minutes=settings.LOGIN_LOCKOUT_MINUTES)
+    return (
+        db.scalar(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(
+                AuditLog.event_type == AuditEventType.LOGIN_FAILED,
+                AuditLog.username == email,
+                AuditLog.created_at >= since,
+            )
         )
-    ) or 0
+        or 0
+    )
 
 
-def authenticate(db: Session, email: str, password: str, *,
-                 ip: str | None = None, ua: str | None = None) -> User:
+def authenticate(
+    db: Session, email: str, password: str, *, ip: str | None = None, ua: str | None = None
+) -> User:
     """Vérifie les identifiants (auth locale). Lève AuthError sinon."""
     email = (email or "").strip().lower()
 
     if _recent_failures(db, email) >= settings.MAX_LOGIN_ATTEMPTS:
         audit_service.log_event(
-            AuditEventType.LOGIN_FAILED, f"Compte temporairement verrouillé : {email}",
-            status="FAILED", username=email, ip_address=ip, user_agent=ua)
-        raise AuthError("locked",
-                        f"Trop de tentatives. Réessayez dans {settings.LOGIN_LOCKOUT_MINUTES} minutes.")
+            AuditEventType.LOGIN_FAILED,
+            f"Compte temporairement verrouillé : {email}",
+            status="FAILED",
+            username=email,
+            ip_address=ip,
+            user_agent=ua,
+        )
+        raise AuthError(
+            "locked",
+            f"Trop de tentatives. Réessayez dans {settings.LOGIN_LOCKOUT_MINUTES} minutes.",
+        )
 
     user = db.scalar(select(User).where(User.email == email))
     # Comptes SERVICE : jamais de connexion par mot de passe (machine-à-machine).
     valid = bool(
-        user and user.is_active and user.type != UserType.SERVICE
-        and user.password_hash and verify_password(password, user.password_hash)
+        user
+        and user.is_active
+        and user.type != UserType.SERVICE
+        and user.password_hash
+        and verify_password(password, user.password_hash)
     )
     if not valid:
         audit_service.log_event(
-            AuditEventType.LOGIN_FAILED, f"Échec d'authentification : {email}",
-            status="FAILED", username=email, ip_address=ip, user_agent=ua)
+            AuditEventType.LOGIN_FAILED,
+            f"Échec d'authentification : {email}",
+            status="FAILED",
+            username=email,
+            ip_address=ip,
+            user_agent=ua,
+        )
         raise AuthError("invalid", "Identifiants invalides.")
 
     return user
 
 
-def create_session(db: Session, user: User, *,
-                   ip: str | None = None, ua: str | None = None) -> str:
+def create_session(db: Session, user: User, *, ip: str | None = None, ua: str | None = None) -> str:
     """Crée une session et renvoie le token EN CLAIR (à poser en cookie).
     Seul son hachage est stocké en base."""
     token = generate_token()
-    db.add(UserSession(
-        user_id=user.id,
-        token_hash=hash_token(token),
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=settings.TOKEN_EXPIRY_HOURS),
-    ))
+    db.add(
+        UserSession(
+            user_id=user.id,
+            token_hash=hash_token(token),
+            expires_at=datetime.now(UTC) + timedelta(hours=settings.TOKEN_EXPIRY_HOURS),
+        )
+    )
     db.commit()
     audit_service.log_event(
-        AuditEventType.LOGIN_SUCCESS, f"Connexion réussie : {user.email}",
-        user_id=user.id, username=user.email, role=user.role, ip_address=ip, user_agent=ua)
+        AuditEventType.LOGIN_SUCCESS,
+        f"Connexion réussie : {user.email}",
+        user_id=user.id,
+        username=user.email,
+        role=user.role,
+        ip_address=ip,
+        user_agent=ua,
+    )
     return token
 
 
@@ -112,8 +141,8 @@ def resolve_token(db: Session, token: str | None) -> User | None:
         return None
     expires = session.expires_at
     if expires.tzinfo is None:
-        expires = expires.replace(tzinfo=timezone.utc)
-    if expires < datetime.now(timezone.utc):
+        expires = expires.replace(tzinfo=UTC)
+    if expires < datetime.now(UTC):
         db.delete(session)
         db.commit()
         return None
@@ -162,6 +191,7 @@ def annuaire_preload(db: Session, email: str) -> dict:
         "prenom": profil.prenom if profil else None,
         "poste_actuel": profil.poste_actuel if profil else None,
         "departement": _humaniser_dept(
-            (profil.departement_key if profil else None) or user.departement_key),
+            (profil.departement_key if profil else None) or user.departement_key
+        ),
         "manager_nom": manager_nom,
     }

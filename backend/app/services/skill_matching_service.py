@@ -24,7 +24,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from app.services import skill_extraction_service, reranker_service
+from app.services import reranker_service, skill_extraction_service
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +54,16 @@ def build_exigences(extraction: dict, min_ancrage: float = 0.0) -> list[dict]:
     for s in extraction.get("skills", []):
         match = s["matches"][0] if s.get("matches") else None
         if match is not None and _confiance_ancrage(match) < min_ancrage:
-            match = None   # ancrage trop faible -> on retombe sur le libellé brut, fidèle
-        exigences.append({
-            "competence": (match["label_fr"] if match else s["raw"]),
-            "requete": s["raw"] or (match["label_fr"] if match else ""),
-            "importance": s.get("importance") or "essentielle",
-            "skill_id": (match["skill_id"] if match else None),
-            "skill_type": (match["skill_type"] if match else None),
-        })
+            match = None  # ancrage trop faible -> on retombe sur le libellé brut, fidèle
+        exigences.append(
+            {
+                "competence": (match["label_fr"] if match else s["raw"]),
+                "requete": s["raw"] or (match["label_fr"] if match else ""),
+                "importance": s.get("importance") or "essentielle",
+                "skill_id": (match["skill_id"] if match else None),
+                "skill_type": (match["skill_type"] if match else None),
+            }
+        )
     return exigences
 
 
@@ -82,8 +84,12 @@ def evaluate_coverage(profil: list[str], exigences: list[dict], seuil: float = 0
                     i = max(range(len(scores)), key=lambda j: scores[j])
                     if scores[i] > best:
                         best, i_best = scores[i], i
-        base = {"competence": ex["competence"], "importance": ex["importance"],
-                "skill_id": ex.get("skill_id"), "skill_type": ex.get("skill_type")}
+        base = {
+            "competence": ex["competence"],
+            "importance": ex["importance"],
+            "skill_id": ex.get("skill_id"),
+            "skill_type": ex.get("skill_type"),
+        }
         if best >= seuil and i_best >= 0:
             couvertes.append({**base, "couverte_par": profil[i_best], "similarite": round(best, 2)})
         else:
@@ -94,13 +100,16 @@ def evaluate_coverage(profil: list[str], exigences: list[dict], seuil: float = 0
     return round(100 * acquis / total), couvertes, ecarts
 
 
-def match_profile_to_job(db: Session, profil_competences: list[str],
-                         poste_texte: str, seuil: float = 0.5) -> dict:
+def match_profile_to_job(
+    db: Session, profil_competences: list[str], poste_texte: str, seuil: float = 0.5
+) -> dict:
     """Calcule la correspondance profil ↔ poste (conforme à MatchResponse)."""
     extraction = skill_extraction_service.extract_skills(db, poste_texte, top_k=1)
     exigences = build_exigences(extraction)
     score, couvertes, ecarts = evaluate_coverage(profil_competences, exigences, seuil)
-    logger.info("Matching : %d exigences, %d couvertes, score %d.", len(exigences), len(couvertes), score)
+    logger.info(
+        "Matching : %d exigences, %d couvertes, score %d.", len(exigences), len(couvertes), score
+    )
     return {
         "score": score,
         "competences_requises": len(exigences),

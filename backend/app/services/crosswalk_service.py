@@ -23,22 +23,20 @@ EMPLACEMENT MVC
 import json
 import logging
 
-from sqlalchemy import text, select, func
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from app.models.skill import Skill
-from app.models.skill_mapping import SkillMapping
-from app.models.skill_crosswalk import SkillCrosswalk
-from app.models.referential import SourceCode
 from app.database.vector_search import knn_sql
+from app.models.referential import SourceCode
+from app.models.skill import Skill
+from app.models.skill_crosswalk import SkillCrosswalk
+from app.models.skill_mapping import SkillMapping
+from app.services import ai_router, reranker_service
 from app.services.embedding_service import embed_text
-from app.services import reranker_service, ai_router
 
 logger = logging.getLogger(__name__)
 
-_KNN = knn_sql(
-    "s.id, s.label_fr, s.label_en",
-    "vec_skills", "vk", "skills s ON s.id = vk.skill_id")
+_KNN = knn_sql("s.id, s.label_fr, s.label_en", "vec_skills", "vk", "skills s ON s.id = vk.skill_id")
 
 _SYSTEM = """Tu es un expert des référentiels de compétences (RH).
 On te donne DEUX libellés de compétence : une SOURCE et un CANDIDAT ESCO.
@@ -58,27 +56,47 @@ def _label(fr: str | None, en: str | None) -> str:
 
 
 def _confirm(source_label: str, esco_label: str) -> dict:
-    prompt = (f"Compétence SOURCE : {ai_router.fence(source_label)}\n"
-              f"Candidat ESCO : {ai_router.fence(esco_label)}\n"
-              "Désignent-ils la même compétence ?")
+    prompt = (
+        f"Compétence SOURCE : {ai_router.fence(source_label)}\n"
+        f"Candidat ESCO : {ai_router.fence(esco_label)}\n"
+        "Désignent-ils la même compétence ?"
+    )
     try:
-        return ai_router.generate("crosswalk", prompt, _SYSTEM,
-                                  is_valid=lambda r: "equivalent" in r)
-    except Exception as e:  # noqa: BLE001 — un échec LLM ne doit pas casser tout le crosswalk
+        return ai_router.generate(
+            "crosswalk", prompt, _SYSTEM, is_valid=lambda r: "equivalent" in r
+        )
+    except Exception as e:
         logger.warning("Validation LLM indisponible (%s) — candidat écarté.", e)
         return {"equivalent": False, "confidence": 0.0}
 
 
-def build_crosswalk(db: Session, pool: int = 40, top_rerank: int = 12,
-                    min_rerank: float = 0.35, min_conf: float = 0.6) -> dict:
+def build_crosswalk(
+    db: Session,
+    pool: int = 40,
+    top_rerank: int = 12,
+    min_rerank: float = 0.35,
+    min_conf: float = 0.6,
+) -> dict:
     """Aligne les compétences O*NET/SFIA sur ESCO. Idempotent (saute les déjà alignées)."""
-    esco_ids = {r[0] for r in db.execute(
-        select(SkillMapping.skill_id).where(SkillMapping.source == SourceCode.ESCO))}
-    sources = {sid: src for sid, src in db.execute(
-        select(SkillMapping.skill_id, SkillMapping.source)
-        .where(SkillMapping.source.in_([SourceCode.ONET, SourceCode.SFIA]))).all()}
-    logger.info("Crosswalk : %d compétences source (O*NET/SFIA) vers %d compétences ESCO.",
-                len(sources), len(esco_ids))
+    esco_ids = {
+        r[0]
+        for r in db.execute(
+            select(SkillMapping.skill_id).where(SkillMapping.source == SourceCode.ESCO)
+        )
+    }
+    sources = {
+        sid: src
+        for sid, src in db.execute(
+            select(SkillMapping.skill_id, SkillMapping.source).where(
+                SkillMapping.source.in_([SourceCode.ONET, SourceCode.SFIA])
+            )
+        ).all()
+    }
+    logger.info(
+        "Crosswalk : %d compétences source (O*NET/SFIA) vers %d compétences ESCO.",
+        len(sources),
+        len(esco_ids),
+    )
 
     done = {r[0] for r in db.execute(select(SkillCrosswalk.source_skill_id))}
     made = 0
@@ -88,11 +106,15 @@ def build_crosswalk(db: Session, pool: int = 40, top_rerank: int = 12,
         s = db.get(Skill, sid)
         query = _label(s.label_fr, s.label_en)
         rows = db.execute(text(_KNN), {"q": json.dumps(embed_text(query)), "k": pool}).fetchall()
-        cands = [(rid, rfr, ren) for (rid, rfr, ren, _d) in rows if rid in esco_ids and rid != sid][:top_rerank]
+        cands = [(rid, rfr, ren) for (rid, rfr, ren, _d) in rows if rid in esco_ids and rid != sid][
+            :top_rerank
+        ]
         if not cands:
             continue
 
-        scores = reranker_service.rerank_scores(query, [_label(rfr, ren) for (_r, rfr, ren) in cands])
+        scores = reranker_service.rerank_scores(
+            query, [_label(rfr, ren) for (_r, rfr, ren) in cands]
+        )
         bi = max(range(len(cands)), key=lambda k: scores[k])
         rid, bfr, ben = cands[bi]
         rerank_score = float(scores[bi])
@@ -103,12 +125,17 @@ def build_crosswalk(db: Session, pool: int = 40, top_rerank: int = 12,
         if not verdict.get("equivalent") or float(verdict.get("confidence", 0) or 0) < min_conf:
             continue
 
-        db.add(SkillCrosswalk(
-            source_skill_id=sid, canonical_skill_id=rid, source=src,
-            confidence=round((rerank_score + float(verdict["confidence"])) / 2, 4),
-            method="llm", validated=False,
-        ))
-        s.canonical = False   # marque le doublon (résolu vers la compétence ESCO canonique)
+        db.add(
+            SkillCrosswalk(
+                source_skill_id=sid,
+                canonical_skill_id=rid,
+                source=src,
+                confidence=round((rerank_score + float(verdict["confidence"])) / 2, 4),
+                method="llm",
+                validated=False,
+            )
+        )
+        s.canonical = False  # marque le doublon (résolu vers la compétence ESCO canonique)
         made += 1
         if made % 20 == 0:
             db.commit()
@@ -123,18 +150,23 @@ def canonical_id(db: Session, skill_id: int) -> int:
     """Résout une compétence vers sa compétence canonique ESCO (si un crosswalk
     existe), sinon renvoie l'id inchangé. Utilisable par le matching pour
     dédoublonner à la volée."""
-    cw = db.scalar(select(SkillCrosswalk.canonical_skill_id)
-                   .where(SkillCrosswalk.source_skill_id == skill_id))
+    cw = db.scalar(
+        select(SkillCrosswalk.canonical_skill_id).where(SkillCrosswalk.source_skill_id == skill_id)
+    )
     return cw or skill_id
 
 
 def crosswalk_stats(db: Session) -> dict:
     """État du crosswalk (par source)."""
-    by_source = dict(db.execute(
-        select(SkillCrosswalk.source, func.count()).group_by(SkillCrosswalk.source)).all())
+    by_source = dict(
+        db.execute(
+            select(SkillCrosswalk.source, func.count()).group_by(SkillCrosswalk.source)
+        ).all()
+    )
     return {
         "alignements_total": db.scalar(select(func.count()).select_from(SkillCrosswalk)),
         "par_source": by_source,
         "compétences_non_canoniques": db.scalar(
-            select(func.count()).select_from(Skill).where(Skill.canonical.is_(False))),
+            select(func.count()).select_from(Skill).where(Skill.canonical.is_(False))
+        ),
     }

@@ -27,15 +27,15 @@ from __future__ import annotations
 import os
 import random
 import unicodedata
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.profil import Profil, ProfilCompetence
 from app.models.carriere import ProfilStation, StationEtat
+from app.models.profil import Profil, ProfilCompetence
 
 # Même répertoire que le contrôleur (surchargeable par env CV_PROFIL_DIR → isole les tests).
 _CV_DIR = os.environ.get("CV_PROFIL_DIR", os.path.join("data", "cv_profil"))
@@ -47,10 +47,21 @@ GREY_LIGHT = (0x8A, 0x8A, 0x8A)
 RULE = (0xBB, 0xBB, 0xBB)
 
 _REPL = {
-    "’": "'", "‘": "'", "“": '"', "”": '"',
-    "–": "-", "—": "-", "…": "...", "•": "-", "·": "-",
-    "œ": "oe", "Œ": "OE", " ": " ", " ": " ",
-    " ": " ", "​": "",
+    "’": "'",
+    "‘": "'",
+    "“": '"',
+    "”": '"',
+    "–": "-",
+    "—": "-",
+    "…": "...",
+    "•": "-",
+    "·": "-",
+    "œ": "oe",
+    "Œ": "OE",
+    " ": " ",
+    " ": " ",
+    " ": " ",
+    "​": "",
 }
 
 
@@ -67,33 +78,65 @@ def _cap(s: str) -> str:
 
 
 def _strip_accents(s: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c))
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c)
+    )
 
 
 # ---------------------------------------------------------------- Éléments synthétiques
 
 _ECOLES = [
-    ("ISCAE", "Casablanca"), ("ENCG", "Settat"), ("ENCG", "Casablanca"),
-    ("ENCG", "Tanger"), ("Université Hassan II", "Casablanca"),
-    ("Université Mohammed V", "Rabat"), ("HEM Business School", "Casablanca"),
-    ("Al Akhawayn University", "Ifrane"), ("EMI - École Mohammadia d'Ingénieurs", "Rabat"),
-    ("ENSIAS", "Rabat"), ("INPT", "Rabat"), ("ENSA", "Marrakech"),
-    ("Toulouse Business School", "Casablanca"), ("FSJES", "Casablanca"),
+    ("ISCAE", "Casablanca"),
+    ("ENCG", "Settat"),
+    ("ENCG", "Casablanca"),
+    ("ENCG", "Tanger"),
+    ("Université Hassan II", "Casablanca"),
+    ("Université Mohammed V", "Rabat"),
+    ("HEM Business School", "Casablanca"),
+    ("Al Akhawayn University", "Ifrane"),
+    ("EMI - École Mohammadia d'Ingénieurs", "Rabat"),
+    ("ENSIAS", "Rabat"),
+    ("INPT", "Rabat"),
+    ("ENSA", "Marrakech"),
+    ("Toulouse Business School", "Casablanca"),
+    ("FSJES", "Casablanca"),
 ]
-_MENTIONS = ["Mention Bien", "Mention Très Bien", "Mention Assez Bien",
-             "Major de promotion", "", ""]
-_DIPLOMES_DEFAUT = ["Master en Management (Bac+5)", "Master Économie & Gestion",
-                    "Master Sciences de Gestion", "Diplôme de l'ESC (Grande École)"]
+_MENTIONS = [
+    "Mention Bien",
+    "Mention Très Bien",
+    "Mention Assez Bien",
+    "Major de promotion",
+    "",
+    "",
+]
+_DIPLOMES_DEFAUT = [
+    "Master en Management (Bac+5)",
+    "Master Économie & Gestion",
+    "Master Sciences de Gestion",
+    "Diplôme de l'ESC (Grande École)",
+]
 _DIPLOMES_PAR_FAMILLE = {
-    "risque": ["Master Gestion des Risques & Contrôle", "Master Finance de Marché",
-               "Diplôme d'Ingénieur - Ingénierie Financière"],
-    "finance": ["Master Finance d'Entreprise", "Master Comptabilité, Contrôle, Audit",
-                "Diplôme d'Expertise Comptable (en cours)"],
-    "it": ["Diplôme d'Ingénieur en Informatique", "Master Ingénierie des Systèmes d'Information",
-           "Master Data Science & Big Data"],
+    "risque": [
+        "Master Gestion des Risques & Contrôle",
+        "Master Finance de Marché",
+        "Diplôme d'Ingénieur - Ingénierie Financière",
+    ],
+    "finance": [
+        "Master Finance d'Entreprise",
+        "Master Comptabilité, Contrôle, Audit",
+        "Diplôme d'Expertise Comptable (en cours)",
+    ],
+    "it": [
+        "Diplôme d'Ingénieur en Informatique",
+        "Master Ingénierie des Systèmes d'Information",
+        "Master Data Science & Big Data",
+    ],
     "rh": ["Master Management des Ressources Humaines", "Master Gestion des Talents"],
-    "corporate": ["Master Finance d'Entreprise", "Master Management (Grande École)",
-                  "Diplôme d'Ingénieur Financier"],
+    "corporate": [
+        "Master Finance d'Entreprise",
+        "Master Management (Grande École)",
+        "Diplôme d'Ingénieur Financier",
+    ],
     "conformite": ["Master Droit des Affaires", "Master Conformité & Contrôle Interne"],
 }
 
@@ -134,8 +177,7 @@ def _contact(profil: Profil, rng: random.Random) -> tuple[str, str]:
     prenom = _strip_accents(profil.prenom or "").lower().replace(" ", "").replace("'", "")
     nom = _strip_accents(profil.nom or "").lower().replace(" ", "").replace("'", "")
     email = f"{prenom}.{nom}@bmci.local" if (prenom or nom) else "collaborateur@bmci.local"
-    tel = "+212 6 {:02d} {:02d} {:02d} {:02d}".format(
-        rng.randint(0, 99), rng.randint(0, 99), rng.randint(0, 99), rng.randint(0, 99))
+    tel = f"+212 6 {rng.randint(0, 99):02d} {rng.randint(0, 99):02d} {rng.randint(0, 99):02d} {rng.randint(0, 99):02d}"
     return email, tel
 
 
@@ -143,7 +185,9 @@ def _langues(rng: random.Random) -> str:
     parts = [
         "Arabe (langue maternelle)",
         "Français ({})".format(rng.choice(["courant", "bilingue", "langue maternelle"])),
-        "Anglais ({})".format(rng.choice(["courant", "professionnel", "intermédiaire", "B2", "C1"])),
+        "Anglais ({})".format(
+            rng.choice(["courant", "professionnel", "intermédiaire", "B2", "C1"])
+        ),
     ]
     if rng.random() < 0.35:
         parts.append("Espagnol ({})".format(rng.choice(["notions", "B1", "intermédiaire"])))
@@ -151,6 +195,7 @@ def _langues(rng: random.Random) -> str:
 
 
 # ---------------------------------------------------------------- Gabarit PDF (sobre)
+
 
 class _CvPdf(FPDF):
     def __init__(self):
@@ -166,9 +211,13 @@ class _CvPdf(FPDF):
         self.set_y(-10.5)
         self.set_font("Helvetica", "", 7.5)
         self.set_text_color(*GREY_LIGHT)
-        stamp = datetime.now(timezone.utc).strftime("%d/%m/%Y")
-        self.cell(0, 5, _lat(f"Document de démonstration - données synthétiques - BMCI Carrière - {stamp}"),
-                  align="C")
+        stamp = datetime.now(UTC).strftime("%d/%m/%Y")
+        self.cell(
+            0,
+            5,
+            _lat(f"Document de démonstration - données synthétiques - BMCI Carrière - {stamp}"),
+            align="C",
+        )
 
 
 def _txt_w(pdf: _CvPdf) -> float:
@@ -248,8 +297,9 @@ def _experience(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation]):
         pdf.cell(w * 0.72, 5.4, _lat(titre))
         pdf.set_font("Helvetica", "", 8.7)
         pdf.set_text_color(*GREY)
-        pdf.cell(w * 0.28, 5.4, _lat(st.periode or ""), align="R",
-                 new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(
+            w * 0.28, 5.4, _lat(st.periode or ""), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT
+        )
         if st.description:
             pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(*GREY)
@@ -269,8 +319,14 @@ def _formation(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation], rng: 
             pdf.cell(w * 0.78, 5.2, _lat(_clean_edu_titre(st.titre)))
             pdf.set_font("Helvetica", "", 8.7)
             pdf.set_text_color(*GREY)
-            pdf.cell(w * 0.22, 5.2, _lat(st.periode or ""), align="R",
-                     new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.cell(
+                w * 0.22,
+                5.2,
+                _lat(st.periode or ""),
+                align="R",
+                new_x=XPos.LMARGIN,
+                new_y=YPos.NEXT,
+            )
             pdf.ln(0.8)
         return
     # Aucune formation en base → entrée SYNTHÉTIQUE déterministe.
@@ -284,8 +340,14 @@ def _formation(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation], rng: 
     pdf.cell(w * 0.72, 5.2, _lat(f"{ecole} - {ville}"))
     pdf.set_font("Helvetica", "", 8.7)
     pdf.set_text_color(*GREY)
-    pdf.cell(w * 0.28, 5.2, _lat(f"{annee - rng.randint(3, 5)} - {annee}"), align="R",
-             new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(
+        w * 0.28,
+        5.2,
+        _lat(f"{annee - rng.randint(3, 5)} - {annee}"),
+        align="R",
+        new_x=XPos.LMARGIN,
+        new_y=YPos.NEXT,
+    )
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(*GREY)
     ligne = diplome + (f"  |  {mention}" if mention else "")
@@ -294,20 +356,37 @@ def _formation(pdf: _CvPdf, profil: Profil, stations: list[ProfilStation], rng: 
 
 
 _CAT_LABEL = {
-    "metier": "Métier", "métier": "Métier", "business": "Métier",
-    "outil_technologie": "Outils & technologies", "outils": "Outils & technologies",
-    "outil": "Outils & technologies", "technique": "Outils & technologies",
-    "tech": "Outils & technologies", "technologie": "Outils & technologies", "digital": "Outils & technologies",
+    "metier": "Métier",
+    "métier": "Métier",
+    "business": "Métier",
+    "outil_technologie": "Outils & technologies",
+    "outils": "Outils & technologies",
+    "outil": "Outils & technologies",
+    "technique": "Outils & technologies",
+    "tech": "Outils & technologies",
+    "technologie": "Outils & technologies",
+    "digital": "Outils & technologies",
     "data": "Data & analyse",
-    "transversale": "Compétences transverses", "transversal": "Compétences transverses",
-    "leadership": "Leadership & management", "management": "Leadership & management",
-    "comportementale": "Comportementales", "comportemental": "Comportementales",
-    "comportement": "Comportementales", "soft": "Comportementales",
-    "langue": "Langues", "langues": "Langues",
+    "transversale": "Compétences transverses",
+    "transversal": "Compétences transverses",
+    "leadership": "Leadership & management",
+    "management": "Leadership & management",
+    "comportementale": "Comportementales",
+    "comportemental": "Comportementales",
+    "comportement": "Comportementales",
+    "soft": "Comportementales",
+    "langue": "Langues",
+    "langues": "Langues",
 }
-_CAT_ORDER = ["Métier", "Outils & technologies", "Data & analyse",
-              "Compétences transverses", "Leadership & management",
-              "Comportementales", "Autres compétences"]
+_CAT_ORDER = [
+    "Métier",
+    "Outils & technologies",
+    "Data & analyse",
+    "Compétences transverses",
+    "Leadership & management",
+    "Comportementales",
+    "Autres compétences",
+]
 
 
 def _competences(pdf: _CvPdf, comps: list[ProfilCompetence], rng: random.Random):
@@ -317,7 +396,9 @@ def _competences(pdf: _CvPdf, comps: list[ProfilCompetence], rng: random.Random)
         label = _cap(_comp_label(c))
         if not label:
             continue
-        cat = _CAT_LABEL.get((getattr(c, "categorie", None) or "").strip().lower(), "Autres compétences")
+        cat = _CAT_LABEL.get(
+            (getattr(c, "categorie", None) or "").strip().lower(), "Autres compétences"
+        )
         groupes.setdefault(cat, [])
         if label not in groupes[cat]:
             groupes[cat].append(label)
@@ -346,8 +427,11 @@ def _competences(pdf: _CvPdf, comps: list[ProfilCompetence], rng: random.Random)
 def _projet(pdf: _CvPdf, profil: Profil):
     lignes = []
     if getattr(profil, "poste_vise", None):
-        details = " - ".join(x for x in (getattr(profil, "horizon", None),
-                                         getattr(profil, "type_evolution", None)) if x)
+        details = " - ".join(
+            x
+            for x in (getattr(profil, "horizon", None), getattr(profil, "type_evolution", None))
+            if x
+        )
         cible = f"Poste visé : {profil.poste_vise}" + (f"  ({details})" if details else "")
         lignes.append(cible)
     if getattr(profil, "aspirations", None):
@@ -365,6 +449,7 @@ def _projet(pdf: _CvPdf, profil: Profil):
 
 # ---------------------------------------------------------------- Collecte & API
 
+
 def _comp_label(c: ProfilCompetence) -> str:
     """Libellé d'affichage : le libellé DÉCLARÉ (naturel, ex. « Veille réglementaire »)
     est préféré au libellé canonique ESCO (verbeux, ex. « suivre l'évolution de la
@@ -373,14 +458,16 @@ def _comp_label(c: ProfilCompetence) -> str:
 
 
 def _collecter(db: Session, profil: Profil):
-    stations = list(db.scalars(
-        select(ProfilStation)
-        .where(ProfilStation.profil_id == profil.id)
-        .order_by(ProfilStation.ordre)
-    ).all())
-    comps = list(db.scalars(
-        select(ProfilCompetence).where(ProfilCompetence.profil_id == profil.id)
-    ).all())
+    stations = list(
+        db.scalars(
+            select(ProfilStation)
+            .where(ProfilStation.profil_id == profil.id)
+            .order_by(ProfilStation.ordre)
+        ).all()
+    )
+    comps = list(
+        db.scalars(select(ProfilCompetence).where(ProfilCompetence.profil_id == profil.id)).all()
+    )
     poste_l = (profil.poste_actuel or "").strip().lower()
     # Dédoublonnage par libellé (naturel) en conservant le meilleur niveau connu ;
     # on écarte toute « compétence » égale à l'intitulé de poste (pseudo-compétence).
@@ -397,7 +484,9 @@ def _collecter(db: Session, profil: Profil):
 
 
 def _nom_complet(profil: Profil) -> str:
-    return " ".join(x for x in (profil.prenom, profil.nom) if x).strip() or (profil.nom or "Collaborateur")
+    return " ".join(x for x in (profil.prenom, profil.nom) if x).strip() or (
+        profil.nom or "Collaborateur"
+    )
 
 
 def _humaniser_dept(key: str | None) -> str | None:
@@ -452,13 +541,12 @@ def generer_cv_profil(db: Session, profil_id: int, *, out_dir: str = _CV_DIR) ->
 
     slug = "-".join(nom.split())
     profil.cv_filename = _lat(f"CV-{slug}.pdf")[:255]
-    profil.cv_uploaded_at = datetime.now(timezone.utc)
+    profil.cv_uploaded_at = datetime.now(UTC)
     db.commit()
     return path
 
 
-def generer_tous_les_cv(db: Session, *, out_dir: str = _CV_DIR,
-                        only_missing: bool = False) -> dict:
+def generer_tous_les_cv(db: Session, *, out_dir: str = _CV_DIR, only_missing: bool = False) -> dict:
     """Génère les CV de TOUS les profils. `only_missing` saute ceux qui ont déjà un
     `cv_filename`. Renvoie un résumé {generes, ignores, total}."""
     profils = list(db.scalars(select(Profil).order_by(Profil.id)).all())

@@ -20,14 +20,14 @@ EMPLACEMENT MVC
 
 from typing import Annotated
 
-from fastapi import Request, HTTPException, Depends
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.database.session import get_db
-from app.models.user import User
 from app.models.audit_log import AuditEventType
-from app.services import auth_service, audit_service
+from app.models.user import User
+from app.services import audit_service, auth_service
 
 _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
@@ -74,25 +74,36 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = auth_service.resolve_token(db, extract_token(request))
     if not user:
         audit_service.log_event(
-            AuditEventType.ACCESS_DENIED, f"Accès non authentifié : {request.url.path}",
-            status="FAILED", ip_address=client_ip(request),
+            AuditEventType.ACCESS_DENIED,
+            f"Accès non authentifié : {request.url.path}",
+            status="FAILED",
+            ip_address=client_ip(request),
             user_agent=request.headers.get("user-agent"),
-            endpoint=request.url.path, http_method=request.method)
+            endpoint=request.url.path,
+            http_method=request.method,
+        )
         raise HTTPException(status_code=401, detail="Authentification requise.")
     return user
 
 
 def require_roles(*roles: str):
     """Fabrique un guard RBAC restreignant la route aux rôles indiqués."""
+
     def guard(request: Request, user: User = Depends(get_current_user)) -> User:
         if roles and user.role not in roles:
             audit_service.log_event(
                 AuditEventType.ACCESS_DENIED,
                 f"Rôle insuffisant ({user.role}) pour {request.url.path}",
-                status="FAILED", user_id=user.id, username=user.email, role=user.role,
-                endpoint=request.url.path, http_method=request.method)
+                status="FAILED",
+                user_id=user.id,
+                username=user.email,
+                role=user.role,
+                endpoint=request.url.path,
+                http_method=request.method,
+            )
             raise HTTPException(status_code=403, detail="Droits insuffisants.")
         return user
+
     return guard
 
 

@@ -3,7 +3,7 @@
 tests/test_carriere.py — Profil carrière enrichi + filtre équipe (Batch 3).
 """
 
-from app.tests.conftest import auth, anon
+from app.tests.conftest import anon, auth
 
 
 def _profil_id(client, nom: str) -> int:

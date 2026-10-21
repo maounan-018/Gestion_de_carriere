@@ -36,12 +36,16 @@ def _load():
     if _model is None:
         with _lock:
             if _model is None:
-                from transformers import AutoTokenizer, AutoModelForSequenceClassification
-                logger.info("Chargement du reranker %s (CPU, cache local)…", settings.RERANKER_MODEL)
+                from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+                logger.info(
+                    "Chargement du reranker %s (CPU, cache local)…", settings.RERANKER_MODEL
+                )
                 # local_files_only : jamais d'appel réseau (modèle en cache HF) —
                 # robuste ET conforme à l'exigence 100 % local.
                 _tokenizer = AutoTokenizer.from_pretrained(
-                    settings.RERANKER_MODEL, local_files_only=True)
+                    settings.RERANKER_MODEL, local_files_only=True
+                )
                 _model = AutoModelForSequenceClassification.from_pretrained(
                     settings.RERANKER_MODEL, local_files_only=True
                 ).eval()
@@ -59,8 +63,11 @@ def rerank_scores(query: str, passages: list[str], max_length: int = 512) -> lis
     pairs = [[query, p or ""] for p in passages]
     with torch.no_grad():
         inputs = tokenizer(
-            pairs, padding=True, truncation=True,
-            max_length=max_length, return_tensors="pt",
+            pairs,
+            padding=True,
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
         )
         logits = model(**inputs).logits.view(-1).float()
         scores = torch.sigmoid(logits)

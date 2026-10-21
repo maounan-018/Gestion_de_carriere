@@ -19,18 +19,25 @@ from app.schemas.skill_extraction import MatchedSkill
 
 class FicheRequest(BaseModel):
     sections: dict[str, str] = Field(
-        ..., description="Rubriques de la fiche : clé de section (gabarit) -> texte.")
-    top_k: int = Field(1, ge=1, le=5,
-                       description="Nombre de compétences canoniques rapprochées par compétence.")
+        ..., description="Rubriques de la fiche : clé de section (gabarit) -> texte."
+    )
+    top_k: int = Field(
+        1, ge=1, le=5, description="Nombre de compétences canoniques rapprochées par compétence."
+    )
 
 
 class FicheCompetence(BaseModel):
     libelle: str = Field(..., description="Compétence telle que lue/extraite de la fiche.")
-    categorie: str | None = Field(None, description="metier | comportementale | transversale | outil_technologie")
+    categorie: str | None = Field(
+        None, description="metier | comportementale | transversale | outil_technologie"
+    )
     source_section: str = Field(..., description="Rubrique d'origine (clé du gabarit).")
-    implicite: bool = Field(False, description="True = déduite d'un texte libre (mission/activités).")
-    matches: list[MatchedSkill] = Field(default_factory=list,
-                                        description="Compétences canoniques du graphe rapprochées.")
+    implicite: bool = Field(
+        False, description="True = déduite d'un texte libre (mission/activités)."
+    )
+    matches: list[MatchedSkill] = Field(
+        default_factory=list, description="Compétences canoniques du graphe rapprochées."
+    )
 
 
 class Langue(BaseModel):
@@ -39,13 +46,16 @@ class Langue(BaseModel):
 
 
 class FicheResponse(BaseModel):
-    poste: dict[str, str] = Field(default_factory=dict, description="Métadonnées (famille, périmètre, code, intitulé…).")
+    poste: dict[str, str] = Field(
+        default_factory=dict, description="Métadonnées (famille, périmètre, code, intitulé…)."
+    )
     competences: list[FicheCompetence]
     langues: list[Langue] = Field(default_factory=list)
     indicateurs_performance: list[str] = Field(default_factory=list)
 
 
 # ---- Gabarit (typologie éditable) ----
+
 
 class GabaritSection(BaseModel):
     key: str
@@ -62,6 +72,7 @@ class GabaritResponse(BaseModel):
 
 # ---- Cartographie & génération de fiche ----
 
+
 class DepartementInfo(BaseModel):
     key: str
     nom: str
@@ -71,6 +82,7 @@ class DepartementInfo(BaseModel):
 
 class CartographieDoc(BaseModel):
     """Cartographie complète (pour l'éditeur RBAC : lecture + enregistrement)."""
+
     version: int | None = None
     departements: list[DepartementInfo] = Field(..., min_length=1)
 
@@ -85,5 +97,6 @@ class FicheGeneree(BaseModel):
     departement: str
     synthetique: bool = Field(True, description="Contenu généré (jamais des données réelles).")
     sections: dict[str, str] = Field(..., description="Fiche au format du gabarit.")
-    competences_reference: list[str] = Field(default_factory=list,
-                                             description="Compétences du graphe ayant ancré la génération.")
+    competences_reference: list[str] = Field(
+        default_factory=list, description="Compétences du graphe ayant ancré la génération."
+    )

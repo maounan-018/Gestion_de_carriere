@@ -55,12 +55,14 @@ def generer(db: Session, competence: str) -> dict:
     comp = (competence or "").strip()
     matches = search_skills(db, comp, k=1)
     cible = matches[0]["label_fr"] if matches else comp
-    prompt = (f"Compétence à développer : {cible}\n"
-              f"(saisie de l'utilisateur : « {comp} »)\nBanque : BMCI (Maroc).\n\n"
-              "Propose la formation au format JSON demandé.")
+    prompt = (
+        f"Compétence à développer : {cible}\n"
+        f"(saisie de l'utilisateur : « {comp} »)\nBanque : BMCI (Maroc).\n\n"
+        "Propose la formation au format JSON demandé."
+    )
     try:
         r = generate(_TASK, prompt, system=_SYSTEM, is_valid=_is_valid)
-    except Exception as e:  # noqa: BLE001 — indisponibilité IA
+    except Exception as e:
         logger.warning("Génération de formation indisponible (%s).", e)
         r = {}
     r = r if isinstance(r, dict) else {}

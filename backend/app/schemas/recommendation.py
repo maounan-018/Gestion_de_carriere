@@ -18,28 +18,38 @@ from pydantic import BaseModel, Field
 
 
 class RecommendationRequest(BaseModel):
-    profil_competences: list[str] = Field(..., min_length=1,
-                                          description="Compétences actuelles du collaborateur.")
+    profil_competences: list[str] = Field(
+        ..., min_length=1, description="Compétences actuelles du collaborateur."
+    )
     poste_texte: str = Field(..., min_length=10, description="Descriptif du poste visé.")
-    seuil: float = Field(0.5, ge=0.0, le=1.0,
-                         description="Seuil de couverture (reranker) en-deçà duquel une compétence est un écart.")
+    seuil: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Seuil de couverture (reranker) en-deçà duquel une compétence est un écart.",
+    )
 
 
 class EtapeFormation(BaseModel):
     competence: str
     importance: str | None = None
     type: str | None = None
-    niveau_sfia: int | None = Field(None, description="Niveau SFIA visé (1..7) si compétence numérique.")
+    niveau_sfia: int | None = Field(
+        None, description="Niveau SFIA visé (1..7) si compétence numérique."
+    )
     description: str | None = None
-    sous_competences: list[str] = Field(default_factory=list,
-                                        description="Sous-compétences (graphe) = étapes concrètes d'apprentissage.")
+    sous_competences: list[str] = Field(
+        default_factory=list,
+        description="Sous-compétences (graphe) = étapes concrètes d'apprentissage.",
+    )
 
 
 class Passerelle(BaseModel):
     metier: str
     source: str
-    pertinence: float = Field(..., ge=0.0, le=1.0,
-                              description="Proximité sémantique du métier avec le poste visé (0..1).")
+    pertinence: float = Field(
+        ..., ge=0.0, le=1.0, description="Proximité sémantique du métier avec le poste visé (0..1)."
+    )
 
 
 class RecommendationResponse(BaseModel):
@@ -51,18 +61,21 @@ class RecommendationResponse(BaseModel):
     passerelles_metiers: list[Passerelle]
     plan_developpement: str
     confiance: Literal["clair", "ambigu", "indisponible"] = Field(
-        "clair", description="Fiabilité de l'objectif détecté : 'ambigu' -> à préciser.")
+        "clair", description="Fiabilité de l'objectif détecté : 'ambigu' -> à préciser."
+    )
 
 
 # --- Reco asynchrone (le pipeline Ollama est lent : lancer puis interroger) ----
 class RecoJobLaunched(BaseModel):
     """Réponse au lancement : un identifiant de job à interroger ensuite."""
+
     job_id: str
     status: str = "pending"
 
 
 class RecoJobStatus(BaseModel):
     """État d'un job de reco : `result` peuplé quand `status == done`."""
+
     status: Literal["pending", "done", "error"]
     result: RecommendationResponse | None = None
     error: str | None = None

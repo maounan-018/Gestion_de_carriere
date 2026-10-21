@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class SyntheseEntretienIn(BaseModel):
     """Synthèse de la simulation à conserver (texte brut)."""
+
     synthese: str = Field(..., min_length=1, max_length=20000)
 
 

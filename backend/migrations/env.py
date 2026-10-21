@@ -15,9 +15,9 @@ from alembic import context
 # backend/ sur le sys.path pour importer le package `app`
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.database.base import Base          # noqa: E402
-from app.database.session import engine     # noqa: E402
-import app.models                           # noqa: E402,F401 — enregistre toutes les tables
+import app.models  # noqa: F401 — enregistre toutes les tables
+from app.database.base import Base
+from app.database.session import engine
 
 config = context.config
 if config.config_file_name is not None:
@@ -41,9 +41,12 @@ _IS_SQLITE = engine.dialect.name == "sqlite"
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=str(engine.url), target_metadata=target_metadata,
-        literal_binds=True, include_object=include_object,
-        render_as_batch=_IS_SQLITE, dialect_opts={"paramstyle": "named"},
+        url=str(engine.url),
+        target_metadata=target_metadata,
+        literal_binds=True,
+        include_object=include_object,
+        render_as_batch=_IS_SQLITE,
+        dialect_opts={"paramstyle": "named"},
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -52,8 +55,10 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     with engine.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata,
-            include_object=include_object, render_as_batch=_IS_SQLITE,  # SQLite : ALTER via batch
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+            render_as_batch=_IS_SQLITE,  # SQLite : ALTER via batch
         )
         with context.begin_transaction():
             context.run_migrations()

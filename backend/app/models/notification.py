@@ -12,20 +12,20 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class NotificationType:
-    INFO = "info"           # information générale
-    OFFRE = "offre"         # offre/mobilité compatible
+    INFO = "info"  # information générale
+    OFFRE = "offre"  # offre/mobilité compatible
     ENTRETIEN = "entretien"  # entretien à préparer / planifié
-    SOUHAIT = "souhait"     # souhait d'évolution (consulté, poussé…)
-    ACTION = "action"       # action attendue de l'utilisateur
+    SOUHAIT = "souhait"  # souhait d'évolution (consulté, poussé…)
+    ACTION = "action"  # action attendue de l'utilisateur
 
 
 class Notification(Base):
@@ -36,7 +36,10 @@ class Notification(Base):
     type: Mapped[str] = mapped_column(String(16), default=NotificationType.INFO)
     titre: Mapped[str] = mapped_column(String(200))
     texte: Mapped[str | None] = mapped_column(Text, default=None)
-    to_route: Mapped[str | None] = mapped_column(String(64), default=None)  # route front de destination
+    to_route: Mapped[str | None] = mapped_column(
+        String(64), default=None
+    )  # route front de destination
     lu: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+        DateTime, default=lambda: datetime.now(UTC), index=True
+    )

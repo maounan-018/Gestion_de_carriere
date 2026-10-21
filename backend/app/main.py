@@ -19,17 +19,30 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
+from app.controllers import (
+    auth_controller,
+    besoin_controller,
+    candidature_controller,
+    coach_controller,
+    coach_rag_controller,
+    dashboard_controller,
+    entretien_controller,
+    fiche_controller,
+    formation_controller,
+    normalisation_controller,
+    notification_controller,
+    offre_controller,
+    profil_controller,
+    recommendation_controller,
+    redaction_controller,
+    rh_controller,
+    skill_extraction_controller,
+    skill_matching_controller,
+    souhait_controller,
+)
 from app.core.config import settings
 from app.core.http_hardening import SecurityHeadersMiddleware
 from app.services import ai_router
-from app.controllers import (skill_extraction_controller, skill_matching_controller,
-                             recommendation_controller, fiche_controller, auth_controller,
-                             profil_controller, offre_controller, candidature_controller,
-                             notification_controller, souhait_controller, formation_controller,
-                             dashboard_controller, rh_controller, coach_controller,
-                             coach_rag_controller,
-                             redaction_controller, normalisation_controller,
-                             entretien_controller, besoin_controller)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -98,4 +111,7 @@ app.include_router(besoin_controller.router)
 @app.get("/sante", tags=["Système"], summary="Vérifier que l'API répond")
 def sante() -> dict:
     """Sonde de vivacité — ne dépend ni du LLM ni des embeddings."""
-    return {"statut": "ok", "modele_extraction": settings.task_model("extraction_competences").get("model")}
+    return {
+        "statut": "ok",
+        "modele_extraction": settings.task_model("extraction_competences").get("model"),
+    }

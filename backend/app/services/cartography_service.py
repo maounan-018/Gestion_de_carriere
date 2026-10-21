@@ -33,7 +33,7 @@ _HEADER = (
 def load() -> dict:
     if not os.path.exists(PATH):
         raise FileNotFoundError(f"Cartographie introuvable : {PATH}")
-    with open(PATH, "r", encoding="utf-8") as f:
+    with open(PATH, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
@@ -54,7 +54,9 @@ def _validate(data: dict) -> dict:
     for d in depts:
         key, nom = d.get("key"), d.get("nom")
         if not key or key in seen:
-            raise ValueError(f"Cartographie invalide : clé de département manquante ou dupliquée ({key}).")
+            raise ValueError(
+                f"Cartographie invalide : clé de département manquante ou dupliquée ({key})."
+            )
         if not nom:
             raise ValueError(f"Cartographie invalide : 'nom' manquant pour le département {key}.")
         metiers = d.get("metiers", [])

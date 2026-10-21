@@ -11,12 +11,12 @@ EMPLACEMENT MVC
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
 from app.auth.dependencies import get_current_user
 from app.core.rate_limit import ia_rate_limit
+from app.database.session import get_db
 from app.models.skill import Skill
 from app.schemas.skill_matching import MatchRequest, MatchResponse
 from app.services import skill_matching_service
@@ -24,11 +24,16 @@ from app.services import skill_matching_service
 router = APIRouter(prefix="/api/competences", tags=["Compétences"])
 
 
-@router.get("/rechercher", dependencies=[Depends(get_current_user)],
-            summary="Autocomplétion du référentiel de compétences CANONIQUES (sans LLM)")
-def rechercher_competences(q: str = Query(..., min_length=2, max_length=120),
-                           k: int = Query(8, ge=1, le=20),
-                           db: Session = Depends(get_db)) -> list[dict]:
+@router.get(
+    "/rechercher",
+    dependencies=[Depends(get_current_user)],
+    summary="Autocomplétion du référentiel de compétences CANONIQUES (sans LLM)",
+)
+def rechercher_competences(
+    q: str = Query(..., min_length=2, max_length=120),
+    k: int = Query(8, ge=1, le=20),
+    db: Session = Depends(get_db),
+) -> list[dict]:
     """Recherche par libellé (LIKE, sans LLM) les compétences canoniques du
     référentiel (ESCO/O*NET/SFIA). Sert au manager pour déclarer des attendus
     ANCRÉS (skill_id) lors de la publication d'une offre/mission/projet."""
@@ -42,11 +47,15 @@ def rechercher_competences(q: str = Query(..., min_length=2, max_length=120),
     return [{"skill_id": r[0], "label": r[1]} for r in rows]
 
 
-@router.post("/matching", response_model=MatchResponse,
-             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
-             summary="Mesurer la correspondance entre un profil et un poste")
+@router.post(
+    "/matching",
+    response_model=MatchResponse,
+    dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
+    summary="Mesurer la correspondance entre un profil et un poste",
+)
 def matching_profil_poste(req: MatchRequest, db: Session = Depends(get_db)) -> MatchResponse:
     """Calcule le score d'adéquation d'un profil à un poste et détaille les
     compétences couvertes et les écarts (besoins de formation)."""
     return skill_matching_service.match_profile_to_job(
-        db, req.profil_competences, req.poste_texte, req.seuil)
+        db, req.profil_competences, req.poste_texte, req.seuil
+    )

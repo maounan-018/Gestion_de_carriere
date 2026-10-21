@@ -16,14 +16,20 @@ from pydantic import BaseModel, Field
 
 
 class ExtractRequest(BaseModel):
-    text: str = Field(..., min_length=10,
-                      description="Descriptif de poste, de mission ou d'offre à analyser.")
-    top_k: int = Field(1, ge=1, le=5,
-                       description="Nombre de compétences canoniques rapprochées par compétence extraite.")
+    text: str = Field(
+        ..., min_length=10, description="Descriptif de poste, de mission ou d'offre à analyser."
+    )
+    top_k: int = Field(
+        1,
+        ge=1,
+        le=5,
+        description="Nombre de compétences canoniques rapprochées par compétence extraite.",
+    )
 
 
 class MatchedSkill(BaseModel):
     """Compétence canonique du graphe rapprochée d'une compétence extraite."""
+
     skill_id: int
     label_fr: str
     label_en: str
@@ -37,8 +43,9 @@ class ExtractedSkill(BaseModel):
     raw: str = Field(..., description="Libellé de compétence tel qu'extrait du texte.")
     category: str | None = Field(None, description="savoir-faire | savoir | savoir-être")
     importance: str | None = Field(None, description="essentielle | souhaitée")
-    matches: list[MatchedSkill] = Field(default_factory=list,
-                                        description="Compétences canoniques du graphe rapprochées.")
+    matches: list[MatchedSkill] = Field(
+        default_factory=list, description="Compétences canoniques du graphe rapprochées."
+    )
 
 
 class ExtractResponse(BaseModel):

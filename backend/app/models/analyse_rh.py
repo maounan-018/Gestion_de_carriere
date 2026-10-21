@@ -15,9 +15,9 @@ EMPLACEMENT MVC
     Couche "models" : table + colonnes.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Text, DateTime
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -30,8 +30,7 @@ class AnalyseRh(Base):
     scope: Mapped[str] = mapped_column(String(64), unique=True, index=True, default="global")
     synthese: Mapped[str] = mapped_column(Text)
     model: Mapped[str | None] = mapped_column(String(120), default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc))
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )

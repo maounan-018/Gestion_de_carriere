@@ -16,12 +16,16 @@ from pydantic import BaseModel, Field
 
 
 class MatchRequest(BaseModel):
-    profil_competences: list[str] = Field(..., min_length=1,
-                                          description="Compétences déclarées du collaborateur.")
-    poste_texte: str = Field(..., min_length=10,
-                             description="Descriptif du poste visé.")
-    seuil: float = Field(0.5, ge=0.0, le=1.0,
-                         description="Seuil de pertinence (reranker) au-delà duquel une compétence est jugée couverte.")
+    profil_competences: list[str] = Field(
+        ..., min_length=1, description="Compétences déclarées du collaborateur."
+    )
+    poste_texte: str = Field(..., min_length=10, description="Descriptif du poste visé.")
+    seuil: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Seuil de pertinence (reranker) au-delà duquel une compétence est jugée couverte.",
+    )
 
 
 class Couverture(BaseModel):
@@ -38,7 +42,12 @@ class Ecart(BaseModel):
 
 
 class MatchResponse(BaseModel):
-    score: int = Field(..., ge=0, le=100, description="Score de correspondance pondéré (essentielles > souhaitées).")
+    score: int = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Score de correspondance pondéré (essentielles > souhaitées).",
+    )
     competences_requises: int
     model: str
     couvertes: list[Couverture]

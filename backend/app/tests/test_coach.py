@@ -4,10 +4,10 @@ tests/test_coach.py — Coach Carrière (chat contextualisé). Teste sans Ollama
 `generate` est monkeypatché pour capturer le prompt/system construits.
 """
 
-from app.services import coach_service as cs
-from app.schemas.coach import CoachMessage
-from app.models.user import User, Role
 from app.models.profil import Profil, ProfilCompetence
+from app.models.user import Role, User
+from app.schemas.coach import CoachMessage
+from app.services import coach_service as cs
 
 
 def _make_collab(db, email: str, **profil_kw) -> User:
@@ -21,8 +21,13 @@ def _make_collab(db, email: str, **profil_kw) -> User:
 
 
 def test_coach_injecte_le_profil_reel(db, monkeypatch):
-    u, p = _make_collab(db, "coach1@bmci.local", prenom="Youssef",
-                        poste_actuel="Conseiller", aspirations="Devenir manager risques")
+    u, p = _make_collab(
+        db,
+        "coach1@bmci.local",
+        prenom="Youssef",
+        poste_actuel="Conseiller",
+        aspirations="Devenir manager risques",
+    )
     db.add(ProfilCompetence(profil_id=p.id, libelle="Analyse crédit", niveau=4))
     db.commit()
 
@@ -62,14 +67,17 @@ def test_coach_historique_dans_le_prompt(db, monkeypatch):
         return "ok"
 
     monkeypatch.setattr(cs, "generate", fake_generate)
-    history = [CoachMessage(role="user", content="Bonjour"),
-               CoachMessage(role="assistant", content="Bonjour, comment puis-je aider ?")]
+    history = [
+        CoachMessage(role="user", content="Bonjour"),
+        CoachMessage(role="assistant", content="Bonjour, comment puis-je aider ?"),
+    ]
     cs.chat(db, u.id, "Quelles sont mes forces ?", history)
     assert "Bonjour" in cap["prompt"]
     assert "Quelles sont mes forces ?" in cap["prompt"]
 
 
 # ---------------------------------------------------------------- Agentique
+
 
 def test_coach_agentique_appelle_un_outil(db, monkeypatch):
     """Le coach agentique exécute un outil (données réelles) puis répond."""
@@ -93,8 +101,8 @@ def test_coach_agentique_appelle_un_outil(db, monkeypatch):
 
     assert out["reply"] == "D'après les offres internes, voici mon conseil."
     assert "chercher_offres_compatibles" in out["outils"]
-    assert len(calls) == 2                 # appel outil, puis réponse
-    assert calls[1] > calls[0]             # l'observation (role tool) a été ajoutée aux messages
+    assert len(calls) == 2  # appel outil, puis réponse
+    assert calls[1] > calls[0]  # l'observation (role tool) a été ajoutée aux messages
 
 
 def test_coach_agentique_repli_mono_coup(db, monkeypatch):
@@ -113,6 +121,7 @@ def test_coach_agentique_repli_mono_coup(db, monkeypatch):
 
 # ---------------------------------------------------------- Agentique STREAMING
 
+
 def test_coach_agentique_stream(db, monkeypatch):
     """Le stream émet un événement outil puis les tokens de la réponse, puis 'done'."""
     u, _ = _make_collab(db, "coach6@bmci.local", aspirations="Manager")
@@ -120,8 +129,14 @@ def test_coach_agentique_stream(db, monkeypatch):
 
     turns = [
         # Tour 1 : le modèle demande un outil (aucun texte).
-        [{"tool_calls": [{"function": {"name": "chercher_offres_compatibles",
-                                       "arguments": {}}}], "done": True}],
+        [
+            {
+                "tool_calls": [
+                    {"function": {"name": "chercher_offres_compatibles", "arguments": {}}}
+                ],
+                "done": True,
+            }
+        ],
         # Tour 2 : réponse streamée en deux fragments, sans nouvel outil.
         [{"delta": "Voici "}, {"delta": "mon conseil."}, {"tool_calls": [], "done": True}],
     ]
@@ -161,6 +176,7 @@ def test_coach_agentique_stream_repli(db, monkeypatch):
 
 # ---------------------------------------------------- Outils graphe / mobilité
 
+
 def test_coach_tools_dispatch_alignes():
     """Invariant : chaque schéma d'outil a un handler, et réciproquement."""
     noms = {t["function"]["name"] for t in cs._TOOLS}
@@ -170,11 +186,13 @@ def test_coach_tools_dispatch_alignes():
 
 def test_tool_mobilite_sans_profil(db):
     import json
+
     out = cs._tool_passerelles_mobilite(db, 999999, {})
-    assert "info" in json.loads(out)          # aucun profil -> message, pas d'exception
+    assert "info" in json.loads(out)  # aucun profil -> message, pas d'exception
 
 
 def test_tool_definir_competence_terme_vide(db):
     import json
+
     out = cs._tool_definir_competence(db, 1, {})
-    assert "info" in json.loads(out)          # terme vide -> message (pas d'appel graphe)
+    assert "info" in json.loads(out)  # terme vide -> message (pas d'appel graphe)

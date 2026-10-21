@@ -7,29 +7,53 @@ from datetime import datetime
 
 from pypdf import PdfReader
 
-from app.services import cv_generation_service as cv
-from app.models.profil import Profil, ProfilCompetence, CompetenceSource
 from app.models.carriere import ProfilStation, StationEtat
+from app.models.profil import CompetenceSource, Profil, ProfilCompetence
+from app.services import cv_generation_service as cv
 
 
 def _setup(db):
-    profil = Profil(nom="El Amrani", prenom="Youssef",
-                    poste_actuel="Conseiller clientèle particuliers",
-                    departement_key="retail_banking", matricule="CB-3390",
-                    poste_vise="Chargé d'affaires professionnels", horizon="1 an")
+    profil = Profil(
+        nom="El Amrani",
+        prenom="Youssef",
+        poste_actuel="Conseiller clientèle particuliers",
+        departement_key="retail_banking",
+        matricule="CB-3390",
+        poste_vise="Chargé d'affaires professionnels",
+        horizon="1 an",
+    )
     db.add(profil)
     db.commit()
-    db.add_all([
-        ProfilStation(profil_id=profil.id, periode="2020", titre="Téléconseiller",
-                      etat=StationEtat.PASSE, ordre=0),
-        ProfilStation(profil_id=profil.id, periode="Aujourd'hui",
-                      titre="Conseiller clientèle particuliers",
-                      etat=StationEtat.ACTUEL, ordre=1),
-        ProfilCompetence(profil_id=profil.id, libelle="gestion de la relation client",
-                         niveau=4, source=CompetenceSource.FICHE),
-        ProfilCompetence(profil_id=profil.id, libelle="analyse de besoins",
-                         niveau=None, source=CompetenceSource.CV),
-    ])
+    db.add_all(
+        [
+            ProfilStation(
+                profil_id=profil.id,
+                periode="2020",
+                titre="Téléconseiller",
+                etat=StationEtat.PASSE,
+                ordre=0,
+            ),
+            ProfilStation(
+                profil_id=profil.id,
+                periode="Aujourd'hui",
+                titre="Conseiller clientèle particuliers",
+                etat=StationEtat.ACTUEL,
+                ordre=1,
+            ),
+            ProfilCompetence(
+                profil_id=profil.id,
+                libelle="gestion de la relation client",
+                niveau=4,
+                source=CompetenceSource.FICHE,
+            ),
+            ProfilCompetence(
+                profil_id=profil.id,
+                libelle="analyse de besoins",
+                niveau=None,
+                source=CompetenceSource.CV,
+            ),
+        ]
+    )
     db.commit()
     return profil
 
@@ -68,5 +92,5 @@ def test_generer_tous_les_cv_only_missing(db, tmp_path):
     db.commit()
 
     res = cv.generer_tous_les_cv(db, out_dir=str(tmp_path), only_missing=True)
-    assert res["generes"] == 1        # p2 déjà pourvu → ignoré
+    assert res["generes"] == 1  # p2 déjà pourvu → ignoré
     assert res["ignores"] == 1

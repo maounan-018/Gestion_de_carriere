@@ -16,8 +16,8 @@ EMPLACEMENT MVC
     Couche "core" : sécurité transverse, réutilisée par les services.
 """
 
-import hmac
 import hashlib
+import hmac
 import secrets
 
 from app.core.config import settings
@@ -38,8 +38,9 @@ def verify_password(password: str, stored_hash: str) -> bool:
         algo, iterations, salt_hex, hash_hex = stored_hash.split("$")
         if algo != "pbkdf2_sha256":
             return False
-        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
-                                 bytes.fromhex(salt_hex), int(iterations))
+        dk = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), int(iterations)
+        )
         return hmac.compare_digest(dk.hex(), hash_hex)
     except (ValueError, AttributeError):
         return False

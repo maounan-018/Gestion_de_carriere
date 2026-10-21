@@ -3,7 +3,7 @@
 tests/test_rh.py — Veille des entretiens & alertes RH (Batch 4).
 """
 
-from app.tests.conftest import auth, anon
+from app.tests.conftest import anon, auth
 
 
 def test_veille(client):

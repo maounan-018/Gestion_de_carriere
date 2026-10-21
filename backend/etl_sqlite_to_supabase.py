@@ -36,27 +36,30 @@ import time
 import sqlite_vec
 from sqlalchemy import create_engine, insert, select, text
 
+import app.models  # noqa: F401 — peuple Base.metadata
 from app.core.config import settings
 from app.database.base import Base
-import app.models  # noqa: F401 — peuple Base.metadata
 
 VEC_TABLES = [("vec_skills", "skill_id"), ("vec_occupations", "occupation_id")]
 
 
 def _chunks(rows, size):
     for i in range(0, len(rows), size):
-        yield rows[i:i + size]
+        yield rows[i : i + size]
 
 
 def main() -> int:
     if settings.db_dialect != "postgresql":
-        print("ABANDON : DATABASE_URL ne pointe pas sur Postgres "
-              f"(dialecte={settings.db_dialect}). Posez DATABASE_URL dans .env.local.")
+        print(
+            "ABANDON : DATABASE_URL ne pointe pas sur Postgres "
+            f"(dialecte={settings.db_dialect}). Posez DATABASE_URL dans .env.local."
+        )
         return 2
 
     src = create_engine(f"sqlite:///{settings.DB_PATH}", future=True)
-    dst = create_engine(settings.sqlalchemy_url,
-                        connect_args={"prepare_threshold": None}, future=True)
+    dst = create_engine(
+        settings.sqlalchemy_url, connect_args={"prepare_threshold": None}, future=True
+    )
     tables = list(Base.metadata.sorted_tables)
     t0 = time.time()
 
@@ -80,7 +83,9 @@ def main() -> int:
     # 3) Embeddings (sqlite-vec -> pgvector via COPY).
     print("=== embeddings (COPY) ===")
     sc = sqlite3.connect(settings.DB_PATH)
-    sc.enable_load_extension(True); sqlite_vec.load(sc); sc.enable_load_extension(False)
+    sc.enable_load_extension(True)
+    sqlite_vec.load(sc)
+    sc.enable_load_extension(False)
     raw = dst.raw_connection()
     try:
         for vt, key in VEC_TABLES:
@@ -99,9 +104,12 @@ def main() -> int:
         for t in tables:
             pk = list(t.primary_key.columns)
             if len(pk) == 1 and pk[0].name == "id":
-                d.execute(text(
-                    f"SELECT setval(pg_get_serial_sequence('{t.name}','id'), "
-                    f"GREATEST((SELECT COALESCE(MAX(id),1) FROM {t.name}),1))"))
+                d.execute(
+                    text(
+                        f"SELECT setval(pg_get_serial_sequence('{t.name}','id'), "
+                        f"GREATEST((SELECT COALESCE(MAX(id),1) FROM {t.name}),1))"
+                    )
+                )
 
     # 5) Vérification des comptes (source == cible, tables relationnelles + vec).
     print("=== vérification comptes source == cible ===")

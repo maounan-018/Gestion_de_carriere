@@ -4,7 +4,7 @@ tests/test_auth.py — Authentification locale (login / me / logout).
 """
 
 from app.core.config import settings
-from app.tests.conftest import auth, anon, hdr, ACCOUNTS
+from app.tests.conftest import ACCOUNTS, anon, auth, hdr
 
 
 def test_login_ok_et_me(client):
@@ -34,7 +34,7 @@ def test_login_verrouillage_anti_brute_force(client):
     bad = {"email": "brute-force@bmci.local", "password": "faux"}
     for _ in range(settings.MAX_LOGIN_ATTEMPTS):
         assert client.post("/api/auth/login", json=bad).status_code == 401
-    r = client.post("/api/auth/login", json=bad)            # au-delà du seuil
+    r = client.post("/api/auth/login", json=bad)  # au-delà du seuil
     assert r.status_code == 429
     assert "tentatives" in r.json()["detail"].lower()
 
@@ -51,18 +51,20 @@ def test_annuaire_preload_compte_existant(client):
     """Enrôlement : l'e-mail (partie locale) d'un compte pré-existant renvoie ses
     infos RH déjà en base (poste, département, manager) — pré-remplissage, pré-auth."""
     anon(client)
-    r = client.get("/api/auth/annuaire-preload",
-                   params={"email": "youssef.elamrani@bmci.local"})
+    r = client.get(
+        "/api/auth/annuaire-preload", params={"email": "youssef.elamrani@bmci.local"}
+    )
     assert r.status_code == 200
     data = r.json()
     assert data["found"] is True
-    assert data["poste_actuel"]                 # poste pré-rempli
+    assert data["poste_actuel"]  # poste pré-rempli
     assert data["manager_nom"] == "Karim Naji"  # manager résolu depuis la base
 
 
 def test_annuaire_preload_inconnu_found_false(client):
     anon(client)
-    r = client.get("/api/auth/annuaire-preload",
-                   params={"email": "personne.inexistante@bmci.local"})
+    r = client.get(
+        "/api/auth/annuaire-preload", params={"email": "personne.inexistante@bmci.local"}
+    )
     assert r.status_code == 200
     assert r.json()["found"] is False

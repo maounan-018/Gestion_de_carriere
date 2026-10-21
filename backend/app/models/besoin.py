@@ -17,19 +17,19 @@ EMPLACEMENT MVC
     Couche "models" : entités ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Text, DateTime, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class BesoinStatut:
-    TRANSMIS = "transmis"   # exprimé par le manager, en attente HRBP
-    VALIDE = "valide"       # validé par la HRBP (offre à rédiger)
-    PUBLIE = "publie"       # offre publiée en continuité
-    REFUSE = "refuse"       # non retenu par la HRBP
+    TRANSMIS = "transmis"  # exprimé par le manager, en attente HRBP
+    VALIDE = "valide"  # validé par la HRBP (offre à rédiger)
+    PUBLIE = "publie"  # offre publiée en continuité
+    REFUSE = "refuse"  # non retenu par la HRBP
 
 
 class BesoinRecrutement(Base):
@@ -38,12 +38,13 @@ class BesoinRecrutement(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     manager_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)  # demandeur
     fiche_id: Mapped[int | None] = mapped_column(ForeignKey("fiches.id"), default=None, index=True)
-    poste: Mapped[str] = mapped_column(String(200))                 # intitulé visé
+    poste: Mapped[str] = mapped_column(String(200))  # intitulé visé
     description: Mapped[str | None] = mapped_column(Text, default=None)
     statut: Mapped[str] = mapped_column(String(12), default=BesoinStatut.TRANSMIS, index=True)
-    hrbp_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)  # qui traite
+    hrbp_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), default=None
+    )  # qui traite
     offre_id: Mapped[int | None] = mapped_column(ForeignKey("offres.id"), default=None, index=True)
     motif_refus: Mapped[str | None] = mapped_column(String(400), default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)

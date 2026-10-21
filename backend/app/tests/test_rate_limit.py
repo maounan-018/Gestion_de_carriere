@@ -13,8 +13,8 @@ from sqlalchemy import select
 from app.core.rate_limit import IARateLimiter
 from app.tests.conftest import auth, hdr
 
-
 # ------------------------------------------------------------------ Unitaire
+
 
 def test_limiter_debit_fenetre():
     """Au-delà de N appels dans la fenêtre : refus + retry ; autre user épargné."""
@@ -23,7 +23,7 @@ def test_limiter_debit_fenetre():
     assert lim.acquire(1)[0] is True
     ok, retry = lim.acquire(1)
     assert ok is False and retry >= 1
-    assert lim.acquire(2)[0] is True          # cloisonné par utilisateur
+    assert lim.acquire(2)[0] is True  # cloisonné par utilisateur
 
 
 def test_limiter_concurrence():
@@ -31,9 +31,9 @@ def test_limiter_concurrence():
     refusée, puis autorisée après libération."""
     lim = IARateLimiter(max_per_window=100, window_seconds=60, max_concurrent=1)
     assert lim.acquire(1)[0] is True
-    assert lim.acquire(1)[0] is False         # une 2e en parallèle -> refus
+    assert lim.acquire(1)[0] is False  # une 2e en parallèle -> refus
     lim.release(1)
-    assert lim.acquire(1)[0] is True          # après release -> ok
+    assert lim.acquire(1)[0] is True  # après release -> ok
 
 
 def test_limiter_reset():
@@ -47,17 +47,21 @@ def test_limiter_reset():
 
 # ------------------------------------------------------------------ e2e HTTP
 
+
 def test_ia_rate_limit_bloque_et_audite(client, monkeypatch):
     """Au-delà du seuil, l'endpoint IA renvoie 429 + Retry-After, et journalise
     un évènement RATE_LIMITED (détection d'abus)."""
     from app.core import rate_limit
-    from app.services import redaction_service
     from app.database.session import SessionLocal
-    from app.models.audit_log import AuditLog, AuditEventType
+    from app.models.audit_log import AuditEventType, AuditLog
+    from app.services import redaction_service
 
     # Rédaction instantanée (aucune génération Ollama pendant le test).
-    monkeypatch.setattr(redaction_service, "rediger",
-                        lambda texte, mode, consignes=None: {"texte": "ok", "mode": mode, "model": "test"})
+    monkeypatch.setattr(
+        redaction_service,
+        "rediger",
+        lambda texte, mode, consignes=None: {"texte": "ok", "mode": mode, "model": "test"},
+    )
     # Fenêtre serrée : 2 requêtes autorisées, la 3e refusée.
     monkeypatch.setattr(rate_limit._limiter, "max_per_window", 2)
 
@@ -88,8 +92,11 @@ def test_ia_rate_limit_desactivable(client, monkeypatch):
     from app.core.config import settings
     from app.services import redaction_service
 
-    monkeypatch.setattr(redaction_service, "rediger",
-                        lambda texte, mode, consignes=None: {"texte": "ok", "mode": mode, "model": "test"})
+    monkeypatch.setattr(
+        redaction_service,
+        "rediger",
+        lambda texte, mode, consignes=None: {"texte": "ok", "mode": mode, "model": "test"},
+    )
     monkeypatch.setattr(settings, "IA_RATE_LIMIT_ENABLED", False)
     monkeypatch.setattr(rate_limit._limiter, "max_per_window", 1)
 

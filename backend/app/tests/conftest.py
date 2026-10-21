@@ -14,8 +14,8 @@ IMPORTANT
 """
 
 import os
-import tempfile
 import pathlib
+import tempfile
 
 # --- Environnement de test : AVANT tout import de l'app -----------------------
 _TMPDIR = tempfile.mkdtemp(prefix="bmci-test-")
@@ -53,6 +53,7 @@ def _reset_ia_rate_limit():
     """Vide l'état du limiteur de débit IA entre chaque test (singleton module :
     sans ça les compteurs de débit/concurrence fuiraient d'un test à l'autre)."""
     from app.core import rate_limit
+
     rate_limit._limiter.reset()
     yield
     rate_limit._limiter.reset()
@@ -67,8 +68,9 @@ def db(tmp_path) -> Session:
         future=True,
     )
     Base.metadata.create_all(engine)
-    TestSession = sessionmaker(bind=engine, autoflush=False, autocommit=False,
-                               class_=Session, future=True)
+    TestSession = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, class_=Session, future=True
+    )
     session = TestSession()
     try:
         yield session
@@ -81,8 +83,9 @@ def db(tmp_path) -> Session:
 def client():
     """TestClient sur l'app complète. Base temp (schéma + comptes seedés).
     Le context-manager déclenche le lifespan → routes réellement montées."""
-    from app.database.session import engine, SessionLocal
     from app.database import seed
+    from app.database.session import SessionLocal, engine
+
     Base.metadata.create_all(engine)
     s = SessionLocal()
     try:
@@ -91,7 +94,9 @@ def client():
         s.close()
 
     from fastapi.testclient import TestClient
+
     import app.main as m
+
     with TestClient(m.app) as c:
         yield c
 

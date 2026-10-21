@@ -13,9 +13,9 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Integer, Text, DateTime, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -26,10 +26,10 @@ class EntretienSynthese(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profil_id: Mapped[int] = mapped_column(
-        ForeignKey("profils.id"), index=True, unique=True)   # une synthèse courante par profil
+        ForeignKey("profils.id"), index=True, unique=True
+    )  # une synthèse courante par profil
     synthese: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc))
+        DateTime, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )

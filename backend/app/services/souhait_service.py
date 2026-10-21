@@ -14,21 +14,25 @@ EMPLACEMENT MVC
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.auth import ownership
 from app.models.profil import Profil
 from app.models.souhait import Souhait, SouhaitStatut
 from app.models.user import User
-from app.schemas.souhait import SouhaitCreate, SouhaitUpdate, SouhaitOut, SouhaitRecuOut
-from app.auth import ownership
+from app.schemas.souhait import SouhaitCreate, SouhaitOut, SouhaitRecuOut, SouhaitUpdate
 from app.services import notification_events
 
 # Statuts « poussés » visibles du manager.
-_STATUTS_POUSSES = {SouhaitStatut.POUSSE, SouhaitStatut.EN_DISCUSSION,
-                    SouhaitStatut.ACCORDE, SouhaitStatut.REFUSE}
+_STATUTS_POUSSES = {
+    SouhaitStatut.POUSSE,
+    SouhaitStatut.EN_DISCUSSION,
+    SouhaitStatut.ACCORDE,
+    SouhaitStatut.REFUSE,
+}
 
 
 def profil_of_user(db: Session, user_id: int) -> Profil | None:
@@ -43,8 +47,12 @@ def list_souhaits(db: Session, profil_id: int) -> list[SouhaitOut]:
 
 def create_souhait(db: Session, profil_id: int, data: SouhaitCreate) -> SouhaitOut:
     s = Souhait(
-        profil_id=profil_id, titre=data.titre, kind=data.kind, horizon=data.horizon,
-        description=data.description, pushed=data.pushed,
+        profil_id=profil_id,
+        titre=data.titre,
+        kind=data.kind,
+        horizon=data.horizon,
+        description=data.description,
+        pushed=data.pushed,
         statut=SouhaitStatut.POUSSE if data.pushed else SouhaitStatut.BROUILLON,
     )
     db.add(s)
@@ -52,7 +60,8 @@ def create_souhait(db: Session, profil_id: int, data: SouhaitCreate) -> SouhaitO
         profil = db.get(Profil, profil_id)
         if profil is not None:
             notification_events.on_souhait_pousse(
-                db, s, profil, ownership.manager_user_id_of_profil(db, profil))
+                db, s, profil, ownership.manager_user_id_of_profil(db, profil)
+            )
     db.commit()
     db.refresh(s)
     return SouhaitOut.model_validate(s)
@@ -76,17 +85,20 @@ def update_souhait(db: Session, souhait_id: int, data: SouhaitUpdate) -> Souhait
     devient_pousse = changes.get("pushed") is True and prev_statut == SouhaitStatut.BROUILLON
     if devient_pousse:
         s.statut = SouhaitStatut.POUSSE
-    est_decide = "statut" in changes and changes["statut"] in (SouhaitStatut.ACCORDE,
-                                                               SouhaitStatut.REFUSE)
+    est_decide = "statut" in changes and changes["statut"] in (
+        SouhaitStatut.ACCORDE,
+        SouhaitStatut.REFUSE,
+    )
     if est_decide:
-        s.decided_at = datetime.now(timezone.utc)
+        s.decided_at = datetime.now(UTC)
     # Notifications (atomiques) : poussée -> manager ; décision -> collaborateur.
     if devient_pousse or est_decide:
         profil = db.get(Profil, s.profil_id)
         if profil is not None:
             if devient_pousse:
                 notification_events.on_souhait_pousse(
-                    db, s, profil, ownership.manager_user_id_of_profil(db, profil))
+                    db, s, profil, ownership.manager_user_id_of_profil(db, profil)
+                )
             if est_decide:
                 notification_events.on_souhait_decide(db, s, profil)
     db.commit()
@@ -106,9 +118,12 @@ def list_recus_for_manager(db: Session, manager_user_id: int) -> list[SouhaitRec
     )
     out: list[SouhaitRecuOut] = []
     for souhait, profil in db.execute(stmt).all():
-        out.append(SouhaitRecuOut(
-            **SouhaitOut.model_validate(souhait).model_dump(),
-            membre_nom=profil.nom, membre_prenom=profil.prenom,
-            membre_matricule=profil.matricule,
-        ))
+        out.append(
+            SouhaitRecuOut(
+                **SouhaitOut.model_validate(souhait).model_dump(),
+                membre_nom=profil.nom,
+                membre_prenom=profil.prenom,
+                membre_matricule=profil.matricule,
+            )
+        )
     return out

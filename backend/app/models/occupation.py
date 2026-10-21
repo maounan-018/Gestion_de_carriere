@@ -12,15 +12,15 @@ EMPLACEMENT MVC
     Couche "models" : entités ORM.
 """
 
-from sqlalchemy import String, Integer, Text, ForeignKey, Index
+from sqlalchemy import ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class SkillRequirement:
-    ESSENTIAL = "essential"   # compétence indispensable au métier
-    OPTIONAL = "optional"     # compétence utile mais non requise
+    ESSENTIAL = "essential"  # compétence indispensable au métier
+    OPTIONAL = "optional"  # compétence utile mais non requise
 
 
 class Occupation(Base):
@@ -31,7 +31,7 @@ class Occupation(Base):
     label_en: Mapped[str] = mapped_column(String(300), index=True)
     description_fr: Mapped[str | None] = mapped_column(Text, default=None)
     description_en: Mapped[str | None] = mapped_column(Text, default=None)
-    source: Mapped[str] = mapped_column(String(16), index=True)        # ESCO | ONET
+    source: Mapped[str] = mapped_column(String(16), index=True)  # ESCO | ONET
     source_uri: Mapped[str | None] = mapped_column(String(400), default=None)
     code: Mapped[str | None] = mapped_column(String(40), default=None)  # ISCO (ESCO) / SOC (O*NET)
 

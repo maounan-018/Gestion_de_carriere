@@ -34,11 +34,13 @@ class CandidatureCreate(BaseModel):
 class CandidatureDecision(BaseModel):
     """Décision HUMAINE sur une candidature (retenue possible même si score < 100 %).
     `decided_by` n'est PAS dans l'entrée : le serveur l'impose depuis la session."""
+
     statut: Literal["en_evaluation", "retenue", "rejetee"]
 
 
 class AttenduEvalue(BaseModel):
     """Ligne du snapshot d'évaluation (un attendu de l'offre confronté au profil)."""
+
     competence: str
     importance: str
     niveau_requis: int | None = None
@@ -50,6 +52,7 @@ class AttenduEvalue(BaseModel):
 
 class EvaluationOut(BaseModel):
     """Snapshot complet du calcul de score (traçabilité)."""
+
     score: int
     methode: str
     attendus_total: int
@@ -70,12 +73,14 @@ class CandidatureOut(BaseModel):
     decided_at: datetime | None
     decided_by: int | None
     evaluation: EvaluationOut | None = Field(
-        None, description="Snapshot des écarts au moment de l'évaluation (traçabilité).")
+        None, description="Snapshot des écarts au moment de l'évaluation (traçabilité)."
+    )
 
 
 class CandidatureMineOut(BaseModel):
     """« Mes candidatures » : candidature + titre/type de l'offre (jointure) pour
     l'écran collaborateur, sans avoir à re-fetcher chaque offre."""
+
     id: int
     statut: str
     score: float | None

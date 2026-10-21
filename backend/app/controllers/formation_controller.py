@@ -13,19 +13,22 @@ EMPLACEMENT MVC
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
 from app.auth.dependencies import get_current_user, require_roles
 from app.core.rate_limit import ia_rate_limit
+from app.database.session import get_db
 from app.models.user import Role
-from app.schemas.formation import FormationOut, FormationGenerationRequest, FormationGeneree
-from app.services import formation_service, formation_generation_service
+from app.schemas.formation import FormationGenerationRequest, FormationGeneree, FormationOut
+from app.services import formation_generation_service, formation_service
 
 router = APIRouter(prefix="/api/formations", tags=["Formations"])
 
 
-@router.get("", response_model=list[FormationOut],
-            dependencies=[Depends(get_current_user)],
-            summary="Catalogue de formations (filtres domaine / texte)")
+@router.get(
+    "",
+    response_model=list[FormationOut],
+    dependencies=[Depends(get_current_user)],
+    summary="Catalogue de formations (filtres domaine / texte)",
+)
 def lister_formations(
     domaine: str | None = Query(None, description="Filtrer par domaine/thème."),
     q: str | None = Query(None, description="Recherche texte (titre / compétence visée / tags)."),
@@ -36,11 +39,15 @@ def lister_formations(
     return formation_service.list_formations(db, domaine=domaine, q=q, limit=limit, offset=offset)
 
 
-@router.post("/generer", response_model=FormationGeneree,
-             dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
-             summary="Générer une formation synthétique pour une compétence (RH/ADMIN)")
-def generer_formation(req: FormationGenerationRequest,
-                      db: Session = Depends(get_db)) -> FormationGeneree:
+@router.post(
+    "/generer",
+    response_model=FormationGeneree,
+    dependencies=[Depends(require_roles(Role.RH, Role.ADMIN)), Depends(ia_rate_limit)],
+    summary="Générer une formation synthétique pour une compétence (RH/ADMIN)",
+)
+def generer_formation(
+    req: FormationGenerationRequest, db: Session = Depends(get_db)
+) -> FormationGeneree:
     """⚠️ Utilise Ollama (génération FR). Contenu SYNTHÉTIQUE (jamais un cours réel).
     Si `persister`, ajoute la formation au catalogue et renvoie son `id`."""
     gen = formation_generation_service.generer(db, req.competence)

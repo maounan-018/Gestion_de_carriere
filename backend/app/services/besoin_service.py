@@ -7,17 +7,18 @@ La HRBP valide/refuse, puis PUBLIE l'offre EN CONTINUITÉ : l'offre porte la
 « marque » du manager d'origine (`Offre.manager_id`), ce qui lui donne la même
 visibilité qu'à la HRBP sur les candidatures. Le besoin est relié à l'offre.
 """
-from datetime import datetime, timezone
+
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.besoin import BesoinRecrutement, BesoinStatut
+from app.models.offre import OffreStatut, OffreType
 from app.models.user import User
-from app.models.offre import OffreType, OffreStatut
 from app.schemas.besoin import BesoinCreate, BesoinOut, BesoinPublier
 from app.schemas.offre import OffreCreate
-from app.services import offre_service, notification_service
+from app.services import notification_service, offre_service
 
 
 def _to_out(db: Session, b: BesoinRecrutement) -> BesoinOut:
@@ -30,19 +31,24 @@ def _to_out(db: Session, b: BesoinRecrutement) -> BesoinOut:
 def creer_besoin(db: Session, manager_user_id: int, data: BesoinCreate) -> BesoinOut:
     """Le manager exprime un besoin → statut TRANSMIS + notification aux HRBP."""
     b = BesoinRecrutement(
-        manager_user_id=manager_user_id, fiche_id=data.fiche_id,
-        poste=data.poste.strip(), description=(data.description or "").strip() or None,
-        statut=BesoinStatut.TRANSMIS)
+        manager_user_id=manager_user_id,
+        fiche_id=data.fiche_id,
+        poste=data.poste.strip(),
+        description=(data.description or "").strip() or None,
+        statut=BesoinStatut.TRANSMIS,
+    )
     db.add(b)
     db.commit()
     db.refresh(b)
     mgr = db.get(User, manager_user_id)
     notification_service.communiquer_aux_rh(
-        db, from_name=(mgr.name if mgr else "Un manager"),
+        db,
+        from_name=(mgr.name if mgr else "Un manager"),
         sujet="Besoin de recrutement",
         message=f"Nouveau besoin de recrutement sur « {b.poste} ». "
-                + (b.description or "Sans description."),
-        to_route="rh.besoins")   # clic sur la notif → écran des besoins
+        + (b.description or "Sans description."),
+        to_route="rh.besoins",
+    )  # clic sur la notif → écran des besoins
     return _to_out(db, b)
 
 
@@ -57,15 +63,21 @@ def contacter_manager(db: Session, besoin_id: int, from_name: str, message: str)
     if b is None:
         return False
     notification_service.create_notification(
-        db, user_id=b.manager_user_id, titre=f"Message de la HRBP · besoin « {b.poste} »",
-        texte=f"De {from_name} : {message.strip()}"[:1000], to_route="manager.offres")
+        db,
+        user_id=b.manager_user_id,
+        titre=f"Message de la HRBP · besoin « {b.poste} »",
+        texte=f"De {from_name} : {message.strip()}"[:1000],
+        to_route="manager.offres",
+    )
     return True
 
 
 def mes_besoins(db: Session, manager_user_id: int) -> list[BesoinOut]:
-    rows = db.scalars(select(BesoinRecrutement)
-                      .where(BesoinRecrutement.manager_user_id == manager_user_id)
-                      .order_by(BesoinRecrutement.id.desc())).all()
+    rows = db.scalars(
+        select(BesoinRecrutement)
+        .where(BesoinRecrutement.manager_user_id == manager_user_id)
+        .order_by(BesoinRecrutement.id.desc())
+    ).all()
     return [_to_out(db, b) for b in rows]
 
 
@@ -87,13 +99,16 @@ def valider(db: Session, besoin_id: int, hrbp_user_id: int) -> BesoinOut | None:
         return None
     b.statut = BesoinStatut.VALIDE
     b.hrbp_user_id = hrbp_user_id
-    b.decided_at = datetime.now(timezone.utc)
+    b.decided_at = datetime.now(UTC)
     db.commit()
     db.refresh(b)
     notification_service.create_notification(
-        db, user_id=b.manager_user_id, titre="Besoin validé",
+        db,
+        user_id=b.manager_user_id,
+        titre="Besoin validé",
         texte=f"Votre besoin « {b.poste} » a été validé par la HRBP ; l'offre va être publiée.",
-        to_route="manager.offres")
+        to_route="manager.offres",
+    )
     return _to_out(db, b)
 
 
@@ -104,14 +119,17 @@ def refuser(db: Session, besoin_id: int, hrbp_user_id: int, motif: str | None) -
     b.statut = BesoinStatut.REFUSE
     b.hrbp_user_id = hrbp_user_id
     b.motif_refus = (motif or "").strip() or None
-    b.decided_at = datetime.now(timezone.utc)
+    b.decided_at = datetime.now(UTC)
     db.commit()
     db.refresh(b)
     notification_service.create_notification(
-        db, user_id=b.manager_user_id, titre="Besoin non retenu",
+        db,
+        user_id=b.manager_user_id,
+        titre="Besoin non retenu",
         texte=f"Votre besoin « {b.poste} » n'a pas été retenu."
-              + (f" Motif : {b.motif_refus}" if b.motif_refus else ""),
-        to_route="manager.offres")
+        + (f" Motif : {b.motif_refus}" if b.motif_refus else ""),
+        to_route="manager.offres",
+    )
     return _to_out(db, b)
 
 
@@ -122,25 +140,32 @@ def publier(db: Session, besoin_id: int, hrbp_user_id: int, data: BesoinPublier)
     b = _get(db, besoin_id)
     if b is None:
         return None, None
-    offre = offre_service.create_offre(db, OffreCreate(
-        titre=(data.titre or b.poste).strip(),
-        fiche_id=b.fiche_id, heriter_competences=b.fiche_id is not None,
-        type=OffreType.OFFRE_POSTE,
-        description=(data.description or b.description),
-        localisation=data.localisation,
-        statut=OffreStatut.OUVERTE,
-        created_by=hrbp_user_id,          # publieur = HRBP
-        manager_id=b.manager_user_id,     # « marque » du manager d'origine → visibilité partagée
-    ))
+    offre = offre_service.create_offre(
+        db,
+        OffreCreate(
+            titre=(data.titre or b.poste).strip(),
+            fiche_id=b.fiche_id,
+            heriter_competences=b.fiche_id is not None,
+            type=OffreType.OFFRE_POSTE,
+            description=(data.description or b.description),
+            localisation=data.localisation,
+            statut=OffreStatut.OUVERTE,
+            created_by=hrbp_user_id,  # publieur = HRBP
+            manager_id=b.manager_user_id,  # « marque » du manager d'origine → visibilité partagée
+        ),
+    )
     b.offre_id = offre.id
     b.statut = BesoinStatut.PUBLIE
     b.hrbp_user_id = hrbp_user_id
-    b.decided_at = datetime.now(timezone.utc)
+    b.decided_at = datetime.now(UTC)
     db.commit()
     db.refresh(b)
     notification_service.create_notification(
-        db, user_id=b.manager_user_id, titre="Offre publiée",
+        db,
+        user_id=b.manager_user_id,
+        titre="Offre publiée",
         texte=f"L'offre « {offre.titre} » issue de votre besoin est publiée. "
-              "Vous pouvez suivre les candidatures.",
-        to_route="manager.mesOffres")
+        "Vous pouvez suivre les candidatures.",
+        to_route="manager.mesOffres",
+    )
     return offre, _to_out(db, b)

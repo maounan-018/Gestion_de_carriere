@@ -13,10 +13,10 @@ RÉELLES (parcours + compétences + projet d'évolution) et marque `cv_filename`
 (régénère à l'identique). Commit par profil (reprise possible).
 """
 
-import sys
 import logging
+import sys
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.database.init_db import init_db
 from app.database.session import SessionLocal
@@ -50,12 +50,14 @@ def main() -> None:
                 made += 1
                 if i % 25 == 0 or i == len(profils):
                     logger.info("  [%d/%d] CV générés…", i, len(profils))
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 db.rollback()
                 failed += 1
                 logger.warning("  ÉCHEC profil %d : %s (sauté)", p.id, str(e)[:120])
 
-        avec_cv = db.scalar(select(func.count()).select_from(Profil).where(Profil.cv_filename.is_not(None)))
+        avec_cv = db.scalar(
+            select(func.count()).select_from(Profil).where(Profil.cv_filename.is_not(None))
+        )
         print(f"\n=== {made} générés, {failed} sautés — {avec_cv} profils avec CV en base ===")
     finally:
         db.close()

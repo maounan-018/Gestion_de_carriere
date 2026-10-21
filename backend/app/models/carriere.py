@@ -13,17 +13,17 @@ EMPLACEMENT MVC
     Couche "models" : entités ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class StationEtat:
-    PASSE = "passe"       # jalon franchi
-    ACTUEL = "actuel"     # position actuelle
+    PASSE = "passe"  # jalon franchi
+    ACTUEL = "actuel"  # position actuelle
     OBJECTIF = "objectif"  # cible visée
 
 
@@ -32,11 +32,11 @@ class ProfilStation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     profil_id: Mapped[int] = mapped_column(ForeignKey("profils.id"), index=True)
-    periode: Mapped[str] = mapped_column(String(48))          # ex. "2021", "Aujourd'hui", "Objectif"
+    periode: Mapped[str] = mapped_column(String(48))  # ex. "2021", "Aujourd'hui", "Objectif"
     titre: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text, default=None)
     etat: Mapped[str] = mapped_column(String(12), default=StationEtat.PASSE)
-    ordre: Mapped[int] = mapped_column(Integer, default=0)    # ordre d'affichage
+    ordre: Mapped[int] = mapped_column(Integer, default=0)  # ordre d'affichage
 
 
 class PeerReview(Base):
@@ -49,5 +49,4 @@ class PeerReview(Base):
     initiales: Mapped[str | None] = mapped_column(String(8), default=None)
     texte: Mapped[str] = mapped_column(Text)
     etoiles: Mapped[int] = mapped_column(Integer, default=5)  # 1-5
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))

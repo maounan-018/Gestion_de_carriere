@@ -39,6 +39,7 @@ class LoginResponse(BaseModel):
 class AnnuairePreloadOut(BaseModel):
     """Pré-remplissage d'enrôlement : infos RH DÉJÀ EN BASE pour un e-mail donné.
     Démo : les collaborateurs BMCI existent déjà ; l'inscription active le compte."""
+
     found: bool
     nom: str | None = None
     prenom: str | None = None

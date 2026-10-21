@@ -26,21 +26,21 @@ class KpiItem(BaseModel):
 
 
 class DashboardKpis(BaseModel):
-    scope: str                 # "rh" | "manager"
+    scope: str  # "rh" | "manager"
     kpis: list[KpiItem]
 
 
 class CartoTopCompetence(BaseModel):
     libelle: str
-    effectif: int              # nb de profils du département détenant la compétence
+    effectif: int  # nb de profils du département détenant la compétence
     niveau_moyen: float | None
 
 
 class CartoDepartement(BaseModel):
     departement_key: str
-    effectif: int              # nb de profils rattachés
+    effectif: int  # nb de profils rattachés
     niveau_moyen: float | None  # niveau moyen (1-5) toutes compétences confondues
-    nb_competences: int        # nb de compétences distinctes détenues
+    nb_competences: int  # nb de compétences distinctes détenues
     top_competences: list[CartoTopCompetence] = []
 
 
@@ -48,32 +48,35 @@ class CartoLigne(BaseModel):
     """Une ligne de la heatmap = un pôle/département. `niveaux` est ALIGNÉ sur
     `familles` (même ordre) : `niveaux[i]` = niveau moyen du pôle pour la famille i
     (None si aucune compétence de cette famille dans ce pôle)."""
+
     departement_key: str
-    label: str                 # libellé du département (référentiel d'organisation)
-    pole: str | None = None    # pôle macro de rattachement (regroupement de la heatmap)
+    label: str  # libellé du département (référentiel d'organisation)
+    pole: str | None = None  # pôle macro de rattachement (regroupement de la heatmap)
     effectif: int
     niveau_moyen: float | None
     niveaux: list[float | None] = []
-    people: list[str] = []     # noms des profils du pôle (aperçu, pour le détail)
+    people: list[str] = []  # noms des profils du pôle (aperçu, pour le détail)
 
 
 class CartoMatrix(BaseModel):
     """Cartographie sous forme de MATRICE data-driven : N pôles × M familles, sans
     taxonomie figée. Le front rend `lignes` × `familles` tel quel — ajouter un pôle
     ou une famille en base l'affiche automatiquement."""
-    familles: list[str] = []   # colonnes (catégories de compétences présentes)
+
+    familles: list[str] = []  # colonnes (catégories de compétences présentes)
     lignes: list[CartoLigne] = []
 
 
 class FamilleCompetence(BaseModel):
     """Vue par FAMILLE de compétences (catégorie) : offre interne détenue vs demande
     des offres ouvertes, avec un signal de tension INDICATIF (heuristique documentée)."""
+
     famille: str
-    detenues: int              # nb de compétences détenues (volume) dans la famille
-    profils_couverts: int      # nb de profils ayant ≥1 compétence de la famille
+    detenues: int  # nb de compétences détenues (volume) dans la famille
+    profils_couverts: int  # nb de profils ayant ≥1 compétence de la famille
     niveau_moyen: float | None  # niveau moyen (compétences niveautées)
-    demande: int               # ATTENDU = effectif total (socle attendu de chaque collaborateur)
-    tension: str               # "faible" | "moyenne" | "forte" (demande vs couverture interne)
+    demande: int  # ATTENDU = effectif total (socle attendu de chaque collaborateur)
+    tension: str  # "faible" | "moyenne" | "forte" (demande vs couverture interne)
 
 
 class PoleEffectif(BaseModel):
@@ -88,6 +91,7 @@ class StatutCount(BaseModel):
 
 class SyntheseRh(BaseModel):
     """Vue consolidée du tableau de bord RH (au-delà des KPIs simples)."""
+
     effectif: int
     par_pole: list[PoleEffectif] = []
     candidatures_par_statut: list[StatutCount] = []
@@ -100,14 +104,15 @@ class HautPotentielItem(BaseModel):
     prenom: str | None
     poste_actuel: str | None
     departement_key: str | None
-    score: int                 # proxy de potentiel (0-100), dérivé du niveau moyen
+    score: int  # proxy de potentiel (0-100), dérivé du niveau moyen
     nb_competences: int
     niveau_moyen: float | None
 
 
 class VeilleItem(BaseModel):
     """Veille des entretiens par type (réalisés / planifiés / en retard)."""
-    key: str                   # "annuels" | "rh"
+
+    key: str  # "annuels" | "rh"
     label: str
     realises: int
     planifies: int
@@ -118,22 +123,24 @@ class EntretienCasItem(BaseModel):
     """Cas concret à traiter : un entretien en retard ou à planifier, avec le
     collaborateur concerné, son manager (qui doit le réaliser) et l'ancienneté du
     dernier entretien réalisé (mois)."""
+
     profil_id: int
     nom: str
     prenom: str | None
     poste_actuel: str | None
     departement_key: str | None
-    type: str                  # "annuel" | "rh"
-    statut: str                # "en_retard" | "planifie"
+    type: str  # "annuel" | "rh"
+    statut: str  # "en_retard" | "planifie"
     date_prevue: datetime | None
-    mois_depuis_dernier: int | None   # None = aucun entretien réalisé à ce jour
+    mois_depuis_dernier: int | None  # None = aucun entretien réalisé à ce jour
     manager_nom: str | None
 
 
 class AlerteItem(BaseModel):
     """Alerte RH dérivée de signaux réels (retard d'entretien, potentiels, mobilité)."""
-    kind: str                  # retention | potential | succession
-    severity: str              # crit | warn | info
+
+    kind: str  # retention | potential | succession
+    severity: str  # crit | warn | info
     titre: str
     texte: str
     cta: str
@@ -142,13 +149,15 @@ class AlerteItem(BaseModel):
 
 class SupervisionItem(BaseModel):
     """Contrôle de qualité des données (scan réel de la base) : anomalies détectées."""
+
     titre: str
-    found: int                 # nombre d'anomalies détectées
-    total: int                 # population contrôlée
+    found: int  # nombre d'anomalies détectées
+    total: int  # population contrôlée
 
 
 class AnalyseRhOut(BaseModel):
     """Synthèse stratégique RH produite par l'IA à partir des indicateurs consolidés."""
+
     synthese: str
     model: str
     genere_le: str

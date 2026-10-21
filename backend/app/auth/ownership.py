@@ -29,10 +29,10 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.user import User, Role
-from app.models.profil import Profil
 from app.models.candidature import Candidature
 from app.models.offre import Offre
+from app.models.profil import Profil
+from app.models.user import Role, User
 
 
 def profil_of_user(db: Session, user_id: int) -> Profil | None:
@@ -61,15 +61,15 @@ def can_review_profil(db: Session, user: User, target: Profil) -> bool:
         return False
     if _is_global(user):
         return True
-    if target.user_id == user.manager_id:          # ma cible est mon manager direct
+    if target.user_id == user.manager_id:  # ma cible est mon manager direct
         return True
     linked = db.get(User, target.user_id)
     if linked is None:
         return False
-    if linked.manager_id == user.id:               # la cible me reporte (je suis son manager)
+    if linked.manager_id == user.id:  # la cible me reporte (je suis son manager)
         return True
     if user.manager_id is not None and linked.manager_id == user.manager_id:
-        return True                                # coéquipier : même manager direct
+        return True  # coéquipier : même manager direct
     return False
 
 
@@ -77,12 +77,15 @@ def is_candidate_to_my_offer(db: Session, manager_user_id: int, profil_id: int) 
     """Vrai si `profil_id` a candidaté à une offre PUBLIÉE par ce manager
     (Offre.created_by = lui). Ouvre la revue des candidats de SES offres (fiche/CV),
     même hors de son équipe directe — c'est le périmètre par OFFRE."""
-    return db.scalar(
-        select(Candidature.id)
-        .join(Offre, Offre.id == Candidature.offre_id)
-        .where(Candidature.profil_id == profil_id, Offre.created_by == manager_user_id)
-        .limit(1)
-    ) is not None
+    return (
+        db.scalar(
+            select(Candidature.id)
+            .join(Offre, Offre.id == Candidature.offre_id)
+            .where(Candidature.profil_id == profil_id, Offre.created_by == manager_user_id)
+            .limit(1)
+        )
+        is not None
+    )
 
 
 def manager_user_id_of_profil(db: Session, profil: Profil) -> int | None:
@@ -96,16 +99,17 @@ def manager_user_id_of_profil(db: Session, profil: Profil) -> int | None:
 
 # ------------------------------------------------------------------ Profils
 
+
 def can_view_profil(db: Session, user: User, profil: Profil) -> bool:
     """Droit de LECTURE du profil complet (identité, aspirations, compétences…)."""
     if _is_global(user):
         return True
     if profil.user_id is not None and profil.user_id == user.id:
-        return True                                  # son propre profil
+        return True  # son propre profil
     if user.role == Role.MANAGER and is_manager_of_profil(db, user.id, profil):
-        return True                                  # membre de son équipe
+        return True  # membre de son équipe
     if user.role == Role.MANAGER and is_candidate_to_my_offer(db, user.id, profil.id):
-        return True                                  # candidat à une de SES offres (revue)
+        return True  # candidat à une de SES offres (revue)
     return False
 
 
@@ -145,6 +149,7 @@ def require_profil_evaluation(db: Session, user: User, profil_id: int) -> Profil
 
 # --------------------------------------------------------------- Candidatures
 
+
 def require_own_profil_for_candidature(db: Session, user: User, profil_id: int) -> None:
     """Un COLLAB ne peut candidater que pour SON profil (403 sinon). RH/ADMIN libres."""
     if _is_global(user):
@@ -153,7 +158,8 @@ def require_own_profil_for_candidature(db: Session, user: User, profil_id: int) 
     if own is None or own.id != profil_id:
         raise HTTPException(
             status_code=403,
-            detail="Vous ne pouvez déposer une candidature que pour votre propre profil.")
+            detail="Vous ne pouvez déposer une candidature que pour votre propre profil.",
+        )
 
 
 def can_view_candidature(db: Session, user: User, cand: Candidature) -> bool:
@@ -170,7 +176,9 @@ def require_candidature_view(db: Session, user: User, candidature_id: int) -> Ca
     if c is None:
         raise HTTPException(status_code=404, detail="Candidature introuvable")
     if not can_view_candidature(db, user, c):
-        raise HTTPException(status_code=403, detail="Cette candidature est hors de votre périmètre.")
+        raise HTTPException(
+            status_code=403, detail="Cette candidature est hors de votre périmètre."
+        )
     return c
 
 
@@ -185,18 +193,19 @@ def require_own_candidature(db: Session, user: User, candidature_id: int) -> Can
     own = profil_of_user(db, user.id)
     if own is None or own.id != c.profil_id:
         raise HTTPException(
-            status_code=403,
-            detail="Vous ne pouvez retirer que vos propres candidatures.")
+            status_code=403, detail="Vous ne pouvez retirer que vos propres candidatures."
+        )
     return c
 
 
-def require_candidature_list_scope(db: Session, user: User,
-                                   offre_id: int | None, profil_id: int | None) -> None:
+def require_candidature_list_scope(
+    db: Session, user: User, offre_id: int | None, profil_id: int | None
+) -> None:
     """Autorise une liste de candidatures selon le périmètre (403 sinon) :
-      - RH/ADMIN : tout ;
-      - COLLAB   : uniquement ses candidatures (profil_id == son profil) ;
-      - MANAGER  : candidats d'une offre (offre_id) OU candidatures d'un profil de
-                   son équipe (profil_id).
+    - RH/ADMIN : tout ;
+    - COLLAB   : uniquement ses candidatures (profil_id == son profil) ;
+    - MANAGER  : candidats d'une offre (offre_id) OU candidatures d'un profil de
+                 son équipe (profil_id).
     """
     if _is_global(user):
         return
@@ -205,7 +214,8 @@ def require_candidature_list_scope(db: Session, user: User,
         if own is None or profil_id != own.id:
             raise HTTPException(
                 status_code=403,
-                detail="Filtrez par votre propre profil (profil_id) ou utilisez /api/candidatures/mes.")
+                detail="Filtrez par votre propre profil (profil_id) ou utilisez /api/candidatures/mes.",
+            )
         return
     if user.role == Role.MANAGER:
         if profil_id is not None:
@@ -214,8 +224,9 @@ def require_candidature_list_scope(db: Session, user: User,
                 raise HTTPException(status_code=403, detail="Ce profil est hors de votre équipe.")
             return
         if offre_id is not None:
-            return                                   # revue des candidats d'une offre
+            return  # revue des candidats d'une offre
         raise HTTPException(
             status_code=403,
-            detail="Précisez une offre (offre_id) ou un profil de votre équipe (profil_id).")
+            detail="Précisez une offre (offre_id) ou un profil de votre équipe (profil_id).",
+        )
     raise HTTPException(status_code=403, detail="Accès non autorisé.")

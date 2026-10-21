@@ -31,13 +31,24 @@ SourceComp = Literal["fiche", "ajout_offre"]
 
 class OffreCompetenceIn(BaseModel):
     libelle: str = Field(..., min_length=1, max_length=300)
-    categorie: str | None = Field(None, max_length=24,
-                                  description="metier | comportementale | transversale | outil_technologie")
-    skill_id: int | None = Field(None, description="Ancrage graphe (compétence canonique ESCO/O*NET/SFIA).")
+    categorie: str | None = Field(
+        None,
+        max_length=24,
+        description="metier | comportementale | transversale | outil_technologie",
+    )
+    skill_id: int | None = Field(
+        None, description="Ancrage graphe (compétence canonique ESCO/O*NET/SFIA)."
+    )
     skill_label_fr: str | None = Field(None, max_length=300)
-    importance: Importance = Field("essentielle", description="essentielle (bloquante) | souhaitee (bonus).")
-    niveau_requis: int | None = Field(None, ge=1, le=5, description="Niveau requis 1-5 (aligné SFIA).")
-    source: SourceComp = Field("ajout_offre", description="fiche (héritée) | ajout_offre (ajoutée au niveau offre).")
+    importance: Importance = Field(
+        "essentielle", description="essentielle (bloquante) | souhaitee (bonus)."
+    )
+    niveau_requis: int | None = Field(
+        None, ge=1, le=5, description="Niveau requis 1-5 (aligné SFIA)."
+    )
+    source: SourceComp = Field(
+        "ajout_offre", description="fiche (héritée) | ajout_offre (ajoutée au niveau offre)."
+    )
 
 
 class OffreCompetenceOut(OffreCompetenceIn):
@@ -48,6 +59,7 @@ class OffreCompetenceOut(OffreCompetenceIn):
 
 class OffreCompetenceUpdate(BaseModel):
     """Override d'un attendu au niveau de l'offre (partiel, champs non-None seulement)."""
+
     libelle: str | None = Field(None, min_length=1, max_length=300)
     categorie: str | None = None
     importance: Importance | None = None
@@ -56,33 +68,47 @@ class OffreCompetenceUpdate(BaseModel):
 
 class OffreCreate(BaseModel):
     titre: str = Field(..., min_length=1, max_length=200)
-    fiche_id: int | None = Field(None, description="Fiche de référence dont dérive l'offre (attendus copiés).")
-    heriter_competences: bool = Field(True, description="Copier les compétences de la Fiche comme attendus (si fiche_id).")
+    fiche_id: int | None = Field(
+        None, description="Fiche de référence dont dérive l'offre (attendus copiés)."
+    )
+    heriter_competences: bool = Field(
+        True, description="Copier les compétences de la Fiche comme attendus (si fiche_id)."
+    )
     type: TypeOffre = "offre_poste"
     description: str | None = None
     localisation: str | None = Field(None, max_length=120, description="Ville / site.")
-    duree: str | None = Field(None, max_length=64, description="Durée (mission/projet), ex : « 6 mois ».")
+    duree: str | None = Field(
+        None, max_length=64, description="Durée (mission/projet), ex : « 6 mois »."
+    )
     perimetre_bmci: str | None = Field(None, max_length=160)
     departement_key: str | None = Field(None, max_length=48)
     statut: StatutOffre = "brouillon"
-    created_by: int | None = Field(None, description="Utilisateur qui pousse l'offre (RH ou manager).")
+    created_by: int | None = Field(
+        None, description="Utilisateur qui pousse l'offre (RH ou manager)."
+    )
     manager_id: int | None = Field(None, description="Manager concerné (notification).")
     date_ouverture: datetime | None = None
     date_cloture: datetime | None = None
-    synthetique: bool = Field(False, description="True = donnée de démonstration fabriquée (à étiqueter).")
+    synthetique: bool = Field(
+        False, description="True = donnée de démonstration fabriquée (à étiqueter)."
+    )
     competences: list[OffreCompetenceIn] = Field(
         default_factory=list,
-        description="Attendus ajoutés explicitement (en plus de ceux hérités de la Fiche).")
+        description="Attendus ajoutés explicitement (en plus de ceux hérités de la Fiche).",
+    )
 
 
 class OffreUpdate(BaseModel):
     """Mise à jour partielle de l'offre (jamais la Fiche de référence)."""
+
     titre: str | None = Field(None, min_length=1, max_length=200)
     type: TypeOffre | None = None
     description: str | None = None
     perimetre_bmci: str | None = Field(None, max_length=160)
     departement_key: str | None = Field(None, max_length=48)
-    statut: StatutOffre | None = Field(None, description="Transition de statut (dates ouverture/clôture posées auto).")
+    statut: StatutOffre | None = Field(
+        None, description="Transition de statut (dates ouverture/clôture posées auto)."
+    )
     manager_id: int | None = None
     date_ouverture: datetime | None = None
     date_cloture: datetime | None = None
@@ -113,6 +139,7 @@ class OffreCompatOut(BaseModel):
     """Offre + compatibilité calculée POUR UN PROFIL donné (écran offres du
     collaborateur). `score_compat` = score d'évaluation (0-100) du profil vs les
     attendus ; `couvertes`/`ecarts` = compte des compétences. Compétences = libellés."""
+
     id: int
     type: str
     titre: str
@@ -130,6 +157,7 @@ class OffreCandidatOut(BaseModel):
     """Candidat à une offre (écran RH « revue des candidatures »). Le score et les
     compétences couvertes/écarts proviennent du snapshot d'évaluation de la
     candidature ; l'identité vient du profil."""
+
     profil_id: int
     candidature_id: int
     nom: str
@@ -137,16 +165,17 @@ class OffreCandidatOut(BaseModel):
     poste_actuel: str | None
     departement_key: str | None
     score: float | None
-    statut: str                              # statut de la candidature (deposee/retenue/…)
-    cv_filename: str | None = None           # nom du CV déposé (None = pas de CV → pas d'aperçu)
+    statut: str  # statut de la candidature (deposee/retenue/…)
+    cv_filename: str | None = None  # nom du CV déposé (None = pas de CV → pas d'aperçu)
     couvertes: list[str] = Field(default_factory=list)  # libellés des compétences couvertes
-    ecarts: list[str] = Field(default_factory=list)     # libellés des écarts
+    ecarts: list[str] = Field(default_factory=list)  # libellés des écarts
 
 
 class CandidatOffreActiveOut(BaseModel):
     """Candidat à une offre ENCORE EN COURS (non clôturée / non retirée), avec le
     contexte de l'offre — pour le KPI « Candidatures » du tableau de bord d'un
     compte qui publie des offres (manager / HRBP)."""
+
     offre_id: int
     offre_titre: str
     offre_type: str
@@ -157,11 +186,12 @@ class CandidatOffreActiveOut(BaseModel):
     prenom: str | None
     poste_actuel: str | None
     score: float | None
-    statut: str                              # statut de la candidature (deposee/retenue/…)
+    statut: str  # statut de la candidature (deposee/retenue/…)
 
 
 class RhOffreOut(BaseModel):
     """Offre vue côté RH, avec les statistiques de candidatures (liste RH + revue)."""
+
     id: int
     titre: str
     type: str
@@ -169,14 +199,15 @@ class RhOffreOut(BaseModel):
     perimetre_bmci: str | None
     statut: str
     candidats_total: int = 0
-    candidats_compatibles: int = 0          # au-dessus du seuil de compatibilité
-    retenu_nom: str | None = None           # nom du candidat retenu, s'il y en a un
+    candidats_compatibles: int = 0  # au-dessus du seuil de compatibilité
+    retenu_nom: str | None = None  # nom du candidat retenu, s'il y en a un
 
 
 class VacancyRecoOut(BaseModel):
     """Profil interne recommandé pour un poste (MATCHING INVERSE : le poste évalué
     contre les compétences détenues d'un membre de l'équipe). `score` réutilise
     l'évaluateur des candidatures ; matched/gaps = compétences couvertes/écarts."""
+
     profil_id: int
     nom: str
     prenom: str | None
@@ -188,6 +219,7 @@ class VacancyRecoOut(BaseModel):
 
 class VacancyOut(BaseModel):
     """Poste à pourvoir de l'équipe d'un manager + profils internes recommandés."""
+
     id: int
     titre: str
     type: str
@@ -216,6 +248,7 @@ class MissionExpectedComp(BaseModel):
 class MissionEvalContextOut(BaseModel):
     """Contexte d'évaluation d'une mission : l'offre, ses compétences attendues et
     ses participants retenus — tout ce qu'il faut pour l'écran d'évaluation manager."""
+
     offre_id: int
     titre: str
     type: str

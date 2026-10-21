@@ -13,17 +13,19 @@ depuis la base en < 100 ms — aucune attente Ollama devant le public.
 
 Idempotent : relancer ne fait que rafraîchir le cache.
 """
+
 import time
+
+from sqlalchemy import select
 
 from app.database.session import SessionLocal
 from app.models.user import User
-from app.services import recommendation_service, analyse_service
-from sqlalchemy import select
+from app.services import analyse_service, recommendation_service
 
 # Comptes personas dont on pré-chauffe la reco (collaborateurs / managers).
 _PERSONAS_RECO = [
-    "youssef.elamrani@bmci.local",   # collaborateur (reco « ma reco »)
-    "karim.naji@bmci.local",         # manager
+    "youssef.elamrani@bmci.local",  # collaborateur (reco « ma reco »)
+    "karim.naji@bmci.local",  # manager
 ]
 
 
@@ -32,7 +34,7 @@ def _chrono(label, fn):
     try:
         fn()
         print(f"  ✓ {label}  ({time.perf_counter() - t0:.1f}s)")
-    except Exception as e:  # noqa: BLE001 — best effort, on continue
+    except Exception as e:
         print(f"  ✗ {label}  ÉCHEC : {e}")
 
 
@@ -45,8 +47,10 @@ def main() -> None:
             if not u:
                 print(f"  · {email} : compte introuvable, ignoré")
                 continue
-            _chrono(f"reco {email}",
-                    lambda uid=u.id: recommendation_service.recommander_pour_user(db, uid))
+            _chrono(
+                f"reco {email}",
+                lambda uid=u.id: recommendation_service.recommander_pour_user(db, uid),
+            )
         # Analyse stratégique RH (dashboard HRBP) — persistée (scope global).
         _chrono("analyse RH", lambda: analyse_service.analyser(db))
         print("Terminé. Ces écrans se chargeront désormais instantanément (cache/persistance).")

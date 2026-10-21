@@ -1,5 +1,6 @@
 """Workflow besoin de recrutement : manager exprime → HRBP publie en continuité
 → visibilité partagée (le manager voit l'offre née de son besoin)."""
+
 from app.tests.conftest import auth, hdr
 
 
@@ -13,9 +14,11 @@ def test_manager_publie_directement_interdit(client):
 def test_besoin_workflow_visibilite_partagee(client):
     # 1) Manager exprime un besoin
     csrf_m = auth(client, "manager")
-    b = client.post("/api/besoins",
-                    json={"poste": "Analyste crédit", "description": "Renfort équipe risques"},
-                    headers=hdr(csrf_m))
+    b = client.post(
+        "/api/besoins",
+        json={"poste": "Analyste crédit", "description": "Renfort équipe risques"},
+        headers=hdr(csrf_m),
+    )
     assert b.status_code == 201, b.text
     bid = b.json()["id"]
     assert b.json()["statut"] == "transmis"

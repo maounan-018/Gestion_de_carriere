@@ -25,9 +25,12 @@ from app.services import input_normalization_service
 router = APIRouter(prefix="/api/normalisation", tags=["Normalisation"])
 
 
-@router.post("/cible", response_model=NormaliserCibleResponse,
-             dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
-             summary="Structurer une saisie libre en intitulé canonique + confiance")
+@router.post(
+    "/cible",
+    response_model=NormaliserCibleResponse,
+    dependencies=[Depends(get_current_user), Depends(ia_rate_limit)],
+    summary="Structurer une saisie libre en intitulé canonique + confiance",
+)
 def normaliser_cible(req: NormaliserCibleRequest) -> NormaliserCibleResponse:
     """Nettoie une saisie (fautes, annotations, franglais) en un intitulé de poste
     canonique. `confiance` : 'clair' (intention nette) / 'ambigu' (trop vague, à

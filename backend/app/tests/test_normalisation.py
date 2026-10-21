@@ -8,9 +8,18 @@ from app.services import normalisation_service as ns
 
 
 def test_regroupe_et_canonicalise(monkeypatch):
-    monkeypatch.setattr(ns, "generate", lambda *a, **k: {"groupes": [
-        {"canonique": "Gestion de projet", "variantes": ["gestion projet", "Project Management"]},
-    ]})
+    monkeypatch.setattr(
+        ns,
+        "generate",
+        lambda *a, **k: {
+            "groupes": [
+                {
+                    "canonique": "Gestion de projet",
+                    "variantes": ["gestion projet", "Project Management"],
+                },
+            ]
+        },
+    )
     out = ns.normaliser(["gestion projet", "Project Management", "Python"])
     canon = {g["canonique"] for g in out["groupes"]}
     assert "Gestion de projet" in canon
@@ -21,9 +30,15 @@ def test_regroupe_et_canonicalise(monkeypatch):
 
 
 def test_ignore_les_variantes_hallucinees(monkeypatch):
-    monkeypatch.setattr(ns, "generate", lambda *a, **k: {"groupes": [
-        {"canonique": "X", "variantes": ["a", "INVENTÉ PAR LE MODÈLE"]},
-    ]})
+    monkeypatch.setattr(
+        ns,
+        "generate",
+        lambda *a, **k: {
+            "groupes": [
+                {"canonique": "X", "variantes": ["a", "INVENTÉ PAR LE MODÈLE"]},
+            ]
+        },
+    )
     out = ns.normaliser(["a"])
     plat = [v for g in out["groupes"] for v in g["variantes"]]
     assert plat == ["a"]  # la variante absente de l'entrée est rejetée
@@ -32,6 +47,7 @@ def test_ignore_les_variantes_hallucinees(monkeypatch):
 def test_repli_identite_si_llm_indisponible(monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("ollama down")
+
     monkeypatch.setattr(ns, "generate", boom)
     out = ns.normaliser(["Analyse crédit", "Leadership"])
     assert len(out["groupes"]) == 2

@@ -24,20 +24,20 @@ EMPLACEMENT MVC
     Couche "services" : logique d'ingestion, sans route HTTP.
 """
 
-import os
 import csv
 import logging
-from datetime import datetime, timezone
+import os
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core import attributions
-from app.models.referential import ReferentialSource, SourceCode
-from app.models.skill import Skill, SkillRelation, SkillType, RelationType
+from app.core.config import settings
 from app.models.occupation import Occupation, OccupationSkill, SkillRequirement
-from app.models.skill_mapping import SkillMapping, MappingMethod
+from app.models.referential import ReferentialSource, SourceCode
+from app.models.skill import RelationType, Skill, SkillRelation, SkillType
+from app.models.skill_mapping import MappingMethod, SkillMapping
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ def _find_dir(lang: str) -> str:
 
 
 def _rows(path: str):
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, encoding="utf-8", newline="") as f:
         yield from csv.DictReader(f)
 
 
@@ -90,7 +90,8 @@ def load_esco(db: Session) -> dict:
         label_en = (r.get("preferredLabel") or "").strip()
         label_fr = (rf.get("preferredLabel") or "").strip() or label_en
         skill = Skill(
-            label_fr=label_fr[:300], label_en=label_en[:300],
+            label_fr=label_fr[:300],
+            label_en=label_en[:300],
             description_fr=(rf.get("description") or "").strip() or None,
             description_en=(r.get("description") or "").strip() or None,
             skill_type=_skill_type(r.get("skillType")),
@@ -100,12 +101,21 @@ def load_esco(db: Session) -> dict:
     db.flush()
     logger.info("  %d compétences (FR/EN)", len(uri_to_skill))
 
-    db.bulk_insert_mappings(SkillMapping, [
-        {"skill_id": s.id, "source": SourceCode.ESCO, "external_id": uri,
-         "external_label": s.label_en, "confidence": 1.0,
-         "method": MappingMethod.EXACT, "validated": True}
-        for uri, s in uri_to_skill.items()
-    ])
+    db.bulk_insert_mappings(
+        SkillMapping,
+        [
+            {
+                "skill_id": s.id,
+                "source": SourceCode.ESCO,
+                "external_id": uri,
+                "external_label": s.label_en,
+                "confidence": 1.0,
+                "method": MappingMethod.EXACT,
+                "validated": True,
+            }
+            for uri, s in uri_to_skill.items()
+        ],
+    )
 
     # 2) Métiers (jointure EN/FR par conceptUri).
     fr_occ = {r["conceptUri"]: r for r in _rows(os.path.join(dir_fr, "occupations_fr.csv"))}
@@ -121,7 +131,8 @@ def load_esco(db: Session) -> dict:
             label_en=label_en[:300],
             description_fr=(rf.get("description") or "").strip() or None,
             description_en=(r.get("description") or "").strip() or None,
-            source=SourceCode.ESCO, source_uri=uri,
+            source=SourceCode.ESCO,
+            source_uri=uri,
             code=(r.get("code") or r.get("iscoGroup") or "").strip() or None,
         )
         db.add(occ)
@@ -138,7 +149,11 @@ def load_esco(db: Session) -> dict:
         if not occ or not skill or (occ.id, skill.id) in seen:
             continue
         seen.add((occ.id, skill.id))
-        req = SkillRequirement.ESSENTIAL if (r.get("relationType") or "").strip() == "essential" else SkillRequirement.OPTIONAL
+        req = (
+            SkillRequirement.ESSENTIAL
+            if (r.get("relationType") or "").strip() == "essential"
+            else SkillRequirement.OPTIONAL
+        )
         links.append({"occupation_id": occ.id, "skill_id": skill.id, "requirement": req})
     db.bulk_insert_mappings(OccupationSkill, links)
     logger.info("  %d liens métier↔compétence", len(links))
@@ -163,15 +178,26 @@ def load_esco(db: Session) -> dict:
     logger.info("  %d relations entre compétences", len(rels))
 
     # 6) Source + attribution.
-    db.add(ReferentialSource(
-        code=SourceCode.ESCO, name="ESCO (Commission européenne)", version=ESCO_VERSION,
-        languages="fr,en", license="EUPL-1.2", attribution=attributions.ESCO,
-        imported_at=datetime.now(timezone.utc),
-        n_skills=len(uri_to_skill), n_occupations=len(uri_to_occ),
-    ))
+    db.add(
+        ReferentialSource(
+            code=SourceCode.ESCO,
+            name="ESCO (Commission européenne)",
+            version=ESCO_VERSION,
+            languages="fr,en",
+            license="EUPL-1.2",
+            attribution=attributions.ESCO,
+            imported_at=datetime.now(UTC),
+            n_skills=len(uri_to_skill),
+            n_occupations=len(uri_to_occ),
+        )
+    )
     db.commit()
 
-    counts = {"skills": len(uri_to_skill), "occupations": len(uri_to_occ),
-              "links": len(links), "relations": len(rels)}
+    counts = {
+        "skills": len(uri_to_skill),
+        "occupations": len(uri_to_occ),
+        "links": len(links),
+        "relations": len(rels),
+    }
     logger.info("ESCO ingéré: %s", counts)
     return counts

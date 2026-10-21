@@ -31,8 +31,9 @@ def test_doc_sans_csp_stricte(client):
 def test_corps_trop_volumineux_413(client, monkeypatch):
     """Un Content-Length au-delà du plafond -> 413, avant tout traitement/auth."""
     monkeypatch.setattr(settings, "MAX_REQUEST_SIZE_BYTES", 10)
-    r = client.post("/api/auth/login",
-                    json={"email": "trop@gros.local", "password": "charge-utile-volumineuse"})
+    r = client.post(
+        "/api/auth/login", json={"email": "trop@gros.local", "password": "charge-utile-volumineuse"}
+    )
     assert r.status_code == 413
     # Le 413 porte lui aussi les en-têtes de sécurité.
     assert r.headers["x-content-type-options"] == "nosniff"

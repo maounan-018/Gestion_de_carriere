@@ -32,6 +32,7 @@ class SouhaitCreate(BaseModel):
 
 class SouhaitUpdate(BaseModel):
     """Mise à jour partielle (le collaborateur édite ; RH/manager peut faire évoluer le statut)."""
+
     titre: str | None = Field(None, min_length=1, max_length=200)
     kind: KindSouhait | None = None
     horizon: str | None = Field(None, max_length=32)
@@ -56,6 +57,7 @@ class SouhaitOut(BaseModel):
 
 class SouhaitRecuOut(SouhaitOut):
     """Souhait poussé, vu par le manager : + identité du collaborateur émetteur."""
+
     membre_nom: str
     membre_prenom: str | None = None
     membre_matricule: str | None = None

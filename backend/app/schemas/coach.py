@@ -26,6 +26,7 @@ class CoachMessage(BaseModel):
 class EntretienSujet(BaseModel):
     """Personne INCARNÉE par l'IA en mode `entretien_roleplay` (l'intervieweur — manager
     ou RH — mène, l'IA joue le collaborateur). Données de simulation, pas d'accès base."""
+
     nom: str = Field(..., max_length=120)
     poste: str = Field("", max_length=160)
     aspiration: str | None = Field(None, max_length=300)
@@ -35,28 +36,56 @@ class EntretienSujet(BaseModel):
 
 class CoachRequest(BaseModel):
     # `message` peut être vide pour un TOUR D'OUVERTURE d'entretien (l'IA parle en premier).
-    message: str = Field("", max_length=4000, description="Message de l'utilisateur (vide si ouverture).")
-    history: list[CoachMessage] = Field(default_factory=list, description="Tours précédents (contexte).")
+    message: str = Field(
+        "", max_length=4000, description="Message de l'utilisateur (vide si ouverture)."
+    )
+    history: list[CoachMessage] = Field(
+        default_factory=list, description="Tours précédents (contexte)."
+    )
 
     # --- Mode conversationnel (défaut : coach carrière agentique, inchangé) ---
-    mode: Literal["carriere", "entretien_copilote", "entretien_roleplay",
-                  "entretien_copilote_equipe"] = Field(
-        "carriere", description="carriere = coach agentique ; entretien_* = préparation d'entretien annuel "
-        "(copilote = l'utilisateur prépare le sien ; copilote_equipe = le manager prépare celui d'un collaborateur).")
+    mode: Literal[
+        "carriere", "entretien_copilote", "entretien_roleplay", "entretien_copilote_equipe"
+    ] = Field(
+        "carriere",
+        description="carriere = coach agentique ; entretien_* = préparation d'entretien annuel "
+        "(copilote = l'utilisateur prépare le sien ; copilote_equipe = le manager prépare celui d'un collaborateur).",
+    )
     # Entretien co-pilote (l'utilisateur prépare SON entretien ; l'IA le coache, ancrée sur son profil) :
-    section: str | None = Field(None, max_length=120, description="Libellé de la section en cours (indicatif).")
-    section_index: int | None = Field(None, ge=0, le=20,
-        description="Index (0-based) de la section en cours dans le plan d'entretien (piloté backend).")
-    section_turns: int = Field(0, ge=0, le=50,
-        description="Nombre de réponses déjà données dans la section en cours (plancher anti-avance éclair).")
-    focus: str | None = Field(None, max_length=800, description="Consigne de la section pour un tour d'ouverture (legacy).")
-    ouverture: bool = Field(False, description="True : tout premier tour (l'IA ouvre l'entretien) ; False : elle réagit à `message`.")
+    section: str | None = Field(
+        None, max_length=120, description="Libellé de la section en cours (indicatif)."
+    )
+    section_index: int | None = Field(
+        None,
+        ge=0,
+        le=20,
+        description="Index (0-based) de la section en cours dans le plan d'entretien (piloté backend).",
+    )
+    section_turns: int = Field(
+        0,
+        ge=0,
+        le=50,
+        description="Nombre de réponses déjà données dans la section en cours (plancher anti-avance éclair).",
+    )
+    focus: str | None = Field(
+        None,
+        max_length=800,
+        description="Consigne de la section pour un tour d'ouverture (legacy).",
+    )
+    ouverture: bool = Field(
+        False,
+        description="True : tout premier tour (l'IA ouvre l'entretien) ; False : elle réagit à `message`.",
+    )
     # Entretien role-play (l'IA incarne un collaborateur) :
-    sujet: EntretienSujet | None = Field(None, description="Personne incarnée par l'IA (role-play).")
+    sujet: EntretienSujet | None = Field(
+        None, description="Personne incarnée par l'IA (role-play)."
+    )
 
 
 class CoachResponse(BaseModel):
     reply: str
     model: str
-    outils: list[str] = Field(default_factory=list,
-                              description="Outils (données réelles) interrogés par le coach agentique.")
+    outils: list[str] = Field(
+        default_factory=list,
+        description="Outils (données réelles) interrogés par le coach agentique.",
+    )

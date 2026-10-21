@@ -84,6 +84,7 @@ def extract_text(filename: str, content: bytes) -> str:
 
 # --------------------------------------------------------------- Garde-fou qualité
 
+
 def _looks_poorly_extracted(text: str) -> bool:
     """Détecte une extraction appauvrie : document lu mais vidé de son contenu.
 
@@ -108,6 +109,7 @@ def _looks_poorly_extracted(text: str) -> bool:
 
 # --------------------------------------------------------------- Extracteurs
 
+
 def _extract_plain(content: bytes) -> str:
     for encoding in ("utf-8", "latin-1"):
         try:
@@ -119,6 +121,7 @@ def _extract_plain(content: bytes) -> str:
 
 def _extract_docx(content: bytes) -> str:
     import docx  # python-docx
+
     document = docx.Document(io.BytesIO(content))
     parts = [p.text for p in document.paragraphs if p.text and p.text.strip()]
     for table in document.tables:
@@ -131,6 +134,7 @@ def _extract_docx(content: bytes) -> str:
 
 def _extract_xlsx(content: bytes) -> str:
     from openpyxl import load_workbook
+
     wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     parts: list[str] = []
     for ws in wb.worksheets:
@@ -162,14 +166,15 @@ def _extract_pdf(content: bytes) -> str:
 
 # Moteur OCR chargé paresseusement puis réutilisé (chargement ONNX ~1-2 s).
 _ocr_engine = None
-_OCR_DPI = 200          # compromis qualité/vitesse
-_OCR_MAX_PAGES = 50     # borne anti-emballement sur un très gros PDF
+_OCR_DPI = 200  # compromis qualité/vitesse
+_OCR_MAX_PAGES = 50  # borne anti-emballement sur un très gros PDF
 
 
 def _get_ocr_engine():
     global _ocr_engine
     if _ocr_engine is None:
         from rapidocr_onnxruntime import RapidOCR  # import tardif : lourd (onnx)
+
         _ocr_engine = RapidOCR()
     return _ocr_engine
 
@@ -186,14 +191,15 @@ def _ocr_pdf_pages(doc) -> str:
 
     n_pages = min(doc.page_count, _OCR_MAX_PAGES)
     if doc.page_count > _OCR_MAX_PAGES:
-        logger.warning("OCR limité aux %d premières pages (document de %d).",
-                       _OCR_MAX_PAGES, doc.page_count)
+        logger.warning(
+            "OCR limité aux %d premières pages (document de %d).", _OCR_MAX_PAGES, doc.page_count
+        )
     parts: list[str] = []
     for i in range(n_pages):
         try:
             pixmap = doc[i].get_pixmap(dpi=_OCR_DPI)
             result, _ = engine(pixmap.tobytes("png"))
-        except Exception as exc:  # noqa: BLE001 — une page illisible n'annule pas tout
+        except Exception as exc:
             logger.warning("OCR page %d échouée : %s", i + 1, exc)
             continue
         if result:

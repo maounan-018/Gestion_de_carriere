@@ -14,9 +14,9 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Text, Float, DateTime, ForeignKey, Index
+from sqlalchemy import DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -25,9 +25,9 @@ from app.database.base import Base
 class CandidatureStatut:
     DEPOSEE = "deposee"
     EN_EVALUATION = "en_evaluation"
-    RETENUE = "retenue"        # sélectionnée (même si score < 100 %)
+    RETENUE = "retenue"  # sélectionnée (même si score < 100 %)
     REJETEE = "rejetee"
-    RETIREE = "retiree"        # retirée par le candidat
+    RETIREE = "retiree"  # retirée par le candidat
 
 
 class Candidature(Base):
@@ -37,14 +37,19 @@ class Candidature(Base):
     offre_id: Mapped[int] = mapped_column(ForeignKey("offres.id"), index=True)
     profil_id: Mapped[int] = mapped_column(ForeignKey("profils.id"), index=True)
     statut: Mapped[str] = mapped_column(String(16), default=CandidatureStatut.DEPOSEE, index=True)
-    score: Mapped[float | None] = mapped_column(Float, default=None)        # score d'évaluation (0-100)
-    evaluation_json: Mapped[str | None] = mapped_column(Text, default=None)  # snapshot couvertes/écarts (traçabilité)
+    score: Mapped[float | None] = mapped_column(Float, default=None)  # score d'évaluation (0-100)
+    evaluation_json: Mapped[str | None] = mapped_column(
+        Text, default=None
+    )  # snapshot couvertes/écarts (traçabilité)
     motivation: Mapped[str | None] = mapped_column(Text, default=None)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
-    reevaluated_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)  # dernière réévaluation (traçabilité)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    reevaluated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=None
+    )  # dernière réévaluation (traçabilité)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    decided_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), default=None)  # décideur (humain)
+    decided_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), default=None
+    )  # décideur (humain)
 
     __table_args__ = (
         # un profil ne candidate qu'une fois par offre

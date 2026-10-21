@@ -23,7 +23,7 @@ class StationOut(BaseModel):
     periode: str
     titre: str
     description: str | None
-    etat: str            # passe | actuel | objectif
+    etat: str  # passe | actuel | objectif
     ordre: int
 
 
@@ -38,12 +38,14 @@ class PeerReviewOut(BaseModel):
 
 class AvisCreate(BaseModel):
     """Dépôt d'un avis (revue par les pairs) sur un collègue de son équipe / son manager."""
+
     texte: str = Field(..., min_length=3, max_length=800)
     etoiles: int = Field(..., ge=1, le=5)
 
 
 class AvisListOut(BaseModel):
     """Avis d'un profil + droit de l'utilisateur courant à en déposer un."""
+
     avis: list[PeerReviewOut]
     peut_noter: bool
 
@@ -53,8 +55,8 @@ class SkillNiveauOut(BaseModel):
     libelle: str
     categorie: str | None
     niveau: int | None
-    acquisition_pct: int | None = None   # % d'acquisition (évaluations + repli niveau)
-    evaluee: bool = False                 # False = en attente d'évaluation
+    acquisition_pct: int | None = None  # % d'acquisition (évaluations + repli niveau)
+    evaluee: bool = False  # False = en attente d'évaluation
     # Attribution d'une évaluation de MISSION (« évaluée par X dans le cadre de Y »).
     evaluee_par: str | None = None
     mission: str | None = None

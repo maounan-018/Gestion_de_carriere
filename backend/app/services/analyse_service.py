@@ -18,7 +18,7 @@ EMPLACEMENT MVC
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.analyse_rh import AnalyseRh
 from app.services import dashboard_service
-from app.services.ai_router import generate, fence
+from app.services.ai_router import fence, generate
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,9 @@ def _contexte(db: Session) -> str:
         f"Effectif cartographié : {s['effectif']}",
         "Effectifs par pôle : " + ", ".join(_fmt_pole(p) for p in s["par_pole"][:10]),
         "Pipeline candidatures : "
-        + (", ".join(f"{c['statut']} : {c['nombre']}" for c in s["candidatures_par_statut"]) or "—"),
+        + (
+            ", ".join(f"{c['statut']} : {c['nombre']}" for c in s["candidatures_par_statut"]) or "—"
+        ),
         f"Familles de compétences en tension forte : {s['familles_en_tension']}",
         "Tensions par famille : "
         + ", ".join(
@@ -70,9 +72,13 @@ def _contexte(db: Session) -> str:
             for f in fam
         ),
         "Hauts potentiels : "
-        + (", ".join(
-            f"{(h.prenom or '').strip()} {h.nom} — {h.poste_actuel or '—'} (score {h.score})"
-            for h in hp) or "—"),
+        + (
+            ", ".join(
+                f"{(h.prenom or '').strip()} {h.nom} — {h.poste_actuel or '—'} (score {h.score})"
+                for h in hp
+            )
+            or "—"
+        ),
         "Alertes actives : " + (" ; ".join(a.titre for a in al) or "aucune"),
         "Qualité des données : "
         + ", ".join(f"{it['titre']} : {it['found']}/{it['total']}" for it in sup),
@@ -103,7 +109,7 @@ def _persister(db: Session, synthese: str, model: str, scope: str = _SCOPE) -> N
             row.synthese = synthese
             row.model = model
         db.commit()
-    except Exception as e:  # noqa: BLE001 — persistance best-effort
+    except Exception as e:
         logger.warning("Persistance analyse RH échouée (%s).", e)
         db.rollback()
 
@@ -120,7 +126,7 @@ def analyser(db: Session) -> dict:
     )
     try:
         synthese = (generate(_TASK, prompt, system=_SYSTEM) or "").strip()
-    except Exception as e:  # noqa: BLE001 — indisponibilité IA best-effort
+    except Exception as e:
         logger.warning("Analyse RH indisponible (%s).", e)
         synthese = ""
     genere = bool(synthese)  # vraie synthèse (avant repli) → persistable
@@ -131,5 +137,5 @@ def analyser(db: Session) -> dict:
     return {
         "synthese": synthese,
         "model": model,
-        "genere_le": datetime.now(timezone.utc).isoformat(),
+        "genere_le": datetime.now(UTC).isoformat(),
     }

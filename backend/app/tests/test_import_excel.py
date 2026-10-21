@@ -24,17 +24,24 @@ def _xlsx(rows: list[list]) -> bytes:
 
 
 def _upload(content: bytes, name: str = "profils.xlsx"):
-    return {"fichier": (name, content,
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+    return {
+        "fichier": (
+            name,
+            content,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    }
 
 
 def test_import_profils_ok_et_lignes_ignorees(client):
-    data = _xlsx([
-        ["nom", "prenom", "poste_actuel", "departement_key", "competences"],
-        ["Testimport", "Alice", "Analyste", "risques", "Python, IFRS 9"],
-        ["Deuxième", "Bob", "Conseiller", "retail_banking", ""],
-        ["", "", "", "", ""],  # ligne sans nom -> ignorée
-    ])
+    data = _xlsx(
+        [
+            ["nom", "prenom", "poste_actuel", "departement_key", "competences"],
+            ["Testimport", "Alice", "Analyste", "risques", "Python, IFRS 9"],
+            ["Deuxième", "Bob", "Conseiller", "retail_banking", ""],
+            ["", "", "", "", ""],  # ligne sans nom -> ignorée
+        ]
+    )
     csrf = auth(client, "rh")
     r = client.post("/api/profils/import-excel", files=_upload(data), headers=hdr(csrf))
     assert r.status_code == 200, r.text
@@ -59,6 +66,7 @@ def test_import_profils_interdit_au_collab(client):
 
 def test_import_fichier_illisible_400(client):
     csrf = auth(client, "rh")
-    r = client.post("/api/profils/import-excel",
-                    files=_upload(b"ceci-n-est-pas-un-xlsx"), headers=hdr(csrf))
+    r = client.post(
+        "/api/profils/import-excel", files=_upload(b"ceci-n-est-pas-un-xlsx"), headers=hdr(csrf)
+    )
     assert r.status_code == 400

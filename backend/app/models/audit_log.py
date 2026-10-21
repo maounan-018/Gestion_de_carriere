@@ -11,9 +11,9 @@ EMPLACEMENT MVC
     Couche "models" : entité ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, Text, DateTime
+from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -23,13 +23,13 @@ class AuditEventType:
     LOGIN_SUCCESS = "LOGIN_SUCCESS"
     LOGIN_FAILED = "LOGIN_FAILED"
     LOGOUT = "LOGOUT"
-    ACCESS_DENIED = "ACCESS_DENIED"       # 401/403 (token/CSRF/rôle)
+    ACCESS_DENIED = "ACCESS_DENIED"  # 401/403 (token/CSRF/rôle)
     SESSION_EXPIRED = "SESSION_EXPIRED"
     USER_CREATED = "USER_CREATED"
-    SENSITIVE_READ = "SENSITIVE_READ"      # accès à un profil / données RH
+    SENSITIVE_READ = "SENSITIVE_READ"  # accès à un profil / données RH
     EXPORT = "EXPORT"
-    RATE_LIMITED = "RATE_LIMITED"          # 429 (abus / saturation des endpoints IA)
-    CONFIG_CHANGED = "CONFIG_CHANGED"      # référentiel édité (gabarit, cartographie)
+    RATE_LIMITED = "RATE_LIMITED"  # 429 (abus / saturation des endpoints IA)
+    CONFIG_CHANGED = "CONFIG_CHANGED"  # référentiel édité (gabarit, cartographie)
 
 
 class AuditLog(Base):
@@ -47,4 +47,5 @@ class AuditLog(Base):
     endpoint: Mapped[str | None] = mapped_column(String(200), default=None)
     http_method: Mapped[str | None] = mapped_column(String(8), default=None)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+        DateTime, default=lambda: datetime.now(UTC), index=True
+    )

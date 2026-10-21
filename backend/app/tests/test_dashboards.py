@@ -4,7 +4,7 @@ tests/test_dashboards.py — Tableaux de bord & agrégations (Batch 2) :
 KPIs (RH/manager), cartographie, hauts potentiels. Couvre RBAC.
 """
 
-from app.tests.conftest import auth, anon
+from app.tests.conftest import anon, auth
 
 
 def test_kpis_rh(client):

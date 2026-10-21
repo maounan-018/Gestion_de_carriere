@@ -19,11 +19,11 @@ EMPLACEMENT MVC
     Couche "database" : fabrique de sessions.
 """
 
-import os
 import logging
+import os
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
@@ -47,10 +47,11 @@ if settings.is_sqlite:
         (les fonctions non-vectorielles restent utilisables)."""
         try:
             import sqlite_vec
+
             dbapi_conn.enable_load_extension(True)
             sqlite_vec.load(dbapi_conn)
             dbapi_conn.enable_load_extension(False)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("sqlite-vec non chargé (%s) — recherche vectorielle indisponible.", e)
 
     @event.listens_for(engine, "connect")
@@ -73,7 +74,7 @@ if settings.is_sqlite:
             cur.execute("PRAGMA busy_timeout=5000")
             cur.execute("PRAGMA synchronous=NORMAL")
             cur.execute("PRAGMA temp_store=MEMORY")
-            cur.execute("PRAGMA cache_size=-16000")   # ~16 Mo de cache page (valeur en Kio)
+            cur.execute("PRAGMA cache_size=-16000")  # ~16 Mo de cache page (valeur en Kio)
         finally:
             cur.close()
 
@@ -100,14 +101,17 @@ else:
         encore créée (avant P1), on log sans bloquer le boot."""
         try:
             from pgvector.psycopg import register_vector
+
             register_vector(dbapi_conn)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("pgvector non enregistré (%s) — recherche vectorielle indisponible.", e)
 
 
 logger.info("Moteur SQLAlchemy : dialecte=%s", settings.db_dialect)
 
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session, future=True)
+SessionLocal = sessionmaker(
+    bind=engine, autoflush=False, autocommit=False, class_=Session, future=True
+)
 
 
 def get_db():

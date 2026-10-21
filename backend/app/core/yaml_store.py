@@ -28,4 +28,4 @@ def write_yaml_atomic(path: str, data: dict, *, header: str = "") -> None:
         if header:
             f.write(header if header.endswith("\n") else header + "\n")
         yaml.safe_dump(data, f, allow_unicode=True, sort_keys=False)
-    os.replace(tmp, path)   # atomique : l'ancien fichier reste intact en cas d'échec avant
+    os.replace(tmp, path)  # atomique : l'ancien fichier reste intact en cas d'échec avant

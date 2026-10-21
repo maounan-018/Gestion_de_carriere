@@ -17,8 +17,8 @@ EMPLACEMENT MVC
     Couche "services" : configuration métier (typologie de fiche).
 """
 
-import os
 import logging
+import os
 
 import yaml
 
@@ -56,7 +56,9 @@ def _validate(schema: dict) -> dict:
         if kind not in VALID_KINDS:
             raise ValueError(f"Gabarit invalide : kind '{kind}' inconnu (section {key}).")
         if kind in ("freetext", "skill_list") and s.get("categorie") not in VALID_CATEGORIES:
-            raise ValueError(f"Gabarit invalide : categorie manquante/inconnue pour la section {key}.")
+            raise ValueError(
+                f"Gabarit invalide : categorie manquante/inconnue pour la section {key}."
+            )
         seen.add(key)
     return schema
 
@@ -66,7 +68,7 @@ def load_schema() -> dict:
     (protège l'extraction contre un gabarit cassé par une édition utilisateur)."""
     if not os.path.exists(SCHEMA_PATH):
         raise FileNotFoundError(f"Gabarit de fiche introuvable : {SCHEMA_PATH}")
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+    with open(SCHEMA_PATH, encoding="utf-8") as f:
         schema = yaml.safe_load(f) or {}
     return _validate(schema)
 

@@ -7,13 +7,16 @@ une nouvelle (« recalcul = mise à jour, jamais une perte »)."""
 
 from sqlalchemy import select
 
-from app.services import recommendation_service as rs
 from app.models.recommandation import Recommandation
+from app.services import recommendation_service as rs
 
 _RES = {
-    "poste_vise": "Manager d'équipe Risques", "score_actuel": 40,
+    "poste_vise": "Manager d'équipe Risques",
+    "score_actuel": 40,
     "competences_a_developper": [{"competence": "Leadership"}],
-    "passerelles_metiers": [], "plan_developpement": "Plan de dev.", "confiance": "clair",
+    "passerelles_metiers": [],
+    "plan_developpement": "Plan de dev.",
+    "confiance": "clair",
 }
 
 

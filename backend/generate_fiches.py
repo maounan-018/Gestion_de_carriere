@@ -12,16 +12,16 @@ canonique du graphe, et enregistre Fiche + FicheCompetence. Idempotent (saute le
 fiches déjà créées) et commit par fiche (reprise possible). Contenu SYNTHÉTIQUE.
 """
 
-import sys
 import logging
+import sys
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 from app.database.init_db import init_db
 from app.database.session import SessionLocal
+from app.models.fiche import Fiche, FicheCompetence, FicheSource
 from app.services import cartography_service, fiche_generation_service
 from app.services.skill_search_service import search_skills
-from app.models.fiche import Fiche, FicheCompetence, FicheSource
 
 logger = logging.getLogger(__name__)
 
@@ -37,26 +37,36 @@ _SKILL_SECTIONS = [
 def _persist(db, dept_key: str, gen: dict) -> Fiche:
     s = gen["sections"]
     fiche = Fiche(
-        departement_key=dept_key, perimetre_bmci=s.get("perimetre_bmci", ""),
-        famille_metier=s.get("famille_metier"), intitule_poste=s["intitule_poste"],
-        code_poste=s.get("code_poste"), mission=s.get("mission"),
-        activites_principales=s.get("activites_principales"), langues=s.get("langues"),
+        departement_key=dept_key,
+        perimetre_bmci=s.get("perimetre_bmci", ""),
+        famille_metier=s.get("famille_metier"),
+        intitule_poste=s["intitule_poste"],
+        code_poste=s.get("code_poste"),
+        mission=s.get("mission"),
+        activites_principales=s.get("activites_principales"),
+        langues=s.get("langues"),
         indicateurs_performances=s.get("indicateurs_performances"),
-        source=FicheSource.GENEREE, synthetique=True,
+        source=FicheSource.GENEREE,
+        synthetique=True,
     )
     db.add(fiche)
     db.flush()  # -> fiche.id
 
     for section_key, categorie in _SKILL_SECTIONS:
         for libelle in [l.strip() for l in (s.get(section_key) or "").split("\n") if l.strip()]:
-            matches = search_skills(db, libelle, k=1)   # ancrage graphe (canonique)
+            matches = search_skills(db, libelle, k=1)  # ancrage graphe (canonique)
             m = matches[0] if matches else None
-            db.add(FicheCompetence(
-                fiche_id=fiche.id, libelle=libelle, categorie=categorie, implicite=False,
-                skill_id=m["skill_id"] if m else None,
-                skill_label_fr=m["label_fr"] if m else None,
-                rerank_score=m.get("rerank_score") if m else None,
-            ))
+            db.add(
+                FicheCompetence(
+                    fiche_id=fiche.id,
+                    libelle=libelle,
+                    categorie=categorie,
+                    implicite=False,
+                    skill_id=m["skill_id"] if m else None,
+                    skill_label_fr=m["label_fr"] if m else None,
+                    rerank_score=m.get("rerank_score") if m else None,
+                )
+            )
     return fiche
 
 
@@ -69,10 +79,13 @@ def main() -> None:
 
     db = SessionLocal()
     try:
-        existing = {(f.departement_key, f.intitule_poste)
-                    for f in db.scalars(select(Fiche)).all()}
-        todo = [(d["key"], d, m) for d in cartography_service.departements()
-                for m in d.get("metiers", []) if (d["key"], m) not in existing]
+        existing = {(f.departement_key, f.intitule_poste) for f in db.scalars(select(Fiche)).all()}
+        todo = [
+            (d["key"], d, m)
+            for d in cartography_service.departements()
+            for m in d.get("metiers", [])
+            if (d["key"], m) not in existing
+        ]
         if limit:
             todo = todo[:limit]
         logger.info("À générer : %d fiches (%d déjà en base).", len(todo), len(existing))
@@ -88,14 +101,22 @@ def main() -> None:
                 db.commit()
                 made += 1
                 logger.info("  [%d/%d] %s — %s", i, len(todo), dept["nom"], metier)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 db.rollback()
                 failed += 1
-                logger.warning("  ÉCHEC [%d/%d] %s — %s : %s (sautée, reprise au prochain run)",
-                               i, len(todo), dept["nom"], metier, str(e)[:120])
+                logger.warning(
+                    "  ÉCHEC [%d/%d] %s — %s : %s (sautée, reprise au prochain run)",
+                    i,
+                    len(todo),
+                    dept["nom"],
+                    metier,
+                    str(e)[:120],
+                )
 
         total = db.scalar(select(func.count()).select_from(Fiche))
-        print(f"\n=== {made} générées, {failed} sautées cette exécution — {total} fiches en base ===")
+        print(
+            f"\n=== {made} générées, {failed} sautées cette exécution — {total} fiches en base ==="
+        )
     finally:
         db.close()
 

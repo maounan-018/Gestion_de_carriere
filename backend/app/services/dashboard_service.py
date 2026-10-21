@@ -19,17 +19,25 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select, func, distinct
+from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
-from app.models.profil import Profil, ProfilCompetence
-from app.models.offre import Offre, OffreStatut, OffreCompetence
 from app.models.candidature import Candidature
+from app.models.entretien import Entretien, EntretienStatut, EntretienType
+from app.models.offre import Offre, OffreStatut
+from app.models.profil import Profil, ProfilCompetence
 from app.models.souhait import Souhait
 from app.models.user import User
-from app.models.entretien import Entretien, EntretienType, EntretienStatut
-from app.schemas.dashboard import (KpiItem, CartoMatrix, CartoLigne, FamilleCompetence,
-                                    HautPotentielItem, VeilleItem, AlerteItem, EntretienCasItem)
+from app.schemas.dashboard import (
+    AlerteItem,
+    CartoLigne,
+    CartoMatrix,
+    EntretienCasItem,
+    FamilleCompetence,
+    HautPotentielItem,
+    KpiItem,
+    VeilleItem,
+)
 
 
 def _count(db: Session, stmt) -> int:
@@ -46,9 +54,11 @@ def kpis_rh(db: Session, rh_user_id: int) -> list[KpiItem]:
     # clôturées / non retirées), cohérent avec l'écran ouvert au clic.
     _fermes = (OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE)
     mes_offres_actives_ids = select(Offre.id).where(
-        Offre.created_by == rh_user_id, Offre.statut.not_in(_fermes))
+        Offre.created_by == rh_user_id, Offre.statut.not_in(_fermes)
+    )
     candidatures = _count(
-        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids)))
+        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids))
+    )
     competences = _count(db, select(ProfilCompetence.libelle).distinct())
     return [
         KpiItem(key="effectif", value=effectif, label="Profils cartographiés"),
@@ -68,13 +78,18 @@ def kpis_manager(db: Session, manager_user_id: int) -> list[KpiItem]:
     # retirées), cohérent avec l'écran ouvert au clic sur le KPI « Candidatures ».
     _fermes = (OffreStatut.POURVUE, OffreStatut.FERMEE, OffreStatut.ANNULEE)
     mes_offres_actives_ids = select(Offre.id).where(
-        Offre.created_by == manager_user_id, Offre.statut.not_in(_fermes))
+        Offre.created_by == manager_user_id, Offre.statut.not_in(_fermes)
+    )
     candidatures = _count(
-        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids)))
+        db, select(Candidature.id).where(Candidature.offre_id.in_(mes_offres_actives_ids))
+    )
     souhaits = _count(
-        db, select(Souhait.id).join(Profil, Profil.id == Souhait.profil_id)
+        db,
+        select(Souhait.id)
+        .join(Profil, Profil.id == Souhait.profil_id)
         .join(User, User.id == Profil.user_id)
-        .where(User.manager_id == manager_user_id, Souhait.pushed.is_(True)))
+        .where(User.manager_id == manager_user_id, Souhait.pushed.is_(True)),
+    )
     return [
         KpiItem(key="equipe", value=equipe, label="Membres de l'équipe"),
         KpiItem(key="offres", value=offres, label="Offres publiées"),
@@ -90,8 +105,14 @@ _FAM_DEFAUT = "transversale"
 # Familles CANONIQUES (colonnes de la cartographie), dans l'ordre d'affichage. On
 # n'affiche QUE celles-ci : les catégories parasites (« savoir », « savoir-faire »…
 # présentes sur de rares compétences) ne polluent plus la heatmap ni les tensions.
-_FAMILLES_CANON = ("metier", "comportementale", "transversale",
-                   "outil_technologie", "data", "leadership")
+_FAMILLES_CANON = (
+    "metier",
+    "comportementale",
+    "transversale",
+    "outil_technologie",
+    "data",
+    "leadership",
+)
 
 
 def _humanize(key: str) -> str:
@@ -107,39 +128,54 @@ def cartographie(db: Session) -> CartoMatrix:
 
     # Colonnes : familles CANONIQUES présentes (ordre fixe ; on ignore les
     # catégories parasites type « savoir »/« savoir-faire »).
-    present = {r[0] for r in db.execute(
-        select(fam).join(Profil, Profil.id == ProfilCompetence.profil_id)
-        .where(Profil.departement_key.isnot(None)).distinct()).all()}
+    present = {
+        r[0]
+        for r in db.execute(
+            select(fam)
+            .join(Profil, Profil.id == ProfilCompetence.profil_id)
+            .where(Profil.departement_key.isnot(None))
+            .distinct()
+        ).all()
+    }
     familles = [f for f in _FAMILLES_CANON if f in present]
 
     # Effectif + niveau moyen global par pôle.
-    effectifs = dict(db.execute(
-        select(Profil.departement_key, func.count(Profil.id))
-        .where(Profil.departement_key.isnot(None))
-        .group_by(Profil.departement_key)).all())
-    moy_globales = dict(db.execute(
-        select(Profil.departement_key, func.avg(ProfilCompetence.niveau))
-        .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
-        .group_by(Profil.departement_key)).all())
+    effectifs = dict(
+        db.execute(
+            select(Profil.departement_key, func.count(Profil.id))
+            .where(Profil.departement_key.isnot(None))
+            .group_by(Profil.departement_key)
+        ).all()
+    )
+    moy_globales = dict(
+        db.execute(
+            select(Profil.departement_key, func.avg(ProfilCompetence.niveau))
+            .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
+            .group_by(Profil.departement_key)
+        ).all()
+    )
 
     # Cellules : niveau moyen par (pôle, famille).
     cells: dict[tuple[str, str], float | None] = {}
     for dept, f, moy in db.execute(
-            select(Profil.departement_key, fam, func.avg(ProfilCompetence.niveau))
-            .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
-            .group_by(Profil.departement_key, fam)).all():
+        select(Profil.departement_key, fam, func.avg(ProfilCompetence.niveau))
+        .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
+        .group_by(Profil.departement_key, fam)
+    ).all():
         cells[(dept, f)] = round(moy, 2) if moy is not None else None
 
     # Noms des profils par pôle (aperçu pour le détail).
     people: dict[str, list[str]] = {}
     for dept, nom, prenom in db.execute(
-            select(Profil.departement_key, Profil.nom, Profil.prenom)
-            .where(Profil.departement_key.isnot(None))
-            .order_by(Profil.nom)).all():
+        select(Profil.departement_key, Profil.nom, Profil.prenom)
+        .where(Profil.departement_key.isnot(None))
+        .order_by(Profil.nom)
+    ).all():
         people.setdefault(dept, []).append(f"{prenom or ''} {nom}".strip())
 
     # Libellés lisibles + regroupement par pôle via le référentiel d'organisation.
     from app.services import cartography_service
+
     ref_list = cartography_service.departements()
     ref = {d.get("key"): d for d in ref_list}
     rank = {d.get("key"): i for i, d in enumerate(ref_list)}
@@ -149,12 +185,17 @@ def cartographie(db: Session) -> CartoMatrix:
     for dept, eff in sorted(effectifs.items(), key=lambda kv: (rank.get(kv[0], 10**6), -kv[1])):
         meta = ref.get(dept, {})
         moy = moy_globales.get(dept)
-        lignes.append(CartoLigne(
-            departement_key=dept, label=meta.get("nom") or _humanize(dept),
-            pole=meta.get("pole"), effectif=eff,
-            niveau_moyen=round(moy, 2) if moy is not None else None,
-            niveaux=[cells.get((dept, f)) for f in familles],
-            people=people.get(dept, [])[:12]))
+        lignes.append(
+            CartoLigne(
+                departement_key=dept,
+                label=meta.get("nom") or _humanize(dept),
+                pole=meta.get("pole"),
+                effectif=eff,
+                niveau_moyen=round(moy, 2) if moy is not None else None,
+                niveaux=[cells.get((dept, f)) for f in familles],
+                people=people.get(dept, [])[:12],
+            )
+        )
     return CartoMatrix(familles=familles, lignes=lignes)
 
 
@@ -165,41 +206,56 @@ def cartographie_equipe(db: Session, manager_user_id: int) -> CartoMatrix:
     membre dans la famille. Portée : profils rattachés au manager (Profil.manager_id)."""
     fam = func.coalesce(ProfilCompetence.categorie, _FAM_DEFAUT)
     membres = db.scalars(
-        select(Profil).where(Profil.manager_id == manager_user_id)
-        .order_by(Profil.nom, Profil.prenom)).all()
+        select(Profil)
+        .where(Profil.manager_id == manager_user_id)
+        .order_by(Profil.nom, Profil.prenom)
+    ).all()
     ids = [m.id for m in membres]
     if not ids:
         return CartoMatrix(familles=[], lignes=[])
 
-    familles = [r[0] for r in db.execute(
-        select(fam).where(ProfilCompetence.profil_id.in_(ids))
-        .distinct().order_by(fam)).all()]
+    familles = [
+        r[0]
+        for r in db.execute(
+            select(fam).where(ProfilCompetence.profil_id.in_(ids)).distinct().order_by(fam)
+        ).all()
+    ]
 
     cells: dict[tuple[int, str], float | None] = {}
     for pid, f, moy in db.execute(
-            select(ProfilCompetence.profil_id, fam, func.avg(ProfilCompetence.niveau))
-            .where(ProfilCompetence.profil_id.in_(ids))
-            .group_by(ProfilCompetence.profil_id, fam)).all():
-        cells[(pid, f)] = round(moy, 2) if moy is not None else None
-    moy_glob = dict(db.execute(
-        select(ProfilCompetence.profil_id, func.avg(ProfilCompetence.niveau))
+        select(ProfilCompetence.profil_id, fam, func.avg(ProfilCompetence.niveau))
         .where(ProfilCompetence.profil_id.in_(ids))
-        .group_by(ProfilCompetence.profil_id)).all())
+        .group_by(ProfilCompetence.profil_id, fam)
+    ).all():
+        cells[(pid, f)] = round(moy, 2) if moy is not None else None
+    moy_glob = dict(
+        db.execute(
+            select(ProfilCompetence.profil_id, func.avg(ProfilCompetence.niveau))
+            .where(ProfilCompetence.profil_id.in_(ids))
+            .group_by(ProfilCompetence.profil_id)
+        ).all()
+    )
 
     lignes: list[CartoLigne] = []
     for m in membres:
         nom = f"{m.prenom or ''} {m.nom}".strip()
         moy = moy_glob.get(m.id)
-        lignes.append(CartoLigne(
-            departement_key=str(m.id), label=nom, pole=None, effectif=1,
-            niveau_moyen=round(moy, 2) if moy is not None else None,
-            niveaux=[cells.get((m.id, f)) for f in familles],
-            people=[nom]))
+        lignes.append(
+            CartoLigne(
+                departement_key=str(m.id),
+                label=nom,
+                pole=None,
+                effectif=1,
+                niveau_moyen=round(moy, 2) if moy is not None else None,
+                niveaux=[cells.get((m.id, f)) for f in familles],
+                people=[nom],
+            )
+        )
     return CartoMatrix(familles=familles, lignes=lignes)
 
 
 # ------------------------------------------------- Familles de compétences
-_SEUIL_COMPETENT = 4   # niveau (1-5) = MAÎTRISE dans une famille (bar discriminant pour la tension)
+_SEUIL_COMPETENT = 4  # niveau (1-5) = MAÎTRISE dans une famille (bar discriminant pour la tension)
 
 
 def _tension(attendu: int, profils_couverts: int) -> str:
@@ -228,14 +284,19 @@ def familles(db: Session) -> list[FamilleCompetence]:
     vol = {
         f: (det, moy)
         for f, det, moy in db.execute(
-            select(fam_p, func.count(ProfilCompetence.id), func.avg(ProfilCompetence.niveau))
-            .group_by(fam_p)).all()
+            select(
+                fam_p, func.count(ProfilCompetence.id), func.avg(ProfilCompetence.niveau)
+            ).group_by(fam_p)
+        ).all()
     }
     # Profils COMPÉTENTS (au moins une compétence de la famille à niveau ≥ 3).
-    couverts = dict(db.execute(
-        select(fam_p, func.count(distinct(ProfilCompetence.profil_id)))
-        .where(ProfilCompetence.niveau >= _SEUIL_COMPETENT)
-        .group_by(fam_p)).all())
+    couverts = dict(
+        db.execute(
+            select(fam_p, func.count(distinct(ProfilCompetence.profil_id)))
+            .where(ProfilCompetence.niveau >= _SEUIL_COMPETENT)
+            .group_by(fam_p)
+        ).all()
+    )
 
     out: list[FamilleCompetence] = []
     for f in _FAMILLES_CANON:
@@ -243,10 +304,16 @@ def familles(db: Session) -> list[FamilleCompetence]:
             continue
         det, moy = vol[f]
         couv = int(couverts.get(f, 0))
-        out.append(FamilleCompetence(
-            famille=f, detenues=det, profils_couverts=couv,
-            niveau_moyen=round(moy, 2) if moy is not None else None,
-            demande=effectif, tension=_tension(effectif, couv)))
+        out.append(
+            FamilleCompetence(
+                famille=f,
+                detenues=det,
+                profils_couverts=couv,
+                niveau_moyen=round(moy, 2) if moy is not None else None,
+                demande=effectif,
+                tension=_tension(effectif, couv),
+            )
+        )
     return out
 
 
@@ -261,14 +328,16 @@ def synthese(db: Session) -> dict:
         for k, n in db.execute(
             select(Profil.departement_key, func.count(Profil.id))
             .group_by(Profil.departement_key)
-            .order_by(func.count(Profil.id).desc())).all()
+            .order_by(func.count(Profil.id).desc())
+        ).all()
     ]
     candidatures_par_statut = [
         {"statut": s, "nombre": n}
         for s, n in db.execute(
             select(Candidature.statut, func.count(Candidature.id))
             .group_by(Candidature.statut)
-            .order_by(func.count(Candidature.id).desc())).all()
+            .order_by(func.count(Candidature.id).desc())
+        ).all()
     ]
     familles_en_tension = sum(1 for f in familles(db) if f.tension == "forte")
     return {
@@ -292,22 +361,29 @@ def hauts_potentiels(db: Session, *, limit: int = 50) -> list[HautPotentielItem]
     (au moins 2 compétences niveautées). Triés par niveau décroissant. La même
     définition sert au comptage de l'alerte RH ET à l'écran, garantissant la cohérence."""
     rows = db.execute(
-        select(Profil, func.avg(ProfilCompetence.niveau),
-               func.count(ProfilCompetence.id))
+        select(Profil, func.avg(ProfilCompetence.niveau), func.count(ProfilCompetence.id))
         .join(ProfilCompetence, ProfilCompetence.profil_id == Profil.id)
         .where(ProfilCompetence.niveau.isnot(None))
         .group_by(Profil.id)
         .having(func.count(ProfilCompetence.id) >= 2)
         .having(func.avg(ProfilCompetence.niveau) >= SEUIL_HP)
         .order_by(func.avg(ProfilCompetence.niveau).desc())
-        .limit(min(max(limit, 1), 50))).all()
+        .limit(min(max(limit, 1), 50))
+    ).all()
     out: list[HautPotentielItem] = []
     for profil, moy, ncomp in rows:
-        out.append(HautPotentielItem(
-            profil_id=profil.id, nom=profil.nom, prenom=profil.prenom,
-            poste_actuel=profil.poste_actuel, departement_key=profil.departement_key,
-            score=round((moy or 0) * 20), nb_competences=ncomp,
-            niveau_moyen=round(moy, 2) if moy is not None else None))
+        out.append(
+            HautPotentielItem(
+                profil_id=profil.id,
+                nom=profil.nom,
+                prenom=profil.prenom,
+                poste_actuel=profil.poste_actuel,
+                departement_key=profil.departement_key,
+                score=round((moy or 0) * 20),
+                nb_competences=ncomp,
+                niveau_moyen=round(moy, 2) if moy is not None else None,
+            )
+        )
     return out
 
 
@@ -315,21 +391,29 @@ def hauts_potentiels(db: Session, *, limit: int = 50) -> list[HautPotentielItem]
 def veille(db: Session) -> list[VeilleItem]:
     """Suivi des entretiens par type : réalisés / planifiés / en retard."""
     rows = db.execute(
-        select(Entretien.type, Entretien.statut, func.count())
-        .group_by(Entretien.type, Entretien.statut)).all()
+        select(Entretien.type, Entretien.statut, func.count()).group_by(
+            Entretien.type, Entretien.statut
+        )
+    ).all()
     agg: dict[str, dict[str, int]] = {}
     for type_, statut, n in rows:
         agg.setdefault(type_, {})[statut] = n
-    plan = [(EntretienType.ANNUEL, "annuels", "Entretiens annuels (managers)"),
-            (EntretienType.RH, "rh", "Entretiens RH ↔ collaborateur")]
+    plan = [
+        (EntretienType.ANNUEL, "annuels", "Entretiens annuels (managers)"),
+        (EntretienType.RH, "rh", "Entretiens RH ↔ collaborateur"),
+    ]
     out: list[VeilleItem] = []
     for type_, key, label in plan:
         a = agg.get(type_, {})
-        out.append(VeilleItem(
-            key=key, label=label,
-            realises=a.get(EntretienStatut.REALISE, 0),
-            planifies=a.get(EntretienStatut.PLANIFIE, 0),
-            en_retard=a.get(EntretienStatut.EN_RETARD, 0)))
+        out.append(
+            VeilleItem(
+                key=key,
+                label=label,
+                realises=a.get(EntretienStatut.REALISE, 0),
+                planifies=a.get(EntretienStatut.PLANIFIE, 0),
+                en_retard=a.get(EntretienStatut.EN_RETARD, 0),
+            )
+        )
     return out
 
 
@@ -340,17 +424,24 @@ def entretiens_a_traiter(db: Session, *, limit: int = 60) -> list[EntretienCasIt
     rows = db.execute(
         select(Entretien, Profil)
         .join(Profil, Profil.id == Entretien.profil_id)
-        .where(Entretien.statut.in_([EntretienStatut.EN_RETARD, EntretienStatut.PLANIFIE]))).all()
+        .where(Entretien.statut.in_([EntretienStatut.EN_RETARD, EntretienStatut.PLANIFIE]))
+    ).all()
 
     # Dernier entretien RÉALISÉ par profil (pour l'ancienneté).
-    dernier = dict(db.execute(
-        select(Entretien.profil_id, func.max(Entretien.date_realisee))
-        .where(Entretien.date_realisee.isnot(None))
-        .group_by(Entretien.profil_id)).all())
+    dernier = dict(
+        db.execute(
+            select(Entretien.profil_id, func.max(Entretien.date_realisee))
+            .where(Entretien.date_realisee.isnot(None))
+            .group_by(Entretien.profil_id)
+        ).all()
+    )
     # Noms des managers concernés.
     mgr_ids = {p.manager_id for (_, p) in rows if p.manager_id}
-    mgr_noms = dict(db.execute(
-        select(User.id, User.name).where(User.id.in_(mgr_ids))).all()) if mgr_ids else {}
+    mgr_noms = (
+        dict(db.execute(select(User.id, User.name).where(User.id.in_(mgr_ids))).all())
+        if mgr_ids
+        else {}
+    )
 
     def _naive(dt: datetime) -> datetime:
         return dt.replace(tzinfo=None) if dt.tzinfo else dt
@@ -360,14 +451,27 @@ def entretiens_a_traiter(db: Session, *, limit: int = 60) -> list[EntretienCasIt
     for e, p in rows:
         dr = dernier.get(p.id)
         mois = int((now - _naive(dr)).days // 30) if dr else None
-        items.append(EntretienCasItem(
-            profil_id=p.id, nom=p.nom, prenom=p.prenom, poste_actuel=p.poste_actuel,
-            departement_key=p.departement_key, type=e.type, statut=e.statut,
-            date_prevue=e.date_prevue, mois_depuis_dernier=mois,
-            manager_nom=mgr_noms.get(p.manager_id)))
+        items.append(
+            EntretienCasItem(
+                profil_id=p.id,
+                nom=p.nom,
+                prenom=p.prenom,
+                poste_actuel=p.poste_actuel,
+                departement_key=p.departement_key,
+                type=e.type,
+                statut=e.statut,
+                date_prevue=e.date_prevue,
+                mois_depuis_dernier=mois,
+                manager_nom=mgr_noms.get(p.manager_id),
+            )
+        )
     # En retard d'abord, puis échéance la plus proche.
-    items.sort(key=lambda i: (0 if i.statut == EntretienStatut.EN_RETARD else 1,
-                              _naive(i.date_prevue) if i.date_prevue else now))
+    items.sort(
+        key=lambda i: (
+            0 if i.statut == EntretienStatut.EN_RETARD else 1,
+            _naive(i.date_prevue) if i.date_prevue else now,
+        )
+    )
     return items[:limit]
 
 
@@ -378,25 +482,42 @@ def alertes(db: Session) -> list[AlerteItem]:
     out: list[AlerteItem] = []
     nb_hp = len(hauts_potentiels(db, limit=50))
     if nb_hp:
-        out.append(AlerteItem(
-            kind="potential", severity="info",
-            titre=f"{nb_hp} haut(s) potentiel(s) identifié(s)",
-            texte="Des collaborateurs au niveau de compétences élevé sont à suivre pour la succession.",
-            cta="Voir les hauts potentiels", to_route="hautsPotentiels"))
-    en_retard = _count(db, select(Entretien.id).where(Entretien.statut == EntretienStatut.EN_RETARD))
+        out.append(
+            AlerteItem(
+                kind="potential",
+                severity="info",
+                titre=f"{nb_hp} haut(s) potentiel(s) identifié(s)",
+                texte="Des collaborateurs au niveau de compétences élevé sont à suivre pour la succession.",
+                cta="Voir les hauts potentiels",
+                to_route="hautsPotentiels",
+            )
+        )
+    en_retard = _count(
+        db, select(Entretien.id).where(Entretien.statut == EntretienStatut.EN_RETARD)
+    )
     if en_retard:
-        out.append(AlerteItem(
-            kind="succession", severity="warn",
-            titre=f"{en_retard} entretien(s) en retard",
-            texte="Des entretiens n'ont pas été menés dans les délais.",
-            cta="Planifier", to_route="veille"))
+        out.append(
+            AlerteItem(
+                kind="succession",
+                severity="warn",
+                titre=f"{en_retard} entretien(s) en retard",
+                texte="Des entretiens n'ont pas été menés dans les délais.",
+                cta="Planifier",
+                to_route="veille",
+            )
+        )
     mobilites = _count(db, select(Souhait.id).where(Souhait.pushed.is_(True)))
     if mobilites:
-        out.append(AlerteItem(
-            kind="retention", severity="info",
-            titre=f"{mobilites} demande(s) de mobilité exprimée(s)",
-            texte="Des collaborateurs ont transmis une demande d'évolution · opportunité de rétention.",
-            cta="Voir les demandes", to_route="souhaitsRecus"))
+        out.append(
+            AlerteItem(
+                kind="retention",
+                severity="info",
+                titre=f"{mobilites} demande(s) de mobilité exprimée(s)",
+                texte="Des collaborateurs ont transmis une demande d'évolution · opportunité de rétention.",
+                cta="Voir les demandes",
+                to_route="souhaitsRecus",
+            )
+        )
     return out
 
 
@@ -405,14 +526,17 @@ def supervision(db: Session) -> list[dict]:
     """Supervision de la qualité des données : scans RÉELS de la base (aucune valeur
     figée). Chaque item = un contrôle et le nombre d'anomalies détectées."""
     from sqlalchemy import or_
+
     total_p = _count(db, select(Profil.id))
     total_c = _count(db, select(ProfilCompetence.id))
     avec_comp = select(ProfilCompetence.profil_id).distinct()
     sans_comp = _count(db, select(Profil.id).where(Profil.id.not_in(avec_comp)))
-    sans_poste = _count(db, select(Profil.id).where(
-        or_(Profil.poste_actuel.is_(None), Profil.poste_actuel == "")))
-    sans_aspi = _count(db, select(Profil.id).where(
-        or_(Profil.aspirations.is_(None), Profil.aspirations == "")))
+    sans_poste = _count(
+        db, select(Profil.id).where(or_(Profil.poste_actuel.is_(None), Profil.poste_actuel == ""))
+    )
+    sans_aspi = _count(
+        db, select(Profil.id).where(or_(Profil.aspirations.is_(None), Profil.aspirations == ""))
+    )
     non_ancrees = _count(db, select(ProfilCompetence.id).where(ProfilCompetence.skill_id.is_(None)))
     non_cat = _count(db, select(ProfilCompetence.id).where(ProfilCompetence.categorie.is_(None)))
     return [

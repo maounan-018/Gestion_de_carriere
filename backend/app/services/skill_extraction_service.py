@@ -24,7 +24,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.services.ai_router import generate, fence
+from app.services.ai_router import fence, generate
 from app.services.skill_search_service import search_skills
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ _SYSTEM = (
     '{"intitule_poste": "…"|null, "competences": ['
     '{"libelle": "…", "type": "savoir-faire"|"savoir"|"savoir-être", '
     '"importance": "essentielle"|"souhaitée"}]}\n'
-    "Chaque \"libelle\" est une compétence courte et normalisée (2 à 6 mots), en français."
+    'Chaque "libelle" est une compétence courte et normalisée (2 à 6 mots), en français.'
 )
 
 
@@ -74,12 +74,14 @@ def extract_skills(db: Session, job_text: str, top_k: int = 1) -> dict:
         libelle = (c.get("libelle") or "").strip()
         if not libelle:
             continue
-        skills.append({
-            "raw": libelle,
-            "category": c.get("type"),
-            "importance": c.get("importance"),
-            "matches": search_skills(db, libelle, k=top_k),
-        })
+        skills.append(
+            {
+                "raw": libelle,
+                "category": c.get("type"),
+                "importance": c.get("importance"),
+                "matches": search_skills(db, libelle, k=top_k),
+            }
+        )
 
     logger.info("Extraction : %d compétences extraites du descriptif.", len(skills))
     return {

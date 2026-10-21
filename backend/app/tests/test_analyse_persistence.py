@@ -8,8 +8,8 @@ relancer le LLM."""
 
 from sqlalchemy import select
 
-from app.services import analyse_service as asv
 from app.models.analyse_rh import AnalyseRh
+from app.services import analyse_service as asv
 
 
 def test_persistance_analyse_roundtrip_et_upsert(db):

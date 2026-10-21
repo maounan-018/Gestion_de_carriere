@@ -25,9 +25,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.database.vector_search import knn_sql, bool_true
-from app.services.embedding_service import embed_text
+from app.database.vector_search import bool_true, knn_sql
 from app.services import reranker_service
+from app.services.embedding_service import embed_text
 
 _SELECT = "s.id, s.label_fr, s.label_en, s.skill_type, s.description_fr, s.description_en"
 _JOIN = "skills s ON s.id = vk.skill_id"
@@ -52,10 +52,14 @@ def _passage(c: dict) -> str:
     return fr or en
 
 
-def search_skills(db: Session, query: str, k: int = 5,
-                  max_distance: float | None = None,
-                  rerank: bool | None = None,
-                  canonical_only: bool = True) -> list[dict]:
+def search_skills(
+    db: Session,
+    query: str,
+    k: int = 5,
+    max_distance: float | None = None,
+    rerank: bool | None = None,
+    canonical_only: bool = True,
+) -> list[dict]:
     """Renvoie les `k` compétences canoniques les plus pertinentes pour `query`.
 
     Chaque résultat : {skill_id, label_fr, label_en, skill_type, distance, score,
@@ -79,20 +83,27 @@ def search_skills(db: Session, query: str, k: int = 5,
         dist = float(distance)
         if max_distance is not None and dist > max_distance:
             continue
-        cand.append({
-            "skill_id": sid, "label_fr": label_fr, "label_en": label_en,
-            "skill_type": skill_type, "description_fr": dfr, "description_en": den,
-            "distance": round(dist, 4), "score": round(1.0 / (1.0 + dist), 4),
-        })
+        cand.append(
+            {
+                "skill_id": sid,
+                "label_fr": label_fr,
+                "label_en": label_en,
+                "skill_type": skill_type,
+                "description_fr": dfr,
+                "description_en": den,
+                "distance": round(dist, 4),
+                "score": round(1.0 / (1.0 + dist), 4),
+            }
+        )
 
     if use_rerank and cand:
         scores = reranker_service.rerank_scores(query, [_passage(c) for c in cand])
-        for c, s in zip(cand, scores):
+        for c, s in zip(cand, scores, strict=False):
             c["rerank_score"] = round(float(s), 4)
         cand.sort(key=lambda c: c["rerank_score"], reverse=True)
 
     result = cand[:k]
-    for c in result:                       # descriptions verbeuses hors payload
+    for c in result:  # descriptions verbeuses hors payload
         c.pop("description_fr", None)
         c.pop("description_en", None)
     return result

@@ -43,7 +43,6 @@ from __future__ import annotations
 import multiprocessing
 import os
 
-
 # ---- Reseau ----------------------------------------------------------------
 bind = f"{os.getenv('BIND_HOST', '127.0.0.1')}:{os.getenv('BIND_PORT', '5001')}"
 # Backlog = taille de la file d'attente TCP avant que l'OS refuse les connexions.
@@ -86,9 +85,7 @@ loglevel = os.getenv("GUNICORN_LOGLEVEL", "info")
 
 # Format d'access log : status, methode, path, duree ms, identifiant utilisateur
 # (vide si non authentifie), user-agent. Permet le monitoring sans traverser le code.
-access_log_format = (
-    '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)s "%(f)s" "%(a)s"'
-)
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s %(D)s "%(f)s" "%(a)s"'
 
 
 # ---- Processus -------------------------------------------------------------

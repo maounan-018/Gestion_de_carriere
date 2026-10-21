@@ -15,8 +15,8 @@ EMPLACEMENT MVC
     Couche "core" : configuration et paramètres transverses.
 """
 
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def load_dotenv(path: str = ".env") -> None:
     if not os.path.exists(path):
         return
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
@@ -53,7 +53,8 @@ def _load_routing(path: str) -> dict:
         return {}
     try:
         import yaml  # dépendance déclarée dans requirements.txt
-        with open(path, "r", encoding="utf-8") as f:
+
+        with open(path, encoding="utf-8") as f:
             return yaml.safe_load(f) or {}
     except Exception as e:
         logger.warning("Lecture routing.yaml impossible (%s): %s", path, e)
@@ -85,16 +86,25 @@ class Settings:
         # ~85 s → ~35 s). "0" pour décharger aussitôt, "-1" pour garder indéfiniment.
         self.OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "30m").strip()
         # Modèles préchargés au démarrage (en tâche de fond) — vide = désactivé.
-        self.AI_WARMUP_MODELS = [m.strip() for m in os.getenv(
-            "AI_WARMUP_MODELS", "hermes3:8b,mistral-nemo").split(",") if m.strip()]
+        self.AI_WARMUP_MODELS = [
+            m.strip()
+            for m in os.getenv("AI_WARMUP_MODELS", "hermes3:8b,mistral-nemo").split(",")
+            if m.strip()
+        ]
 
         # Routage modèle-par-tâche (ia/routing.yaml)
-        self.ROUTING_PATH = os.getenv("ROUTING_PATH", "").strip() or os.path.join(REPO_ROOT, "ia", "routing.yaml")
+        self.ROUTING_PATH = os.getenv("ROUTING_PATH", "").strip() or os.path.join(
+            REPO_ROOT, "ia", "routing.yaml"
+        )
         self.routing = _load_routing(self.ROUTING_PATH)
 
         # --- Reranker (hors Ollama, FlagEmbedding) ---
         self.RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
-        self.RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+        self.RERANKER_ENABLED = os.getenv("RERANKER_ENABLED", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
         # --- Base de données ---
         # DEV : SQLite fichier (défaut). PROD/Supabase : poser DATABASE_URL
@@ -105,7 +115,9 @@ class Settings:
         self.DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
         # --- Référentiels de compétences (ia/referentiels/) ---
-        self.REFERENTIELS_DIR = os.getenv("REFERENTIELS_DIR", "").strip() or os.path.join(REPO_ROOT, "ia", "referentiels")
+        self.REFERENTIELS_DIR = os.getenv("REFERENTIELS_DIR", "").strip() or os.path.join(
+            REPO_ROOT, "ia", "referentiels"
+        )
 
         # --- Sessions / sécurité (repris de smart-objective) ---
         self.TOKEN_EXPIRY_HOURS = int(os.getenv("SESSION_DURATION_HOURS", "24"))
@@ -118,7 +130,11 @@ class Settings:
         # Le GPU ne fait qu'UNE génération à la fois (VRAM 8 Go, cf. _GPU_LOCK) :
         # sans borne, un utilisateur qui enchaîne les appels remplit la file et prive
         # les autres. On borne PAR UTILISATEUR : débit (fenêtre glissante) + concurrence.
-        self.IA_RATE_LIMIT_ENABLED = os.getenv("IA_RATE_LIMIT_ENABLED", "true").strip().lower() in ("1", "true", "yes")
+        self.IA_RATE_LIMIT_ENABLED = os.getenv("IA_RATE_LIMIT_ENABLED", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         self.IA_RATE_MAX_PER_WINDOW = int(os.getenv("IA_RATE_MAX_PER_WINDOW", "15"))
         self.IA_RATE_WINDOW_SECONDS = int(os.getenv("IA_RATE_WINDOW_SECONDS", "60"))
         self.IA_RATE_MAX_CONCURRENT = int(os.getenv("IA_RATE_MAX_CONCURRENT", "2"))
@@ -128,7 +144,7 @@ class Settings:
         if not _origins_raw or _origins_raw == "*":
             raise RuntimeError(
                 "ALLOWED_ORIGINS doit être défini explicitement dans .env "
-                "(ex: http://localhost:3000). Le wildcard \"*\" est interdit."
+                '(ex: http://localhost:3000). Le wildcard "*" est interdit.'
             )
         self.ALLOWED_ORIGINS = [o.strip() for o in _origins_raw.split(",") if o.strip()]
         # Optionnel : autorise un MOTIF d'origines (regex) en plus de la liste — utile
@@ -139,16 +155,34 @@ class Settings:
         # --- Authentification / SSO ---
         self.AUTH_PROVIDER = os.getenv("AUTH_PROVIDER", "local").strip().lower()
         self.LOCAL_AUTH_ENABLED = os.getenv("LOCAL_AUTH_ENABLED", "auto").strip().lower()
-        self.SAML_SIMULATION = os.getenv("SAML_SIMULATION", "false").strip().lower() in ("1", "true", "yes")
-        self.SEED_DEMO_ACCOUNTS = os.getenv("SEED_DEMO_ACCOUNTS", "true").strip().lower() in ("1", "true", "yes")
-        self.SEED_SYNTHETIC_PERSONAS = os.getenv("SEED_SYNTHETIC_PERSONAS", "true").strip().lower() in ("1", "true", "yes")
+        self.SAML_SIMULATION = os.getenv("SAML_SIMULATION", "false").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        self.SEED_DEMO_ACCOUNTS = os.getenv("SEED_DEMO_ACCOUNTS", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        self.SEED_SYNTHETIC_PERSONAS = os.getenv(
+            "SEED_SYNTHETIC_PERSONAS", "true"
+        ).strip().lower() in ("1", "true", "yes")
 
         # --- Workflow offres ---
         # Publication DIRECTE d'offres par les managers. DÉSACTIVÉ par décision RH :
         # le manager exprime un BESOIN de recrutement, la HRBP valide et publie.
         # Réactivable sans redéploiement de code (repasser à "true").
-        self.MANAGER_PEUT_PUBLIER = os.getenv("MANAGER_PEUT_PUBLIER", "false").strip().lower() in ("1", "true", "yes")
-        self.SEED_SYNTHETIC_OFFERS = os.getenv("SEED_SYNTHETIC_OFFERS", "true").strip().lower() in ("1", "true", "yes")
+        self.MANAGER_PEUT_PUBLIER = os.getenv("MANAGER_PEUT_PUBLIER", "false").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        self.SEED_SYNTHETIC_OFFERS = os.getenv("SEED_SYNTHETIC_OFFERS", "true").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
 
         # --- Cookies de session (HttpOnly) + CSRF double-submit ---
         self.SESSION_COOKIE = os.getenv("SESSION_COOKIE", "bmci_session")
@@ -167,9 +201,9 @@ class Settings:
         if not raw:
             return f"sqlite:///{self.DB_PATH}"
         if raw.startswith("postgres://"):
-            raw = "postgresql+psycopg://" + raw[len("postgres://"):]
+            raw = "postgresql+psycopg://" + raw[len("postgres://") :]
         elif raw.startswith("postgresql://"):
-            raw = "postgresql+psycopg://" + raw[len("postgresql://"):]
+            raw = "postgresql+psycopg://" + raw[len("postgresql://") :]
         return raw
 
     @property

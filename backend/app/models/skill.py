@@ -13,27 +13,27 @@ EMPLACEMENT MVC
     Couche "models" : entités ORM.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import String, Integer, Text, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
 
 
 class SkillType:
-    KNOWLEDGE = "knowledge"      # savoir (ESCO knowledge)
-    SKILL = "skill"             # savoir-faire (ESCO skill/competence)
+    KNOWLEDGE = "knowledge"  # savoir (ESCO knowledge)
+    SKILL = "skill"  # savoir-faire (ESCO skill/competence)
     TRANSVERSAL = "transversal"  # compétence transversale
-    DIGITAL = "digital"         # compétence SFIA (IT/digital)
+    DIGITAL = "digital"  # compétence SFIA (IT/digital)
     OTHER = "other"
 
 
 class RelationType:
-    BROADER = "broader"      # compétence parente (plus générale)
-    NARROWER = "narrower"    # compétence enfant (plus spécifique)
-    RELATED = "related"      # compétence liée (transversale)
-    LEADS_TO = "leads_to"    # progression de carrière (mène à)
+    BROADER = "broader"  # compétence parente (plus générale)
+    NARROWER = "narrower"  # compétence enfant (plus spécifique)
+    RELATED = "related"  # compétence liée (transversale)
+    LEADS_TO = "leads_to"  # progression de carrière (mène à)
 
 
 class Skill(Base):
@@ -46,9 +46,8 @@ class Skill(Base):
     description_en: Mapped[str | None] = mapped_column(Text, default=None)
     skill_type: Mapped[str] = mapped_column(String(20), default=SkillType.OTHER, index=True)
     sfia_level: Mapped[int | None] = mapped_column(Integer, default=None)  # 1..7 si issu de SFIA
-    canonical: Mapped[bool] = mapped_column(Boolean, default=True)          # False = doublon fusionné
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc))
+    canonical: Mapped[bool] = mapped_column(Boolean, default=True)  # False = doublon fusionné
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
 
 
 class SkillRelation(Base):
