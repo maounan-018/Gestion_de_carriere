@@ -199,3 +199,7 @@ Référentiels : **ESCO** (CC-BY 4.0, Commission Européenne), **O\*NET**
 (domaine public, U.S. Department of Labor), **SFIA** (gratuit à usage
 non-commercial). Modèles IA : licences respectives (Qwen 3 · Mistral · Hermes 3
 · BGE-M3). Code applicatif : usage personnel / démonstration.
+
+---
+
+*École Centrale Casablanca × BMCI — 2026*
