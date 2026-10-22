@@ -11,7 +11,7 @@ const { toast } = useToast()
 
 const step = ref(0)
 const email = ref('')
-const emailValid = computed(() => /^[^@\s.]+\.[^@\s]+@bmci\.local$/i.test(email.value.trim()))
+const emailValid = computed(() => /^[^@\s.]+\.[^@\s]+@bmci.local$/i.test(email.value.trim()))
 
 const digits = ref<string[]>(['', '', '', '', '', ''])
 const inputs = ref<HTMLInputElement[]>([])

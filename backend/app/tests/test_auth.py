@@ -51,9 +51,7 @@ def test_annuaire_preload_compte_existant(client):
     """Enrôlement : l'e-mail (partie locale) d'un compte pré-existant renvoie ses
     infos RH déjà en base (poste, département, manager) — pré-remplissage, pré-auth."""
     anon(client)
-    r = client.get(
-        "/api/auth/annuaire-preload", params={"email": "youssef.elamrani@bmci.local"}
-    )
+    r = client.get("/api/auth/annuaire-preload", params={"email": "youssef.elamrani@bmci.local"})
     assert r.status_code == 200
     data = r.json()
     assert data["found"] is True

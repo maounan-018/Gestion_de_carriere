@@ -15,7 +15,7 @@ const email = ref('')
 const password = ref('')
 const showPwd = ref(false)
 
-const emailValid = computed(() => /^[^@\s.]+\.[^@\s]+@bmci\.local$/i.test(email.value.trim()))
+const emailValid = computed(() => /^[^@\s.]+\.[^@\s]+@bmci.local$/i.test(email.value.trim()))
 const criteria = computed(() => ({
   len: password.value.length >= 8,
   upper: /[A-Z]/.test(password.value),
